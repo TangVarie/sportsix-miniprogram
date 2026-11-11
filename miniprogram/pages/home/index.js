@@ -1,7 +1,7 @@
 const home = require('../../content/home.js');
 const products = require('../../content/products.js');
 const events = require('../../utils/events.js');
-const { baseData, watchReveal, navTone, go, selectTab } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 /*
@@ -60,6 +60,8 @@ Page({
 
   onReady() {
     this.stopReveal = watchReveal(this, REVEAL_KEYS);
+    // 首页深浅分区交替：量出各段深色区（class 带 js-dark）的位置，状态栏文字跟着换色
+    this.stopMeasure = measureDarkZones(this);
   },
 
   onShow() {
@@ -73,6 +75,7 @@ Page({
 
   onUnload() {
     if (this.stopReveal) this.stopReveal();
+    if (this.stopMeasure) this.stopMeasure();
   },
 
   onPageScroll(e) {

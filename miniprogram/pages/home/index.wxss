@@ -1,5 +1,6 @@
 /* 数值取自 design/html/01-home.html，px × 750 ÷ 390。盒模型是默认的 content-box。 */
 
+
 .hm-eyebrow { color: #061A70; }
 .hm-eyebrow--lime { color: #C2E541; }
 
@@ -135,7 +136,9 @@
 .hm-brand__body { margin: 8rpx 0 31rpx; font-size: 27rpx; line-height: 42rpx; color: #C9CEE8; }
 .hm-brand__values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 19rpx; }
 .hm-brand__value { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 15rpx; height: 177rpx; padding: 27rpx 19rpx; border: 1px solid #2A3373; border-radius: 23rpx; text-align: center; font-size: 23rpx; line-height: 33rpx; }
-.hm-brand__icon { flex-shrink: 0; display: block; width: 50rpx; height: 50rpx; }
+/* 和设计稿一致：文字占两行时格子里放不下 26px 的图标，图标让出高度、等比缩小（配合 mode="aspectFit"） */
+.hm-brand__icon { display: block; width: 50rpx; height: 50rpx; min-height: 0; }
+.hm-brand__value-text { flex-shrink: 0; }
 
 /* 11 品牌影片 */
 .hm-film { display: flex; flex-direction: column; gap: 12rpx; padding: 8rpx 38rpx 85rpx; color: #FFFFFF; }

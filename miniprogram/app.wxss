@@ -11,6 +11,8 @@ page {
   font-size: 27rpx;
   line-height: 42rpx;
   -webkit-font-smoothing: antialiased;
+  /* 设计稿整页开了它：段落末行不留单字。不支持的内核会忽略。 */
+  text-wrap: pretty;
 }
 
 /* 底部导航页：给固定在底部的导航让出位置 */

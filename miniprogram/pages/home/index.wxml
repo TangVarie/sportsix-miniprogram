@@ -1,15 +1,15 @@
 <view class="page sx-tab-page" style="--sx-safe-top: {{safeTop}}px">
 
   <!-- 1 首屏 -->
-  <view class="hm-hero sx-grid-bg">
+  <view class="hm-hero sx-grid-bg js-dark">
     <image class="hm-hero__bg" src="{{trackLines}}" />
     <image class="hm-hero__bg" src="{{arc}}" />
     <view wx:for="{{hero.packs}}" wx:key="*this" class="hm-hero__pack hm-hero__pack--{{index}} sx-float">
       <image class="hm-hero__pack-img hm-hero__pack-img--{{index}}" src="{{item}}" mode="heightFix" />
     </view>
     <view class="hm-hero__text sx-in">
-      <image class="hm-hero__logo" src="{{hero.logo}}" />
-      <image class="hm-hero__slogan sx-rise" style="animation-delay: .1s" src="{{hero.slogan}}" />
+      <image class="hm-hero__logo" src="{{hero.logo}}" mode="aspectFit" />
+      <image class="hm-hero__slogan sx-rise" style="animation-delay: .1s" src="{{hero.slogan}}" mode="aspectFit" />
       <view class="hm-hero__headline sx-rise" style="animation-delay: .25s">
         <view wx:for="{{hero.headline}}" wx:key="*this">{{item}}</view>
       </view>
@@ -21,7 +21,7 @@
   </view>
 
   <!-- 2 三个数字 -->
-  <view class="hm-stats sx-grid-bg">
+  <view class="hm-stats sx-grid-bg js-dark">
     <view wx:for="{{stats}}" wx:key="label" class="hm-stats__item {{index > 0 ? 'hm-stats__item--rule' : ''}}">
       <text class="hm-stats__value sx-num">{{item.value}}</text>
       <text class="hm-stats__label">{{item.label}}</text>
@@ -104,7 +104,7 @@
   </view>
 
   <!-- 6 快慢双碳 -->
-  <dual-carb id="rv-dualCarb" short shown="{{seen.dualCarb}}" />
+  <dual-carb id="rv-dualCarb" class="js-dark" short shown="{{seen.dualCarb}}" />
 
   <!-- 7 三个规格 -->
   <view id="rv-specs" class="hm-specs {{seen.specs ? 'sx-in' : 'sx-wait'}}">
@@ -165,11 +165,11 @@
   </view>
 
   <!-- 10 厂房照片、品牌介绍、六大运动核心价值 -->
-  <view class="hm-factory">
+  <view class="hm-factory js-dark">
     <image class="hm-factory__img" src="{{brand.image}}" mode="aspectFill" />
     <view class="hm-factory__shade"></view>
   </view>
-  <view id="rv-brand" class="hm-brand sx-grid-bg {{seen.brand ? 'sx-in' : 'sx-wait'}}">
+  <view id="rv-brand" class="hm-brand sx-grid-bg js-dark {{seen.brand ? 'sx-in' : 'sx-wait'}}">
     <text class="sx-eyebrow hm-eyebrow--lime">{{brand.eyebrow}}</text>
     <view class="hm-brand__title">
       <view wx:for="{{brand.title}}" wx:key="*this">{{item}}</view>
@@ -177,7 +177,7 @@
     <view class="hm-brand__body">{{brand.body}}</view>
     <view class="hm-brand__values">
       <view wx:for="{{brand.values}}" wx:key="icon" class="hm-brand__value sx-rise" style="animation-delay: {{0.05 + index * 0.06}}s">
-        <image class="hm-brand__icon" src="/assets/icons/{{item.icon}}-lime.svg" />
+        <image class="hm-brand__icon" src="/assets/icons/{{item.icon}}-lime.svg" mode="aspectFit" />
         <view class="hm-brand__value-text">
           <view wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
         </view>
@@ -186,7 +186,7 @@
   </view>
 
   <!-- 11 品牌影片 -->
-  <view class="hm-film sx-grid-bg">
+  <view class="hm-film sx-grid-bg js-dark">
     <text class="sx-eyebrow hm-eyebrow--lime">{{film.eyebrow}}</text>
     <view class="hm-film__title">{{film.title}}</view>
     <view class="hm-film__frame">

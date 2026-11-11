@@ -33,14 +33,40 @@ function watchReveal(page, keys) {
 }
 
 /**
- * 自定义导航下，状态栏文字颜色要跟着背景走：深色首屏用白字，滚到浅色内容后换黑字。
+ * 自定义导航下，状态栏文字颜色要跟着背景走：压在深色分区上用白字，压在浅色内容上用黑字。
  * 在 onPageScroll 里调用：navTone(this, e.scrollTop, 首屏高度px)
+ * 只有首屏是深色的页面给一个阈值就够了；深浅分区交替的长页面（首页、产品详情）先用 measureDarkZones 量出各段位置。
  */
 function navTone(page, scrollTop, threshold) {
-  const dark = scrollTop < threshold;
+  const zones = page.__darkZones;
+  let dark = scrollTop < threshold;
+  if (zones && zones.length) {
+    const probe = scrollTop + (getApp().globalData.safeTop || 0) / 2; // 状态栏中线压在哪一段上
+    dark = zones.some((z) => probe >= z[0] && probe < z[1]);
+  }
   if (page.__navDark === dark) return;
   page.__navDark = dark;
   wx.setNavigationBarColor({ frontColor: dark ? '#ffffff' : '#000000', backgroundColor: dark ? '#010439' : '#ffffff' });
+}
+
+/**
+ * 量出页面上深色分区的位置（节点 class 里带 js-dark），供 navTone 使用。
+ * 在 onReady 里调用；图片加载会撑开布局，所以稍后再量一次。返回的函数在 onUnload 里调用。
+ */
+function measureDarkZones(page) {
+  const run = () => {
+    try {
+      page.createSelectorQuery().selectAll('.js-dark').boundingClientRect().selectViewport().scrollOffset().exec((res) => {
+        const rects = res && res[0];
+        const scroll = res && res[1];
+        if (!rects || !rects.length || !scroll) return;
+        page.__darkZones = rects.map((r) => [r.top + scroll.scrollTop, r.bottom + scroll.scrollTop]);
+      });
+    } catch (e) { /* 量不到就按阈值处理 */ }
+  };
+  run();
+  const timer = setTimeout(run, 1500);
+  return () => clearTimeout(timer);
 }
 
 /** 切到某个底部导航页 */
@@ -57,4 +83,4 @@ function selectTab(page, index) {
   if (typeof page.getTabBar === 'function' && page.getTabBar()) page.getTabBar().setData({ selected: index });
 }
 
-module.exports = { baseData, watchReveal, navTone, go, selectTab, TABS };
+module.exports = { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, TABS };
