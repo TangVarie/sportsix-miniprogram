@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="五种能量来源：一水结晶葡萄糖、玉米糖浆、天然植物咖啡因、帕拉金糖、麦芽糊精" width="350" height="290" viewBox="0 0 350 290">
+<g fill="none" stroke="#E6E6E7" stroke-width="1.5">
+<polygon points="175,40 279.600,116 239.700,239 110.300,239 70.400,116" fill="#F5F5F5"></polygon>
+<polygon points="175,77.400 244,127.600 217.700,208.700 132.300,208.700 106,127.600"></polygon>
+<path d="M175 150L175 40M175 150L279.600 116M175 150L239.700 239M175 150L110.300 239M175 150L70.400 116"></path>
+</g>
+<g fill="#C2E541" stroke="#010439" stroke-width="2"><circle cx="175" cy="40" r="6"></circle><circle cx="279.600" cy="116" r="6"></circle><circle cx="239.700" cy="239" r="6"></circle><circle cx="110.300" cy="239" r="6"></circle><circle cx="70.400" cy="116" r="6"></circle></g>
+<g font-size="13" font-weight="700" fill="#010439" font-family="Noto Sans SC, sans-serif">
+<text x="175" y="24" text-anchor="middle">一水结晶葡萄糖</text>
+<text x="292" y="112" text-anchor="start">玉米</text><text x="292" y="130" text-anchor="start">糖浆</text>
+<text x="58" y="112" text-anchor="end">麦芽</text><text x="58" y="130" text-anchor="end">糊精</text>
+<text x="252" y="268" text-anchor="middle">天然植物咖啡因</text>
+<text x="100" y="268" text-anchor="middle">帕拉金糖</text>
+</g>
+</svg>

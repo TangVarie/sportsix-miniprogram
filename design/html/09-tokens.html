@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=880">
+<title>09-tokens</title>
+<!-- 静态快照：Tokens 画板，状态 {}。宽 880px，高 1454px。所有尺寸为 390px 设计稿下的 px。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-600-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-700-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-800-italic.woff2') format('woff2')}
+
+body{margin:0}
+a{color:#061A70}a:hover{color:#010439}
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+button{cursor:pointer;transition:transform .15s ease,background-color .2s ease,color .2s ease}
+button:active{transform:scale(.96)}
+.sx-scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+
+
+<div style="width: 880px; height: 1454px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; color: #14141E; font-family: 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; text-wrap: pretty; padding: 40px; gap: 32px">
+
+<h1 style="margin: 0; font-size: 26px; line-height: 36px; font-weight: 900; color: #010439">色值与图形（暂定）</h1>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">颜色</h2>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; border-radius: 8px; background: #010439; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">深蓝</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#010439</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">首屏与深色分区</span></div><div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; border-radius: 8px; background: #061A70; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">标题蓝</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#061A70</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">数字与小标题</span></div><div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; border-radius: 8px; background: #C2E541; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">黄绿</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#C2E541</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">主按钮、弧线、标签</span></div><div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; box-sizing: border-box; border: 1px solid #E6E6E7; border-radius: 8px; background: #F5F5F5; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">底灰</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#F5F5F5</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">卡片底色</span></div><div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; border-radius: 8px; background: #14141E; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">正文</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#14141E</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">正文文字</span></div><div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 80px; border-radius: 8px; background: #5E6170; margin-bottom: 4px"></div><span style="font-size: 14px; line-height: 20px; font-weight: 700">次要文字</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 600; font-size: 15px; line-height: 18px">#5E6170</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">说明与未选中</span></div>
+</div>
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">屏幕色值取自现有电商详情页。印刷专色为 Pantone 2766 C 与 Pantone 2297 C。黄绿只做底色和线条，不做白底上的文字。</span>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">字标、口号与头像</h2>
+<div style="height: 120px; border-radius: 8px; padding: 0 24px; display: flex; flex-direction: column; justify-content: center; gap: 16px; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px">
+<img src="../../assets/logo/sportsix-wordmark-white.svg" alt="SPORTSIX 字标" style="width: 180px; height: 31px"><img src="../../assets/logo/win-your-day-white.svg" alt="WIN YOUR DAY 口号" style="width: 150px; height: 15px"></div>
+<div style="display: flex; align-items: flex-end; gap: 16px">
+<img src="../../assets/logo/avatar-1024.png" alt="方形头像，深蓝底白色字标加黄绿弧线" style="width: 96px; height: 96px; border-radius: 12px">
+<img src="../../assets/logo/avatar-1024.png" alt="头像 56 像素" style="width: 56px; height: 56px; border-radius: 28px">
+<img src="../../assets/logo/avatar-1024.png" alt="头像 40 像素" style="width: 40px; height: 40px; border-radius: 20px">
+<div style="margin-left: auto; height: 96px; flex: 1; border-radius: 8px; background: #F5F5F5; display: flex; align-items: center; justify-content: center"><img src="../../assets/logo/sportsix-wordmark-navy.svg" alt="SPORTSIX 字标，浅底深蓝" style="width: 150px; height: 26px"></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">字体</h2>
+<span style="font-size: 30px; line-height: 40px; font-weight: 900; color: #010439">快慢双碳，不掉速</span>
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">中文标题：Noto Sans SC 900</span>
+<span style="font-size: 14px; line-height: 22px">即时补能 + 长效续航双向兼顾，长距离耐力运动不掉速、不撞墙。</span>
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">中文正文：Noto Sans SC 400，14 / 22</span>
+<span style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 54px; color: #061A70">1115</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 54px; color: #061A70">45mg</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 54px; color: #061A70">30 MIN</span></span>
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">数字与英文：Barlow Condensed 800 Italic，呼应字标的斜体</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">图形</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="position: relative; height: 150px; border-radius: 8px; overflow: hidden; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px"><svg aria-hidden="true" width="191" height="150" viewBox="0 0 191 150" style="position: absolute; left: 0; top: 0"><defs><filter id="tArc" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter></defs><path d="M-20 70 Q95 150 211 50 L211 86 Q100 190 -20 106 Z" fill="#C2E541" opacity="0.6" filter="url(#tArc)" style="animation: sxGlow 2.8s ease-in-out infinite alternate"></path><path d="M-20 70 Q95 150 211 50 L211 86 Q100 190 -20 106 Z" fill="#C2E541"></path></svg></div><span style="font-size: 12px; line-height: 18px; color: #5E6170">黄绿弧线，配深蓝网格底</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="position: relative; height: 150px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column; justify-content: space-between; padding: 22px 0 22px 30px; box-sizing: border-box">
+<span aria-hidden="true" style="position: absolute; left: 40px; top: 30px; bottom: 30px; width: 4px; background: #C2E541"></span>
+<span style="position: relative; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #010439"><span style="width: 24px; height: 24px; border-radius: 12px; background: #010439; border: 3px solid #C2E541; box-sizing: border-box"></span>运动前</span>
+<span style="position: relative; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #010439"><span style="width: 24px; height: 24px; border-radius: 12px; background: #010439; border: 3px solid #C2E541; box-sizing: border-box"></span>运动中</span>
+<span style="position: relative; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #010439"><span style="width: 24px; height: 24px; border-radius: 12px; background: #010439; border: 3px solid #C2E541; box-sizing: border-box"></span>运动后</span>
+</div><span style="font-size: 12px; line-height: 18px; color: #5E6170">路线与节点，用于时间顺序</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="height: 150px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px"><span style="display: inline-block; padding: 4px 16px; background: #C2E541; color: #010439; font-size: 12px; line-height: 18px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)">韩国原装进口</span><span style="display: inline-block; padding: 4px 16px; background: #010439; color: #FFFFFF; font-size: 12px; line-height: 18px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)">会员专享</span></div><span style="font-size: 12px; line-height: 18px; color: #5E6170">斜切标签，角度随字标</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="position: relative; height: 150px; border-radius: 8px; overflow: hidden; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px"><svg aria-hidden="true" width="191" height="100" viewBox="0 0 350 110" preserveAspectRatio="none" style="position: absolute; left: 0; bottom: 0"><path d="M0 96 L40 70 L70 82 L112 34 L150 66 L186 44 L226 78 L262 22 L304 60 L330 48 L350 62 L350 110 L0 110 Z" fill="#C2E541" fill-opacity="0.16"></path><path d="M0 96 L40 70 L70 82 L112 34 L150 66 L186 44 L226 78 L262 22 L304 60 L330 48 L350 62" fill="none" stroke="#C2E541" stroke-width="4" stroke-linejoin="round"></path></svg></div><span style="font-size: 12px; line-height: 18px; color: #5E6170">海拔线，用于赛事活动</span></div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">组件</h2>
+<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+<button type="button" style="height: 52px; padding: 0 32px; border-radius: 26px; border: 0; background: #C2E541; color: #010439; font-family: inherit; font-size: 16px; font-weight: 900">主按钮</button>
+<button type="button" style="height: 52px; padding: 0 32px; border-radius: 26px; border: 1.5px solid #010439; background: #FFFFFF; color: #010439; font-family: inherit; font-size: 16px; font-weight: 700">次按钮</button>
+<button type="button" style="height: 52px; padding: 0 32px; border-radius: 26px; border: 0; background: #010439; color: #FFFFFF; font-family: inherit; font-size: 16px; font-weight: 700">黄绿底上的按钮</button>
+<span style="height: 36px; padding: 0 18px; border-radius: 18px; background: #010439; color: #FFFFFF; font-size: 14px; font-weight: 700; display: flex; align-items: center">即将开始</span>
+<span style="height: 36px; padding: 0 18px; border-radius: 18px; background: #F5F5F5; color: #5E6170; font-size: 14px; display: flex; align-items: center">往期</span>
+<span style="display: flex; gap: 8px; align-items: center; font-size: 13px; line-height: 20px"><span style="flex-shrink: 0; width: 16px; height: 16px; background: #C2E541; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#010439" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"></path></svg></span>45g 大容量</span>
+</div>
+</section>
+
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">照片</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 8px"><span style="position: relative; display: block; width: 184px; height: 120px; overflow: hidden; background: #010439; border-radius: 8px"><img src="../../assets/photos/web/road-silhouettes.jpg" alt="压成深蓝单色的跑者剪影照片" style="width: 184px; height: 120px; object-fit: cover; filter: grayscale(1) contrast(1.15); opacity: 0.7; mix-blend-mode: screen"></span><span style="font-size: 12px; line-height: 18px; color: #5E6170">场景图压成深蓝单色，融进底色</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><img src="../../assets/photos/endorsement/2026-hangang-running-festival.jpg" alt="SPORTSIX 在汉江跑步节的展位" style="width: 184px; height: 120px; object-fit: cover; border-radius: 8px"><span style="font-size: 12px; line-height: 18px; color: #5E6170">厂房、赛事等背书照片保留原色</span></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">动效</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; font-size: 13px; line-height: 20px">
+<div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">产品悬浮</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">上下 12px，5 秒往复</span></div><div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">弧线光晕</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">明暗呼吸，2.8 秒往复</span></div><div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">曲线绘制</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">从左到右画出，1.6 秒</span></div><div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">柱形生长</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">从基线长出，0.9 秒</span></div><div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">入场</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">上移 14px 淡入，0.7 秒</span></div><div style="padding: 10px 12px; border-radius: 8px; background: #F5F5F5; display: flex; flex-direction: column"><span style="font-weight: 700; color: #010439">点击</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">按下缩到 96%</span></div>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">图标</h2>
+<div style="display: flex; gap: 12px; flex-wrap: wrap"><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7c-1.500-3.500-6-3.500-5 0M12 7c1.500-3.500 6-3.500 5 0"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 15.2l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6h18v3a3 3 0 0 0 0 6v3H3v-3a3 3 0 0 0 0-6zM14 6v12"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.500"></circle><path d="M2.500 20c0-3.300 2.900-6 6.500-6s6.500 2.700 6.500 6M16 5.800a3.500 3.500 0 0 1 0 6.400M18 14.500c2.100.900 3.500 3 3.500 5.500"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.500-3.200 8-8 9-4.800-1-8-4.500-8-9V6z"></path><path d="M8.500 12l2.500 2.500 4.500-5"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"></path></svg></span><span style="width: 48px; height: 48px; border-radius: 24px; background: #F5F5F5; color: #061A70; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.500"></circle><circle cx="18" cy="6" r="2.500"></circle><path d="M8.500 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.500"></path></svg></span></div>
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">2px 线性图标，24px 网格。</span>
+</section>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>05-events-upcoming</title>
+<!-- 静态快照：Events 画板，状态 {}。宽 390px，高 880px。所有尺寸为 390px 设计稿下的 px。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-600-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-700-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-800-italic.woff2') format('woff2')}
+
+body{margin:0}
+a{color:#061A70}a:hover{color:#010439}
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+button{cursor:pointer;transition:transform .15s ease,background-color .2s ease,color .2s ease}
+button:active{transform:scale(.96)}
+.sx-scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+
+
+<div style="width: 390px; height: 880px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; color: #14141E; font-family: 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; text-wrap: pretty; ">
+
+<header style="position: relative; height: 176px; flex-shrink: 0; overflow: hidden; color: #FFFFFF; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px">
+<svg aria-hidden="true" width="390" height="176" viewBox="0 0 390 176" style="position: absolute; left: 0; top: 0"><defs><filter id="evArc" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="12"></feGaussianBlur></filter></defs><path d="M150 176 Q300 150 430 40 L430 86 Q320 176 240 176 Z" fill="#C2E541" opacity="0.5" filter="url(#evArc)" style="animation: sxGlow 2.8s ease-in-out infinite alternate"></path><path d="M150 176 Q300 150 430 40 L430 86 Q320 176 240 176 Z" fill="#C2E541"></path></svg>
+<div style="position: absolute; left: 20px; top: 28px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 700; font-size: 14px; line-height: 16px; letter-spacing: 0.08em; color: #C2E541">EVENTS</span>
+<h1 style="margin: 0; font-size: 30px; line-height: 40px; font-weight: 900">活动</h1>
+</div>
+<div role="tablist" style="position: absolute; left: 20px; bottom: 16px; display: flex; gap: 8px">
+<button type="button" role="tab" aria-selected="true" style="height: 44px; padding: 0 20px; border-radius: 22px; border: 1px solid #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; background: #FFFFFF; color: #010439">即将开始</button>
+<button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0 20px; border-radius: 22px; border: 1px solid #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; background: transparent; color: #FFFFFF">往期</button>
+</div>
+</header>
+
+
+<section style="flex-shrink: 0; padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 14px">
+
+<article style="border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #E6E6E7; animation: sxRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: 0.05s">
+<a href="06-event-detail.html" style="position: relative; height: 212px; color: #FFFFFF; text-decoration: none; display: block; background: #010439">
+<span style="position: relative; display: block; width: 350px; height: 212px; overflow: hidden; background: #010439; position: absolute; left: 0; top: 0"><img src="../../assets/photos/web/trail-sunset.jpg" alt="日落时分在山脊上奔跑的越野跑者剪影" style="width: 350px; height: 212px; object-fit: cover; filter: grayscale(1) contrast(1.15); opacity: 0.8; mix-blend-mode: screen"></span>
+<svg aria-hidden="true" width="350" height="110" viewBox="0 0 350 110" style="position: absolute; left: 0; bottom: 0"><path d="M0 96 L40 70 L70 82 L112 34 L150 66 L186 44 L226 78 L262 22 L304 60 L330 48 L350 62" fill="none" stroke="#C2E541" stroke-width="3" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" style="animation: sxDraw 1.6s ease-out 0.4s both"></path><circle cx="262" cy="22" r="5" fill="#C2E541"></circle></svg>
+<span style="position: absolute; left: 16px; top: 16px; display: flex; gap: 8px; align-items: center"><span style="display: inline-block; padding: 4px 16px; background: #C2E541; color: #010439; font-size: 12px; line-height: 18px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)">会员优先报名</span><span style="height: 26px; padding: 0 10px; border: 1px solid #FFFFFF; box-sizing: border-box; font-size: 12px; display: flex; align-items: center">赛事</span></span>
+<span style="position: absolute; left: 16px; top: 58px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 22px; line-height: 30px; font-weight: 900">[活动名称]</span>
+<span style="font-size: 13px; line-height: 20px; color: #E4E7F5">[活动日期] · [城市]</span>
+</span>
+</a>
+<div style="height: 68px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; background: #FFFFFF">
+<span style="font-size: 13px; line-height: 20px; color: #5E6170">报名 [开放时间] 开始</span>
+<button type="button" aria-pressed="false" style="height: 44px; padding: 0 18px; border-radius: 22px; border: 0; background: #C2E541; color: #010439; font-family: inherit; font-size: 14px; font-weight: 900; display: flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"></path></svg>提醒我</button>
+</div>
+</article>
+
+<article style="position: relative; height: 168px; border-radius: 16px; overflow: hidden; background: #C2E541; color: #010439; animation: sxRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: 0.15s">
+<span style="position: absolute; right: 26px; top: 14px; display: block; animation: sxFloat 5s ease-in-out 0s infinite alternate"><img src="../../assets/product/energy-gel-pro-pineapple.png" alt="SPORTSIX 能量胶PRO 包装" style="display: block; height: 176px; width: auto; transform: rotate(14deg)"></span>
+<div style="position: absolute; left: 16px; top: 16px; width: 220px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px">
+<span style="display: inline-block; padding: 4px 16px; background: #010439; color: #FFFFFF; font-size: 12px; line-height: 18px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)">会员专享 · 试用装</span>
+<span style="margin-top: 8px; font-size: 20px; line-height: 28px; font-weight: 900">[试用装活动名称]</span>
+<span style="font-size: 13px; line-height: 20px; font-weight: 500">[申领时间] · [名额]</span>
+</div>
+<button type="button" style="position: absolute; left: 16px; bottom: 16px; height: 44px; padding: 0 22px; border-radius: 22px; border: 0; background: #010439; color: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700">申领</button>
+</article>
+
+<article style="height: 96px; padding: 0 16px; border-radius: 16px; background: #F5F5F5; display: flex; align-items: center; gap: 14px; animation: sxRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: 0.25s">
+<span style="flex-shrink: 0; width: 56px; height: 56px; border-radius: 28px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6h18v3a3 3 0 0 0 0 6v3H3v-3a3 3 0 0 0 0-6zM14 6v12"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; line-height: 18px; color: #5E6170">抽奖</span>
+<span style="font-size: 17px; line-height: 24px; font-weight: 900; color: #010439">[抽奖活动名称]</span>
+<span style="font-size: 13px; line-height: 20px; color: #5E6170">[开奖时间]</span>
+</span>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#061A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"></path></svg>
+</article>
+
+</section>
+
+
+<nav aria-label="底部导航" style="position: relative; margin-top: auto; height: 64px; flex-shrink: 0; display: flex; border-top: 1px solid #E6E6E7; background: #FFFFFF">
+<a href="01-home.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>介绍</a>
+<a href="02-fuel-default-marathon-4h.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding-bottom: 9px; text-decoration: none; color: #061A70; font-size: 11px; line-height: 14px; font-weight: 700"><span style="margin-top: -18px; width: 48px; height: 48px; border-radius: 24px; background: #C2E541; border: 3px solid #FFFFFF; box-sizing: border-box; color: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>补给</a>
+<a href="05-events-upcoming.html" aria-current="page" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #061A70; font-size: 11px; line-height: 14px; font-weight: 700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>活动</a>
+<a href="07-me-not-registered.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>我的</a>
+</nav>
+</div>
+
+</body>
+</html>

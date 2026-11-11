@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="六种协同原料：胶原蛋白、脯氨酸、丙氨酸、谷氨酰胺、支链氨基酸、精氨酸" width="350" height="300" viewBox="0 0 350 300">
+<g fill="none" stroke="#E6E6E7" stroke-width="1.5">
+<polygon points="122.500,59 227.500,59 280,150 227.500,241 122.500,241 70,150" fill="#F5F5F5"></polygon>
+<polygon points="140,89.400 210,89.400 245,150 210,210.600 140,210.600 105,150"></polygon>
+<path d="M122.500 59L227.500 241M227.500 59L122.500 241M70 150H280"></path>
+</g>
+<g fill="#C2E541" stroke="#010439" stroke-width="2"><circle cx="122.500" cy="59" r="6"></circle><circle cx="227.500" cy="59" r="6"></circle><circle cx="280" cy="150" r="6"></circle><circle cx="227.500" cy="241" r="6"></circle><circle cx="122.500" cy="241" r="6"></circle><circle cx="70" cy="150" r="6"></circle></g>
+<g font-size="13" font-weight="700" fill="#010439" font-family="Noto Sans SC, sans-serif">
+<text x="112" y="40" text-anchor="middle">胶原蛋白</text><text x="238" y="40" text-anchor="middle">脯氨酸</text>
+<text x="292" y="155" text-anchor="start">丙氨酸</text><text x="58" y="155" text-anchor="end">精氨酸</text>
+<text x="244" y="270" text-anchor="middle">谷氨酰胺</text><text x="106" y="270" text-anchor="middle">支链氨基酸</text>
+</g>
+</svg>

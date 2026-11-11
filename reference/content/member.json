@@ -1,0 +1,34 @@
+{
+  "_note": "会员权益是常规项，规则后续补充；权益下面的一句话说明是设计写的，规则定了再改。注册只取微信身份和手机号。",
+  "join": {
+    "eyebrow": "MEMBER",
+    "title": ["成为", "SPORTSIX", "会员"],
+    "perks": [
+      { "icon": "flag", "title": "优先报名", "body": "活动报名对会员先开放" },
+      { "icon": "gift", "title": "试用装", "body": "会员可申领试用装" },
+      { "icon": "star", "title": "积分", "body": "参与活动累积积分" },
+      { "icon": "ticket", "title": "抽奖", "body": "会员专享抽奖" }
+    ],
+    "button": "微信手机号一键注册",
+    "agreement": "我已阅读并同意《用户协议》《隐私政策》"
+  },
+  "me": {
+    "profile": { "nickname": "[微信昵称]", "phone": "[手机号]" },
+    "card": { "memberNo": "会员编号 [会员编号]", "pointsLabel": "积分", "points": "[积分]" },
+    "perksTitle": "会员权益",
+    "perks": ["优先报名", "试用装", "积分", "抽奖"],
+    "plan": { "title": "我的补给计划", "line1": "[项目] · [预计时长]", "line2": "能量胶 [支数] 支 · 能量胶PRO [支数] 支", "to": "fuel" },
+    "events": { "title": "我的活动", "states": ["已报名", "已设提醒"] },
+    "menu": [
+      { "icon": "group", "text": "加入社群" },
+      { "icon": "doc", "text": "隐私政策" },
+      { "icon": "chat", "text": "联系我们" }
+    ]
+  },
+  "tabBar": [
+    { "key": "home", "text": "介绍", "icon": "home" },
+    { "key": "fuel", "text": "补给", "icon": "bolt", "raised": true },
+    { "key": "events", "text": "活动", "icon": "cal" },
+    { "key": "me", "text": "我的", "icon": "user" }
+  ]
+}

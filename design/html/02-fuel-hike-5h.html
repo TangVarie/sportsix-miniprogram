@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>02-fuel-hike-5h</title>
+<!-- 静态快照：Fuel 画板，状态 {"sport":"hike","min":300,"scene":"long"}。宽 390px，高 2020px。所有尺寸为 390px 设计稿下的 px。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-600-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-700-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-800-italic.woff2') format('woff2')}
+
+body{margin:0}
+a{color:#061A70}a:hover{color:#010439}
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+button{cursor:pointer;transition:transform .15s ease,background-color .2s ease,color .2s ease}
+button:active{transform:scale(.96)}
+.sx-scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+
+
+<div style="width: 390px; height: 2020px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; color: #14141E; font-family: 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; text-wrap: pretty; ">
+
+<header style="position: relative; height: 212px; flex-shrink: 0; overflow: hidden; color: #FFFFFF; background: #010439">
+<span style="position: relative; display: block; width: 390px; height: 212px; overflow: hidden; background: #010439; position: absolute; left: 0; top: 0"><img src="../../assets/photos/web/mountain-ridge.jpg" alt="跑者在山脊草坡上奔跑，远处是云海" style="width: 390px; height: 212px; object-fit: cover; filter: grayscale(1) contrast(1.15); opacity: 0.6; mix-blend-mode: screen"></span>
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 212px; background: linear-gradient(90deg, #010439 18%, rgba(1, 4, 57, 0.2) 100%)"></span>
+<div style="position: absolute; left: 20px; top: 40px; width: 260px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 700; font-size: 14px; line-height: 16px; letter-spacing: 0.08em; color: #C2E541">FUEL PLAN</span>
+<h1 style="margin: 0; font-size: 30px; line-height: 40px; font-weight: 900; animation: sxRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: 0.05s">分段补给计算</h1>
+<p style="margin: 4px 0 0; font-size: 14px; line-height: 22px; color: #E4E7F5; animation: sxRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: 0.2s">按项目、时长、体重和咖啡因，排出整场什么时候吃哪一支。</p>
+</div>
+</header>
+<section style="flex-shrink: 0; margin: 12px 20px 0; padding: 16px 16px 6px; border-radius: 16px; background: #F5F5F5; display: flex; flex-direction: column"><div style="display: flex; align-items: baseline; gap: 8px; padding-bottom: 10px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 20px; line-height: 21px; color: #061A70">01</span><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">这场运动</h2></div><div style="border-bottom: 1px solid #E6E6E7; min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">项目</span><div style="flex: 1; min-width: 0"><div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px"><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">路跑</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">越野</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">骑行</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #010439; color: #FFFFFF">徒步</button></div></div></div><div style="min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">预计时长</span><div style="flex: 1; min-width: 0"><div style="display: flex; align-items: center; justify-content: space-between; gap: 4px"><button type="button" aria-label="减少 1 小时" style="flex-shrink: 0; width: 46px; height: 44px; border-radius: 22px; border: 0; background: #FFFFFF; color: #010439; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">-1h</button><button type="button" aria-label="减少 15 分钟" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #FFFFFF; color: #010439; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">-15</button><span style="flex: 1; text-align: center; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 34px; line-height: 40px; color: #061A70">5:00</span><button type="button" aria-label="增加 15 分钟" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #010439; color: #FFFFFF; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">+15</button><button type="button" aria-label="增加 1 小时" style="flex-shrink: 0; width: 46px; height: 44px; border-radius: 22px; border: 0; background: #010439; color: #FFFFFF; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">+1h</button></div></div></div></section><section style="flex-shrink: 0; margin: 12px 20px 0; padding: 16px 16px 6px; border-radius: 16px; background: #F5F5F5; display: flex; flex-direction: column"><div style="display: flex; align-items: baseline; gap: 8px; padding-bottom: 10px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 20px; line-height: 21px; color: #061A70">02</span><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">你的情况</h2></div><div style="border-bottom: 1px solid #E6E6E7; min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">体重</span><div style="flex: 1; min-width: 0"><div style="display: flex; align-items: center; justify-content: space-between"><button type="button" aria-label="减少 5 公斤" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #FFFFFF; color: #010439; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">-5</button><span style="display: flex; align-items: baseline; gap: 4px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 34px; line-height: 40px; color: #061A70">65</span><span style="font-size: 13px; color: #5E6170">kg</span></span><button type="button" aria-label="增加 5 公斤" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #010439; color: #FFFFFF; font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 16px">+5</button></div></div></div><div style="border-bottom: 1px solid #E6E6E7; min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">咖啡因</span><div style="flex: 1; min-width: 0"><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px"><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #010439; color: #FFFFFF">正常</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">敏感</button></div></div></div><div style="min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">用胶经验</span><div style="flex: 1; min-width: 0"><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px"><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #010439; color: #FFFFFF">用过</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">第一次</button></div></div></div></section><section style="flex-shrink: 0; margin: 12px 20px 0; padding: 16px 16px 6px; border-radius: 16px; background: #F5F5F5; display: flex; flex-direction: column"><div style="display: flex; align-items: baseline; gap: 8px; padding-bottom: 10px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 20px; line-height: 21px; color: #061A70">03</span><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">当天</h2></div><div style="border-bottom: 1px solid #E6E6E7; min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">出发时间</span><div style="flex: 1; min-width: 0"><div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px"><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #010439; color: #FFFFFF">上午</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">下午</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">晚上</button></div></div></div><div style="min-height: 60px; display: flex; align-items: center; gap: 12px"><span style="flex-shrink: 0; width: 64px; font-size: 13px; line-height: 20px; font-weight: 700; color: #010439">天气</span><div style="flex: 1; min-width: 0"><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px"><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #010439; color: #FFFFFF">常温</button><button type="button" style="height: 44px; padding: 0 4px; border-radius: 10px; border: 0; font-family: inherit; font-size: 13px; font-weight: 700; background: #FFFFFF; color: #14141E">高温</button></div></div></div></section>
+<section style="flex-shrink: 0; margin: 20px 20px 0; padding: 20px 18px; border-radius: 18px; color: #FFFFFF; display: flex; flex-direction: column; gap: 16px; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px">
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; font-weight: 700">这场带</span><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 76px; line-height: 70px; color: #C2E541">8</span><span style="font-size: 14px; font-weight: 700">支</span></span>
+<span style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 20px; padding-bottom: 6px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; background: #C2E541"></span>能量胶 × 4</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; box-sizing: border-box; border: 1.5px solid #FFFFFF"></span>能量胶PRO × 4</span>
+</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px 0; border-top: 1px solid #2A3373; border-bottom: 1px solid #2A3373">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; line-height: 16px; color: #C9CEE8">总碳水</span><span style="display: flex; align-items: baseline; gap: 3px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 26px; line-height: 28px; color: #FFFFFF">204</span><span style="font-size: 11px; color: #C9CEE8">g</span></span></div><div style="padding-left: 12px; border-left: 1px solid #2A3373; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; line-height: 16px; color: #C9CEE8">咖啡因</span><span style="display: flex; align-items: baseline; gap: 3px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 26px; line-height: 28px; color: #FFFFFF">180</span><span style="font-size: 11px; color: #C9CEE8">mg</span></span></div><div style="padding-left: 12px; border-left: 1px solid #2A3373; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; line-height: 16px; color: #C9CEE8">能量</span><span style="display: flex; align-items: baseline; gap: 3px"><span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 800; font-size: 26px; line-height: 28px; color: #FFFFFF">820</span><span style="font-size: 11px; color: #C9CEE8">千卡</span></span></div>
+</div>
+<div style="position: relative; height: 40px">
+<span aria-hidden="true" style="position: absolute; left: 8%; right: 0; top: 10px; height: 4px; background: #2A3373"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 0%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #FFFFFF; background: transparent; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 20.3%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #C2E541; background: #C2E541; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 32.5%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #C2E541; background: #C2E541; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 44.8%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #C2E541; background: #C2E541; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 57.1%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #C2E541; background: #C2E541; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 69.3%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #FFFFFF; background: transparent; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 78.5%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #FFFFFF; background: transparent; animation: sxPop 0.3s ease-out both"></span>
+
+<span aria-hidden="true" style="position: absolute; left: 87.7%; top: 5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; box-sizing: border-box; border: 2px solid #FFFFFF; background: transparent; animation: sxPop 0.3s ease-out both"></span>
+
+<span style="position: absolute; left: 8%; top: 24px; margin-left: -8px; font-size: 11px; line-height: 16px; color: #C9CEE8">出发</span>
+<span style="position: absolute; right: 0; top: 24px; font-size: 11px; line-height: 16px; color: #C9CEE8">5:00</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #4A5390; background: transparent; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">开始前</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">PRO</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #C2E541; background: #C2E541; color: #010439; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">0:40</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">能量胶</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #C2E541; background: #C2E541; color: #010439; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">1:20</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">能量胶</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #C2E541; background: #C2E541; color: #010439; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">2:00</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">能量胶</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #C2E541; background: #C2E541; color: #010439; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">2:40</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">能量胶</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #4A5390; background: transparent; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">3:20</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">PRO</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #4A5390; background: transparent; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">3:50</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">PRO</span>
+</div>
+
+<div style="height: 56px; box-sizing: border-box; border-radius: 10px; border: 1.5px solid #4A5390; background: transparent; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; animation: sxPop 0.3s ease-out both">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-weight: 700; font-size: 18px; line-height: 20px">4:20</span>
+<span style="font-size: 10px; line-height: 14px; font-weight: 500">PRO</span>
+</div>
+
+</div>
+<p style="margin: 0; font-size: 11px; line-height: 17px; color: #C9CEE8">时间为出发后的时刻。两款都不需要配水。</p>
+
+
+</section>
+
+<section style="flex-shrink: 0; margin: 12px 20px 0; padding: 18px 16px; border-radius: 16px; border: 1px solid #E6E6E7; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0 0 2px; font-size: 16px; line-height: 24px; font-weight: 900; color: #010439">为什么这样排</h2>
+
+<div style="display: flex; gap: 10px; align-items: flex-start"><span style="margin-top: 3px; display: flex"><span style="flex-shrink: 0; width: 16px; height: 16px; background: #C2E541; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#010439" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"></path></svg></span></span><span style="font-size: 13px; line-height: 21px">5:00 的徒步，按每小时约 45g 碳水安排：1–2.5 小时 30–60g，更长的 60g 起。</span></div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start"><span style="margin-top: 3px; display: flex"><span style="flex-shrink: 0; width: 16px; height: 16px; background: #C2E541; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#010439" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"></path></svg></span></span><span style="font-size: 13px; line-height: 21px">开始前 30 分钟 1 支 PRO 打底：0 咖啡因，HBCD 排空快，不坠胃。</span></div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start"><span style="margin-top: 3px; display: flex"><span style="flex-shrink: 0; width: 16px; height: 16px; background: #C2E541; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#010439" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"></path></svg></span></span><span style="font-size: 13px; line-height: 21px">体重 65kg，含咖啡因的能量胶不超过 4 支（180mg，每公斤约 2.8mg），间隔至少 30 分钟。</span></div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start"><span style="margin-top: 3px; display: flex"><span style="flex-shrink: 0; width: 16px; height: 16px; background: #C2E541; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#010439" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"></path></svg></span></span><span style="font-size: 13px; line-height: 21px">含咖啡因的能量胶排在前 60% 的时段，后程换 PRO：甜度低 26%，肠胃负担更轻。</span></div>
+
+</section>
+
+<section style="flex-shrink: 0; padding: 16px 20px 0; display: flex; gap: 12px">
+<a href="07-me-not-registered.html" style="flex: 1.4; height: 52px; border-radius: 26px; background: #C2E541; color: #010439; font-size: 16px; font-weight: 900; text-decoration: none; display: flex; align-items: center; justify-content: center">保存到我的</a>
+<a href="03-product-energy-gel.html" style="flex: 1; height: 52px; border-radius: 26px; border: 1.5px solid #010439; box-sizing: border-box; color: #010439; font-size: 15px; font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center">看两款胶</a>
+</section>
+<p style="flex-shrink: 0; margin: 14px 20px 20px; font-size: 11px; line-height: 17px; color: #5E6170">结果按产品成分和通行的运动营养建议计算，供参考。可根据个人体能、出汗量微调，新的补给方式先在训练里试。</p>
+<nav aria-label="底部导航" style="position: relative; margin-top: auto; height: 64px; flex-shrink: 0; display: flex; border-top: 1px solid #E6E6E7; background: #FFFFFF">
+<a href="01-home.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>介绍</a>
+<a href="02-fuel-default-marathon-4h.html" aria-current="page" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding-bottom: 9px; text-decoration: none; color: #061A70; font-size: 11px; line-height: 14px; font-weight: 700"><span style="margin-top: -18px; width: 48px; height: 48px; border-radius: 24px; background: #C2E541; border: 3px solid #FFFFFF; box-sizing: border-box; color: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>补给</a>
+<a href="05-events-upcoming.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>活动</a>
+<a href="07-me-not-registered.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>我的</a>
+</nav>
+</div>
+
+</body>
+</html>

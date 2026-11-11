@@ -1,0 +1,33 @@
+/* SPORTSIX 小程序设计变量。设计稿宽 390px，1px = 750/390 rpx。 */
+page {
+  --sx-navy: #010439;
+  --sx-blue: #061A70;
+  --sx-lime: #C2E541;
+  --sx-grey: #F5F5F5;
+  --sx-line: #E6E6E7;
+  --sx-text: #14141E;
+  --sx-textSecondary: #5E6170;
+  --sx-onNavySecondary: #C9CEE8;
+  --sx-onNavyLine: #2A3373;
+  --sx-onNavyFootnote: #9AA1C8;
+  --sx-barNeutral: #C8CAD3;
+  --sx-white: #FFFFFF;
+  --sx-page-margin: 38rpx;
+  --sx-radius-card: 27rpx;
+  --sx-radius-panel: 35rpx;
+  --sx-btn-h: 100rpx;
+  --sx-tabbar-h: 123rpx;
+  --sx-font-num: 'Barlow Condensed', sans-serif;
+}
+
+.sx-grid-bg { background-color: var(--sx-navy); background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 50rpx 50rpx; }
+.sx-slant { clip-path: polygon(16rpx 0, 100% 0, calc(100% - 16rpx) 100%, 0 100%); }
+
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}

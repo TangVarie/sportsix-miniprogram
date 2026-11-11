@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SPORTSIX 小程序 活动详情</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+body{margin:0}
+a{color:#061A70}a:hover{color:#010439}
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+button{cursor:pointer;transition:transform .15s ease,background-color .2s ease,color .2s ease}
+button:active{transform:scale(.96)}
+.sx-scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 995px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; color: #14141E; font-family: 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; text-wrap: pretty; ">
+
+<header style="position: relative; height: 356px; flex-shrink: 0; overflow: hidden; color: #FFFFFF; background: #010439">
+<span style="position: relative; display: block; width: 390px; height: 290px; overflow: hidden; background: #010439; position: absolute; left: 0; top: 0"><img src="/_blob/b83306a0bc83839b72b6f1c63f079745" alt="日落时分在山脊上奔跑的越野跑者剪影" style="width: 390px; height: 290px; object-fit: cover; filter: grayscale(1) contrast(1.15); opacity: 0.85; mix-blend-mode: screen"></span>
+<svg aria-hidden="true" width="390" height="130" viewBox="0 0 350 110" preserveAspectRatio="none" style="position: absolute; left: 0; top: 132px"><path d="M0 96 L40 70 L70 82 L112 34 L150 66 L186 44 L226 78 L262 22 L304 60 L330 48 L350 62" fill="none" stroke="#C2E541" stroke-width="3" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" style="animation: sxDraw 1.6s ease-out 0.3s both"></path><circle cx="262" cy="22" r="5" fill="#C2E541"></circle></svg>
+<div style="position: absolute; left: 12px; top: 8px"><a href="Events.dc.html" style="height: 44px; padding: 0 8px; display: flex; align-items: center; gap: 4px; text-decoration: none; color: #FFFFFF; font-size: 14px; font-weight: 500"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l-6 6 6 6"></path></svg>活动</a></div>
+<div style="position: absolute; left: 20px; top: 64px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px">
+<span style="display: flex; gap: 8px; align-items: center"><span style="display: inline-block; padding: 4px 16px; background: #C2E541; color: #010439; font-size: 12px; line-height: 18px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)">会员优先报名</span><span style="height: 26px; padding: 0 10px; border: 1px solid #FFFFFF; box-sizing: border-box; font-size: 12px; display: flex; align-items: center">赛事</span></span>
+<h1 style="margin: 0; font-size: 28px; line-height: 38px; font-weight: 900">[活动名称]</h1>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 18px; background: #010439; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 18px; color: #C9CEE8">日期</span><span style="font-size: 16px; line-height: 24px; font-weight: 900; color: #FFFFFF">[活动日期]</span></div><div style="padding-left: 14px; border-left: 1px solid #2A3373; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 18px; color: #C9CEE8">城市</span><span style="font-size: 16px; line-height: 24px; font-weight: 900; color: #FFFFFF">[城市]</span></div><div style="padding-left: 14px; border-left: 1px solid #2A3373; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 18px; color: #C9CEE8">名额</span><span style="font-size: 16px; line-height: 24px; font-weight: 900; color: #FFFFFF">[名额]</span></div>
+</div>
+</header>
+
+<section style="flex-shrink: 0; padding: 8px 20px 0; display: flex; flex-direction: column">
+<dl style="margin: 0; display: flex; flex-direction: column">
+<div style="border-bottom: 1px solid #E6E6E7; height: 52px; display: flex; align-items: center; font-size: 14px; line-height: 20px"><dt style="width: 72px; color: #5E6170">时间</dt><dd style="margin: 0; font-weight: 700">[活动日期与时间]</dd></div><div style="border-bottom: 1px solid #E6E6E7; height: 52px; display: flex; align-items: center; font-size: 14px; line-height: 20px"><dt style="width: 72px; color: #5E6170">地点</dt><dd style="margin: 0; font-weight: 700">[城市与场地]</dd></div><div style="height: 52px; display: flex; align-items: center; font-size: 14px; line-height: 20px"><dt style="width: 72px; color: #5E6170">报名</dt><dd style="margin: 0; font-weight: 700">[报名起止时间]</dd></div>
+</dl>
+
+<div style="margin-top: 12px; padding: 16px 18px; background: #C2E541; color: #010439; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); display: flex; align-items: center; gap: 12px">
+<span style="flex-shrink: 0; display: flex; padding-left: 6px"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"></path></svg></span>
+<span style="display: flex; flex-direction: column"><span style="font-size: 15px; line-height: 22px; font-weight: 900">会员优先报名</span><span style="font-size: 12px; line-height: 18px; font-weight: 500">会员报名 [会员开放时间] 开始</span></span>
+</div>
+
+<div style="margin-top: 28px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'Barlow Condensed', 'Noto Sans SC', sans-serif; font-style: italic; font-weight: 700; font-size: 14px; line-height: 16px; letter-spacing: 0.08em; color: #061A70">ABOUT</span>
+<h2 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 900; color: #010439">活动介绍</h2>
+<p style="margin: 4px 0 0; min-height: 88px; font-size: 14px; line-height: 22px">[活动介绍文案]</p>
+</div>
+
+<div style="margin-top: 16px; height: 80px; box-sizing: border-box; padding: 0 16px; border-radius: 14px; background: #F5F5F5; display: flex; align-items: center; gap: 14px">
+<span style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.500"></circle><path d="M2.500 20c0-3.300 2.900-6 6.500-6s6.500 2.700 6.500 6M16 5.800a3.500 3.500 0 0 1 0 6.400M18 14.500c2.100.900 3.500 3 3.500 5.500"></path></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 15px; line-height: 22px; font-weight: 700; color: #010439">加入活动群</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">后续通知在群内发布</span></span>
+<button type="button" style="flex-shrink: 0; height: 44px; padding: 0 18px; border-radius: 22px; border: 1.5px solid #010439; background: #F5F5F5; color: #010439; font-family: inherit; font-size: 13px; font-weight: 700">加群</button>
+</div>
+</section>
+
+<div style="flex-shrink: 0; margin-top: auto; padding: 12px 20px 24px; border-top: 1px solid #E6E6E7; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-size: 12px; line-height: 18px; color: #5E6170">点一次“提醒我”，报名开放时收到一条微信提醒。</p>
+<div style="display: flex; gap: 12px">
+<button type="button" style="flex: 1; height: 52px; border-radius: 26px; border: 1.5px solid #010439; background: #FFFFFF; color: #010439; font-family: inherit; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"></path></svg>提醒我</button>
+<button type="button" style="flex: 1.4; height: 52px; border-radius: 26px; border: 0; background: #C2E541; color: #010439; font-family: inherit; font-size: 16px; font-weight: 900">立即报名</button>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":995}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

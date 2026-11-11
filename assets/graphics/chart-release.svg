@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="示意：普通胶血糖冲高后回落，缓释供能保持平稳" width="314" height="96" viewBox="0 0 314 96">
+<path d="M0 88H314" stroke="#E6E6E7" stroke-width="1.5"></path>
+<path d="M4 88 C60 88 76 84 96 16 C108 -18 122 84 168 88 L310 88" fill="none" stroke="#9A9DAB" stroke-width="2" stroke-dasharray="5 5"></path>
+<path d="M4 88 C40 84 60 44 104 40 C180 34 250 40 310 46" fill="none" stroke="#C2E541" stroke-width="5" stroke-linecap="round"></path>
+<path d="M4 88 C40 84 60 44 104 40 C180 34 250 40 310 46" fill="none" stroke="#010439" stroke-width="1.5" stroke-linecap="round"></path>
+<text x="126" y="14" font-size="11" fill="#5E6170" font-family="Noto Sans SC, sans-serif">冲得快，掉得也快</text>
+<text x="310" y="34" text-anchor="end" font-size="11" font-weight="700" fill="#010439" font-family="Noto Sans SC, sans-serif">平稳供能</text>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="配速对比示意图：普通胶的配速在 30 公里后明显下滑，SPORTSIX 复配的配速保持平稳" width="350" height="230" viewBox="0 0 350 230">
+<rect x="236" y="14" width="86" height="166" fill="#FFFFFF" fill-opacity="0.09"></rect>
+<text x="279" y="36" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif">撞墙期</text>
+<g stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="1"><path d="M30 60H330M30 100H330M30 140H330"></path></g>
+<path d="M30 14V180H334" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5"></path>
+<g stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5"><path d="M98 180v6M167 180v6M236 180v6M322 180v6"></path></g>
+<path d="M30 180 C58 96 86 44 126 42 C182 40 232 96 330 158" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 5"></path>
+<path d="M30 180 C58 128 86 88 128 80 C190 72 262 78 330 92" fill="none" stroke="#C2E541" stroke-width="4" stroke-linecap="round"></path>
+<circle cx="330" cy="92" r="5" fill="#C2E541"></circle>
+<g font-size="12" fill="#C9CEE8" font-family="Barlow Condensed, sans-serif" font-weight="600" text-anchor="middle">
+<text x="64" y="204">0-10km</text><text x="132" y="204">10-20km</text><text x="201" y="204">20-30km</text><text x="279" y="204">30-42.2km</text></g>
+<text x="14" y="100" font-size="11" fill="#C9CEE8" font-family="Noto Sans SC, sans-serif" text-anchor="middle" transform="rotate(-90 14 100)">平均配速</text>
+</svg>

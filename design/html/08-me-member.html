@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>08-me-member</title>
+<!-- 静态快照：Me 画板，状态 {}。宽 390px，高 1085px。所有尺寸为 390px 设计稿下的 px。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-600-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-700-italic.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:normal;src:url('../../assets/fonts/barlow-condensed-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../assets/fonts/barlow-condensed-latin-800-italic.woff2') format('woff2')}
+
+body{margin:0}
+a{color:#061A70}a:hover{color:#010439}
+@keyframes sxFloat{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+@keyframes sxGlow{from{opacity:.38}to{opacity:.8}}
+@keyframes sxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sxGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sxGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sxRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sxPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+button{cursor:pointer;transition:transform .15s ease,background-color .2s ease,color .2s ease}
+button:active{transform:scale(.96)}
+.sx-scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+
+
+<div style="width: 390px; height: 1085px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; color: #14141E; font-family: 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; text-wrap: pretty; ">
+
+<header style="height: 210px; flex-shrink: 0; box-sizing: border-box; color: #FFFFFF; padding: 28px 20px 0; display: flex; align-items: flex-start; gap: 14px; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px">
+<span style="flex-shrink: 0; width: 56px; height: 56px; border-radius: 28px; background: #061A70; border: 2px solid #C2E541; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 4px; padding-top: 4px">
+<span style="font-size: 20px; line-height: 28px; font-weight: 900">[微信昵称]</span>
+<span style="font-size: 12px; line-height: 18px; color: #C9CEE8">[手机号]</span>
+</span>
+</header>
+
+<div style="position: relative; margin: -98px 20px 0; height: 190px; flex-shrink: 0; border-radius: 18px; background: #061A70; color: #FFFFFF; overflow: hidden; box-shadow: 0 12px 28px rgba(1, 4, 57, 0.28)">
+<svg aria-hidden="true" width="350" height="190" viewBox="0 0 350 190" style="position: absolute; left: 0; top: 0" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="1"><path d="M-20 96 Q170 210 370 60"></path><path d="M-20 116 Q170 230 370 80"></path></svg>
+<svg aria-hidden="true" width="350" height="190" viewBox="0 0 350 190" style="position: absolute; left: 0; top: 0"><defs><filter id="mArc" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="10"></feGaussianBlur></filter></defs><path d="M196 190 Q296 172 370 96 L370 142 Q318 190 270 190 Z" fill="#C2E541" opacity="0.5" filter="url(#mArc)" style="animation: sxGlow 2.8s ease-in-out infinite alternate"></path><path d="M196 190 Q296 172 370 96 L370 142 Q318 190 270 190 Z" fill="#C2E541"></path></svg>
+<div style="position: absolute; left: 20px; top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start">
+<img src="../../assets/logo/sportsix-wordmark-white.svg" alt="SPORTSIX" style="width: 122px; height: 21px">
+<span style="font-size: 12px; line-height: 18px; color: #C9CEE8">会员编号 [会员编号]</span>
+</div>
+<div style="position: absolute; left: 20px; bottom: 18px; display: flex; flex-direction: column">
+<span style="font-size: 12px; line-height: 18px; color: #C9CEE8">积分</span>
+<span style="font-size: 34px; line-height: 44px; font-weight: 900; color: #FFFFFF">[积分]</span>
+</div>
+<img src="../../assets/logo/win-your-day-white.svg" alt="WIN YOUR DAY" style="position: absolute; right: 20px; top: 24px; width: 92px; height: 9px">
+</div>
+
+<section style="flex-shrink: 0; padding: 28px 20px 0; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 900; color: #010439">会员权益</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; line-height: 18px; font-weight: 500"><span style="width: 52px; height: 52px; border-radius: 26px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"></path></svg></span>优先报名</div><div style="display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; line-height: 18px; font-weight: 500"><span style="width: 52px; height: 52px; border-radius: 26px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7c-1.500-3.500-6-3.500-5 0M12 7c1.500-3.500 6-3.500 5 0"></path></svg></span>试用装</div><div style="display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; line-height: 18px; font-weight: 500"><span style="width: 52px; height: 52px; border-radius: 26px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 15.2l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"></path></svg></span>积分</div><div style="display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; line-height: 18px; font-weight: 500"><span style="width: 52px; height: 52px; border-radius: 26px; background: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2E541" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6h18v3a3 3 0 0 0 0 6v3H3v-3a3 3 0 0 0 0-6zM14 6v12"></path></svg></span>抽奖</div>
+</div>
+</section>
+
+<section style="flex-shrink: 0; padding: 30px 20px 0; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 900; color: #010439">我的补给计划</h2>
+<a href="02-fuel-default-marathon-4h.html" style="position: relative; height: 104px; padding: 0 16px; border-radius: 16px; color: #FFFFFF; text-decoration: none; display: flex; align-items: center; justify-content: space-between; background-color: #010439; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 26px 26px">
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; line-height: 24px; font-weight: 900">[项目] · [预计时长]</span>
+<span style="font-size: 12px; line-height: 18px; color: #C9CEE8">能量胶 [支数] 支 · 能量胶PRO [支数] 支</span>
+<span style="display: flex; gap: 5px; margin-top: 4px"><span style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 2px solid #FFFFFF"></span><span style="width: 10px; height: 10px; border-radius: 5px; background: #C2E541"></span><span style="width: 10px; height: 10px; border-radius: 5px; background: #C2E541"></span><span style="width: 10px; height: 10px; border-radius: 5px; background: #C2E541"></span><span style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 2px solid #FFFFFF"></span><span style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 2px solid #FFFFFF"></span></span></span>
+<span style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; background: #C2E541; color: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>
+</a>
+</section>
+
+<section style="flex-shrink: 0; padding: 30px 20px 0; display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 900; color: #010439">我的活动</h2>
+<div style="display: flex; flex-direction: column"><a href="06-event-detail.html" style="height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E6E6E7; text-decoration: none"><span style="display: flex; flex-direction: column"><span style="font-size: 15px; line-height: 22px; font-weight: 700; color: #14141E">[活动名称]</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">[活动日期] · [城市]</span></span><span style="padding: 3px 12px; background: #C2E541; color: #010439; font-size: 11px; line-height: 16px; font-weight: 700; clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)">已报名</span></a><a href="06-event-detail.html" style="height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E6E6E7; text-decoration: none"><span style="display: flex; flex-direction: column"><span style="font-size: 15px; line-height: 22px; font-weight: 700; color: #14141E">[活动名称]</span><span style="font-size: 12px; line-height: 18px; color: #5E6170">[活动日期] · [城市]</span></span><span style="padding: 3px 10px; background: #F5F5F5; color: #5E6170; font-size: 11px; line-height: 16px">已设提醒</span></a></div>
+</section>
+
+<section style="flex-shrink: 0; padding: 16px 20px 16px; display: flex; flex-direction: column">
+<a href="#" style="border-bottom: 1px solid #E6E6E7; height: 56px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: #14141E; font-size: 15px"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#061A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.500"></circle><path d="M2.500 20c0-3.300 2.900-6 6.500-6s6.500 2.700 6.500 6M16 5.800a3.500 3.500 0 0 1 0 6.400M18 14.500c2.100.900 3.500 3 3.500 5.500"></path></svg><span style="flex: 1">加入社群</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#5E6170" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"></path></svg></a><a href="#" style="border-bottom: 1px solid #E6E6E7; height: 56px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: #14141E; font-size: 15px"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#061A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"></path></svg><span style="flex: 1">隐私政策</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#5E6170" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"></path></svg></a><a href="#" style="height: 56px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: #14141E; font-size: 15px"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#061A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"></path></svg><span style="flex: 1">联系我们</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#5E6170" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"></path></svg></a>
+</section>
+<nav aria-label="底部导航" style="position: relative; margin-top: auto; height: 64px; flex-shrink: 0; display: flex; border-top: 1px solid #E6E6E7; background: #FFFFFF">
+<a href="01-home.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>介绍</a>
+<a href="02-fuel-default-marathon-4h.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding-bottom: 9px; text-decoration: none; color: #061A70; font-size: 11px; line-height: 14px; font-weight: 700"><span style="margin-top: -18px; width: 48px; height: 48px; border-radius: 24px; background: #C2E541; border: 3px solid #FFFFFF; box-sizing: border-box; color: #010439; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>补给</a>
+<a href="05-events-upcoming.html" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #5E6170; font-size: 11px; line-height: 14px; font-weight: 400"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>活动</a>
+<a href="08-me-member.html" aria-current="page" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #061A70; font-size: 11px; line-height: 14px; font-weight: 700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>我的</a>
+</nav>
+</div>
+
+</body>
+</html>
