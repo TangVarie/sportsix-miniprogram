@@ -84,6 +84,7 @@ tools/
 - 盒模型是默认的 `content-box`，和设计稿 HTML 一致：设计稿里写了 `box-sizing: border-box` 的元素照写；设计稿里的 `<button>` 在浏览器里天然是 border-box，换成 `view` 后带边框的要自己加 `box-sizing: border-box`。
 - 只用类选择器，类名带页面或组件前缀（如 `.ev-poster__name`）。WXSS 里属性选择器不生效，也不支持带参数的伪类（`:nth-child()`、`:not()`），不要用；`wx:for` 里用 `index` 判断首尾。
 - 全局原子类在 `app.wxss`：`sx-num` / `sx-num-700`（Barlow 斜体，只套数字和英文）、`sx-eyebrow`、`sx-grid-bg`、`sx-slant`、`sx-check`、`sx-photo` + `sx-photo__img`（深蓝单色照片）、`sx-pressable` + `hover-class="sx-press"`（按压）、`sx-btn-reset`。
+- 上下相邻的深色块共用一个 `sx-grid-bg` 容器（如首页的 `hm-top`），不要每块各铺一层：网格从各自的顶边起算，接缝处对不齐会多出一道横线。
 - 可点的元素用 `view` 加 `bindtap`，不用 `button`；只有需要 `open-type` 的地方才用 `button class="sx-btn-reset"`。
 - `image` 默认 320×240，必须写宽高或用 `mode="widthFix"` / `heightFix"`。`scroll-view` 横滑时里面套一层 `view` 做 flex 行。
 - 自定义组件一律 `options: { styleIsolation: 'apply-shared' }`，wxss 里写 `:host { display: block; }`。
