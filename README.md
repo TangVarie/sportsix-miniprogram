@@ -2,7 +2,7 @@
 
 SPORTSIX 小程序做三件事：品牌和产品介绍、活动通知、会员沉淀。不做商城。
 
-这个仓库里有两部分：小程序工程（`miniprogram/`、`tools/`），和设计交接包的原件（`docs/`、`design/`、`reference/`、`assets/`、`CLAUDE.md`）。
+这个仓库里有三部分：小程序工程（`miniprogram/`、`tools/`），云开发的云函数（`cloudfunctions/`），和设计交接包的原件（`docs/`、`design/`、`reference/`、`assets/`、`CLAUDE.md`）。
 
 ## 运行
 
@@ -20,7 +20,7 @@ npm run assets
 
 | 命令 | 作用 |
 |---|---|
-| `npm test` | 补给公式测试、文案是否已同步、工程自检（页面文件、图标和资源路径、WXSS 禁用写法） |
+| `npm test` | 补给公式测试、文案是否已同步、工程自检（页面文件、图标和资源路径、WXSS 禁用写法）、云开发测试 |
 | `npm run content` | 由 `reference/content/*.json` 生成 `miniprogram/content/*.js` |
 | `npm run assets` | 本地资源服务，`http://127.0.0.1:8787/assets/...` |
 | `npm run size` | 包体积检查（单包上限 2M） |
@@ -31,10 +31,10 @@ npm run assets
 都在 `miniprogram/config.js` 和 `project.config.json`：
 
 - `assetBase`：把 `assets/` 传到 CDN 或云存储，换成 https 地址，域名加进小程序的合法域名。
-- `localBackend`：现在会员、提醒、补给计划只存在本机，用来走通页面状态。后台方案定了以后改 `miniprogram/utils/store.js` 和 `utils/events.js`。
+- `cloudEnv`：微信云开发的环境 ID。留空时会员、提醒、补给计划只存在本机，用来看页面状态；填了以后走云开发。开通和部署步骤见 `cloudfunctions/README.md`。
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
-- `sampleEvents`：现在显示的是三种活动卡片的占位示例，上线前关掉或接真实活动。
-- `appid`：现在是测试号。
+- `sampleEvents`：现在显示的是三种活动卡片的占位示例，上线前改成 `false`，改用云数据库 `events` 集合里的活动。
+- `appid`：现在是测试号，测试号不能用云开发。
 
 工程约定（目录、样式、动效、状态栏等）写在 `CLAUDE.md` 末尾。
 

@@ -20,16 +20,16 @@
           <view class="ev-poster__photo sx-photo"><image class="sx-photo__img" src="{{item.image}}" mode="aspectFill" /></view>
           <image class="ev-poster__ridge sx-draw" src="{{item.graphic}}" />
           <view class="ev-poster__tags">
-            <text class="ev-tag ev-tag--lime sx-slant">{{item.tag}}</text>
+            <text wx:if="{{item.tag}}" class="ev-tag ev-tag--lime sx-slant">{{item.tag}}</text>
             <text class="ev-type">{{item.type}}</text>
           </view>
           <view class="ev-poster__text">
             <text class="ev-poster__name">{{item.title}}</text>
-            <text class="ev-poster__meta">{{item.date}} · {{item.city}}</text>
+            <text class="ev-poster__meta">{{item.meta}}</text>
           </view>
         </view>
         <view class="ev-poster__bar">
-          <text class="ev-poster__opens">报名 {{item.signupOpens}} 开始</text>
+          <text class="ev-poster__opens">{{item.signupOpens ? '报名 ' + item.signupOpens + ' 开始' : ''}}</text>
           <view class="ev-remind sx-pressable {{item.reminded ? 'ev-remind--done' : ''}}" hover-class="sx-press" data-id="{{item.id}}" bindtap="onRemind">
             <image class="ev-remind__icon" src="/assets/icons/bell-{{item.reminded ? 'grey' : 'navy'}}.svg" />
             <text>{{item.reminded ? item.actionDone : item.action}}</text>
@@ -43,7 +43,7 @@
         <view class="ev-lime__text">
           <text class="ev-tag ev-tag--navy sx-slant">{{item.tag}}</text>
           <text class="ev-lime__name">{{item.title}}</text>
-          <text class="ev-lime__meta">{{item.window}} · {{item.quota}}</text>
+          <text class="ev-lime__meta">{{item.meta}}</text>
         </view>
         <view class="ev-lime__btn sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onOpen">{{item.action}}</view>
       </view>

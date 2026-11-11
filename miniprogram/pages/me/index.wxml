@@ -5,8 +5,8 @@
     <view class="me-head sx-grid-bg">
       <view class="me-head__avatar sx-rise"><image class="me-head__avatar-icon" src="/assets/icons/user-white.svg" /></view>
       <view class="me-head__text sx-rise" style="animation-delay: .1s">
-        <text class="me-head__name">{{me.profile.nickname}}</text>
-        <text class="me-head__phone">{{me.profile.phone}}</text>
+        <text class="me-head__name">{{profile.nickname}}</text>
+        <text class="me-head__phone">{{profile.phone}}</text>
       </view>
     </view>
 
@@ -15,11 +15,11 @@
       <image class="me-card__arc" src="{{cardArc}}" />
       <view class="me-card__top">
         <image class="me-card__wordmark" src="{{wordmark}}" />
-        <text class="me-card__no">{{me.card.memberNo}}</text>
+        <text class="me-card__no">{{profile.memberNo}}</text>
       </view>
       <view class="me-card__bottom">
         <text class="me-card__label">{{me.card.pointsLabel}}</text>
-        <text class="me-card__points">{{me.card.points}}</text>
+        <text class="me-card__points">{{profile.points}}</text>
       </view>
       <image class="me-card__slogan" src="{{slogan}}" />
     </view>
@@ -102,9 +102,10 @@
         </view>
       </view>
 
-      <!-- 待接后台：这里换成 button open-type="getPhoneNumber"，见 index.js 的 onRegister -->
+      <!-- 云开发且已勾选协议：手机号快速验证组件；否则是普通按钮（未勾选时不可用，没配云环境时只在本机记录） -->
       <view class="sx-rise" style="animation-delay: .7s">
-        <view class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister">{{join.button}}</view>
+        <button wx:if="{{cloudMode && agreed}}" class="sx-btn-reset me-join__btn sx-pressable" hover-class="sx-press" open-type="getPhoneNumber" bindgetphonenumber="onPhone">{{join.button}}</button>
+        <view wx:else class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister">{{join.button}}</view>
       </view>
 
       <view class="me-join__agree sx-rise" style="animation-delay: .8s" bindtap="onAgree">

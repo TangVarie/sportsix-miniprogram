@@ -3,7 +3,7 @@
   "private": true,
   "description": "SPORTSIX 微信小程序",
   "scripts": {
-    "test": "node miniprogram/utils/fuel-plan.test.js && node tools/sync-content.js --check && node tools/check-project.js",
+    "test": "node miniprogram/utils/fuel-plan.test.js && node tools/sync-content.js --check && node tools/check-project.js && node tools/test-cloud.js",
     "content": "node tools/sync-content.js",
     "assets": "node tools/serve-assets.js",
     "shot": "node tools/preview/shot.js",

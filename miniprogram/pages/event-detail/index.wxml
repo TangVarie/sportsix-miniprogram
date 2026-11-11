@@ -1,4 +1,4 @@
-<view class="page ed-page" style="--sx-safe-top: {{safeTop}}px">
+<view wx:if="{{event}}" class="page ed-page" style="--sx-safe-top: {{safeTop}}px">
   <view class="ed-header sx-in">
     <view class="ed-header__photo sx-photo"><image class="sx-photo__img ed-header__img" src="{{event.image}}" mode="aspectFill" /></view>
     <image wx:if="{{event.graphic}}" class="ed-header__ridge sx-draw" src="{{event.graphic}}" />
@@ -29,7 +29,7 @@
       </view>
     </view>
 
-    <view class="ed-member">
+    <view wx:if="{{detail.memberBanner}}" class="ed-member">
       <image class="ed-member__icon" src="/assets/icons/flag-navy.svg" />
       <view class="ed-member__text">
         <text class="ed-member__title">{{detail.memberBanner.title}}</text>
@@ -37,7 +37,7 @@
       </view>
     </view>
 
-    <view class="ed-about">
+    <view wx:if="{{detail.about.body}}" class="ed-about">
       <text class="sx-eyebrow ed-about__eyebrow">{{detail.about.eyebrow}}</text>
       <view class="ed-about__title">{{detail.about.title}}</view>
       <view class="ed-about__body">{{detail.about.body}}</view>
@@ -60,7 +60,7 @@
         <image class="ed-btn__icon" src="/assets/icons/bell-{{reminded ? 'grey' : 'navy'}}.svg" />
         <text>{{reminded ? remindedText : detail.buttons[0]}}</text>
       </view>
-      <view class="ed-btn ed-btn--primary sx-pressable" hover-class="sx-press" bindtap="onSignup">{{detail.buttons[1]}}</view>
+      <view class="ed-btn ed-btn--primary sx-pressable {{signed ? 'ed-btn--done' : ''}}" hover-class="{{signed ? 'none' : 'sx-press'}}" bindtap="onSignup">{{signed ? signedText : detail.buttons[1]}}</view>
     </view>
   </view>
 </view>
