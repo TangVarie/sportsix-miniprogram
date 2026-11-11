@@ -1,0 +1,15 @@
+/* 数值取自 design/html/03-product-energy-gel.html 的 SCENES 分区 */
+:host { display: block; }
+.product-scenes { display: flex; flex-direction: column; gap: 12rpx; padding: 69rpx 38rpx 62rpx; background: #F5F5F5; }
+.product-scenes__eyebrow { color: #061A70; }
+.product-scenes__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; color: #010439; }
+.product-scenes__list { display: flex; flex-direction: column; gap: 19rpx; margin-top: 19rpx; }
+.product-scenes__card { display: flex; flex-direction: column; align-items: flex-start; gap: 19rpx; padding: 31rpx; border-radius: 27rpx; background: #FFFFFF; }
+.product-scenes__tag { display: inline-block; padding: 8rpx 31rpx; background: #010439; color: #FFFFFF; font-size: 25rpx; line-height: 37rpx; font-weight: 700; }
+.product-scenes__body { font-size: 25rpx; line-height: 40rpx; color: #14141E; }
+.product-scenes__link {
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
+  height: 92rpx; margin-top: 19rpx; border-radius: 46rpx; border: 1px solid #061A70;
+  font-size: 27rpx; font-weight: 700; color: #061A70;
+}
+.product-scenes__arrow { display: block; width: 31rpx; height: 31rpx; }

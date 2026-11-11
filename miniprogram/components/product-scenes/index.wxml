@@ -1,0 +1,14 @@
+<view class="product-scenes {{shown ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow product-scenes__eyebrow">{{scenes.eyebrow}}</text>
+  <view class="product-scenes__title">{{scenes.title}}</view>
+  <view class="product-scenes__list">
+    <view wx:for="{{scenes.items}}" wx:key="title" class="product-scenes__card sx-rise" style="animation-delay: {{index * 0.1}}s">
+      <text class="product-scenes__tag sx-slant">{{item.title}}</text>
+      <text class="product-scenes__body">{{item.body}}</text>
+    </view>
+  </view>
+  <view class="product-scenes__link sx-pressable" hover-class="sx-press" bindtap="onLink">
+    <text>{{scenes.link.label}}</text>
+    <image class="product-scenes__arrow" src="/assets/icons/chevron-blue.svg" />
+  </view>
+</view>

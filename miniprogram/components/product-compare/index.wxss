@@ -1,0 +1,26 @@
+/* 数值取自 design/html/03-product-energy-gel.html 的 QUICK PICK 分区 */
+:host { display: block; }
+.product-compare { display: flex; flex-direction: column; gap: 12rpx; padding: 38rpx; }
+.product-compare__eyebrow { color: #061A70; }
+.product-compare__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; color: #010439; }
+.product-compare__head { display: flex; gap: 23rpx; margin-top: 23rpx; padding-bottom: 19rpx; border-bottom: 4rpx solid #010439; }
+.product-compare__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12rpx; }
+.product-compare__img { display: block; height: 138rpx; }
+.product-compare__name { font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #5E6170; }
+.product-compare__mark { width: 54rpx; height: 8rpx; }
+.product-compare__col--on .product-compare__name { color: #010439; }
+.product-compare__col--on .product-compare__mark { background: #C2E541; }
+.product-compare__row { display: flex; flex-direction: column; gap: 12rpx; padding: 23rpx 0; }
+.product-compare__row--line { border-bottom: 1px solid #E6E6E7; }
+.product-compare__label { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.product-compare__cells { display: flex; gap: 23rpx; }
+.product-compare__cell { flex: 1 1 0; min-width: 0; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.product-compare__cell--on { font-weight: 700; color: #010439; }
+.product-compare__link {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 123rpx; margin-top: 15rpx; padding: 0 31rpx; border-radius: 27rpx; background: #F5F5F5;
+}
+.product-compare__link-text { display: flex; flex-direction: column; }
+.product-compare__link-title { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #061A70; }
+.product-compare__link-sub { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.product-compare__arrow { display: block; width: 35rpx; height: 35rpx; }
