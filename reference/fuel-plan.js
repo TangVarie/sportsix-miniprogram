@@ -37,7 +37,7 @@ const SPORTS = [
  * （中等强度约 64–76%，较大强度约 77% 以上；这里取整为 60–75% 和 80% 以上）。
  */
 const SCENES = [
-  { key: 'long', label: '轻松训练', hint: '能完整说话，心率约为最大心率的 60–75%' },
+  { key: 'long', label: '轻松训练', hint: '能完整说话，心率约为最大心率的 60% 到 75%' },
   { key: 'hard', label: '高强度训练', hint: '只能说短句，心率在最大心率的 80% 以上' },
   { key: 'race', label: '比赛', hint: '正式比赛，或全力完成的计时测试' }
 ];
@@ -187,16 +187,17 @@ function explain(r) {
     return why;
   }
   if (r.carbRate > 0) {
+    // 第一句只报每小时多少克。原来后面还跟着一句通用的范围（「更长的 60g 起」），和按强度、项目取的低值对不上，去掉了；
+    // 依据写在页面底部的说明和 docs/03-fuel-formula.md 里
+    why.push(r.durationLabel + ' 的' + (isSteady(s.sport) ? sport : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排。');
+    // 登山、滑雪各有一条针对项目的说明
     const note = sportOf(s.sport).note;
-    // 有自己一条说明的项目（登山、滑雪）：第一句只报数，紧跟着是这个项目的说明
-    why.push(r.durationLabel + ' 的' + (isSteady(s.sport) ? sport : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排' +
-      (note ? '。' : '：1–2.5 小时 30–60g，更长的 60g 起。'));
     if (note) why.push(note);
   } else {
     why.push('不足 1 小时，只在' + (s.scene === 'race' ? '赛前' : '中段') + '补 1 支。');
   }
   if (s.minutes >= 360) why.push('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
-  if (r.items[0].minute < 0) why.push('开始前 30 分钟 1 支 PRO 打底：0 咖啡因，HBCD 排空快，不坠胃。');
+  if (r.items[0].minute < 0) why.push('开始前 30 分钟先吃 1 支 PRO 打底，它不含咖啡因，HBCD 排空快，不坠胃。');
   if (r.gelCount > 0) {
     why.push('体重 ' + s.kg + 'kg，含咖啡因的能量胶不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
       (r.caffeineCapCount * 45 / s.kg).toFixed(1) + 'mg），间隔至少 30 分钟。');
@@ -204,12 +205,12 @@ function explain(r) {
   if (s.start === 'pm' && !s.caffeineSensitive) why.push('下午出发，含咖啡因的最多 2 支，避免影响晚上睡眠。');
   if (s.start === 'night') why.push('晚上出发，全程用 0 咖啡因的 PRO。');
   if (s.caffeineSensitive) why.push('咖啡因敏感，全程用 0 咖啡因的 PRO。');
-  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的能量胶排在前 60% 的时段，后程换 PRO：甜度低 26%，肠胃负担更轻。');
+  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的能量胶排在前 60% 的时段，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
   const weather = s.hot ? 'hot' : s.weather;
-  if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20–25mg，电解质要另外补。');
+  if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20 到 25mg，电解质要另外补。');
   if (weather === 'cold') why.push('低温天口渴感弱，容易漏掉补给，按时间表吃。');
   if (weather === 'rain') why.push('雨天体感凉、口渴感弱，容易漏掉补给，按时间表吃。');
-  if (s.firstTime) why.push('第一次用胶：先在训练里试，从半条开始；比赛日不换没练过的补给。');
+  if (s.firstTime) why.push('第一次用胶，先在训练里试，从半支开始。比赛日不换没练过的补给。');
   return why.slice(0, 6);
 }
 

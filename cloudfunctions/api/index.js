@@ -173,10 +173,10 @@ const actions = {
     };
   },
 
-  /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。 */
+  /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。isNew 表示这次是不是新建的会员。 */
   async register(event, openid) {
     const existing = await findById('members', openid);
-    if (existing) return { member: memberView(await ensureMember(existing)) };
+    if (existing) return { member: memberView(await ensureMember(existing)), isNew: false };
     if (!event.code) throw fail('missing_code');
     let info;
     try {
@@ -201,7 +201,7 @@ const actions = {
       if (!(await findById('members', openid))) throw e;
     }
     if (created) await logPoints(openid, WELCOME_POINTS, 'welcome');
-    return { member: memberView(await ensureMember(await findById('members', openid))) };
+    return { member: memberView(await ensureMember(await findById('members', openid))), isNew: created };
   },
 
   /** 积分页：当前积分和最近 50 条积分记录（新的在前） */

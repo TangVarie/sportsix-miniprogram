@@ -66,7 +66,8 @@ for (const sport of ['hike', 'climb', 'ski']) {
 assert.strictEqual(planFuel({ sport: 'ski', minutes: 240 }).reasons[0], '4:00 的滑雪，按每小时约 30g 碳水安排。', '滑雪的说明里不带强度');
 assert.ok(planFuel({ sport: 'ski', minutes: 240 }).reasons[1].indexOf('缆车') > 0, '滑雪多一条针对这个项目的说明');
 assert.ok(planFuel({ sport: 'climb', minutes: 240 }).reasons[1].indexOf('登山') === 0, '登山多一条针对这个项目的说明');
-assert.ok(planFuel({ sport: 'hike', minutes: 300 }).reasons[0].indexOf('5:00 的徒步，按每小时约 45g 碳水安排：') === 0, '徒步的说明不变');
+assert.strictEqual(planFuel({ sport: 'hike', minutes: 300 }).reasons[0], '5:00 的徒步，按每小时约 45g 碳水安排。', '第一句只报每小时多少克');
+assert.strictEqual(planFuel({}).reasons[0], '4:00 的路跑比赛，按每小时约 60g 碳水安排。', '第一句只报每小时多少克');
 assert.ok(planFuel({ sport: 'ski', minutes: 420 }).reasons.indexOf('超过 6 小时，胶按每小时约 30g 排，其余靠补给站和固体食物。') > 0, '超过 6 小时的那句用实际的数');
 assert.ok(planFuel({ sport: 'trail', minutes: 480 }).reasons.indexOf('超过 6 小时，胶按每小时约 45g 排，其余靠补给站和固体食物。') > 0, '其他项目超过 6 小时的那句不变');
 assert.ok(planFuel({ sport: 'ski', minutes: 45, scene: 'race' }).total === 0, '不足 1 小时的滑雪不用带胶');
@@ -75,7 +76,7 @@ n += 12;
 // 强度：三档，从轻到重。key 不变（long、hard、race），已保存的计划照常能用；每档带一句说明
 assert.deepStrictEqual(SCENES.map((s) => s.key + ':' + s.label), ['long:轻松训练', 'hard:高强度训练', 'race:比赛'], '强度的顺序和名称');
 assert.ok(SCENES.every((s) => typeof s.hint === 'string' && s.hint.length > 0), '每档强度都有一句说明');
-assert.ok(SCENES[0].hint.indexOf('60–75%') > 0 && SCENES[1].hint.indexOf('80%') > 0, '轻松和高强度用说话测试和心率区间来界定');
+assert.ok(SCENES[0].hint.indexOf('60% 到 75%') > 0 && SCENES[1].hint.indexOf('80%') > 0, '轻松和高强度用说话测试和心率区间来界定');
 assert.ok(planFuel({ scene: 'long', minutes: 120 }).reasons[0].indexOf('2:00 的路跑轻松训练，') === 0, '说明里用新的叫法');
 n += 3;
 
@@ -91,6 +92,24 @@ assert.ok(says({ hot: true }, '高温天出汗多'), '旧的 hot: true 仍然有
 assert.ok(!says({}, '雨天') && !says({}, '低温') && !says({}, '高温'), '常温没有天气说明');
 assert.ok(!says({ weather: 'rain' }, '高温') && !says({ weather: 'cold' }, '雨天'), '只出现所选天气的说明');
 n += 6;
+
+// 说明文字的写法：量词统一用「支」，句子里不用冒号和连接号（数字范围写「到」）
+const allReasons = [];
+for (const sport of SPORTS.map((s) => s.key)) {
+  for (const scene of SCENES.map((s) => s.key)) {
+    for (const minutes of [45, 90, 240, 420]) {
+      for (const extra of [{}, { start: 'pm' }, { start: 'night' }, { caffeineSensitive: true }, { firstTime: true }, { weather: 'hot' }, { weather: 'cold' }, { weather: 'rain' }]) {
+        planFuel(Object.assign({ sport, scene, minutes }, extra)).reasons.forEach((x) => allReasons.push(x));
+      }
+    }
+  }
+}
+SCENES.forEach((s) => allReasons.push(s.hint));
+for (const x of new Set(allReasons)) {
+  assert.ok(!/[：:–—]/.test(x.replace(/\d+:\d\d/g, '')), '说明里不用冒号和连接号：' + x);
+  assert.ok(!/[\d半]\s*(条|包|袋)/.test(x), '量词统一用「支」：' + x);
+}
+n += 1;
 
 // 全组合检查：咖啡因不超过每公斤 3mg，相邻两支含咖啡因的间隔不小于 30 分钟，最多 20 支
 let combos = 0;

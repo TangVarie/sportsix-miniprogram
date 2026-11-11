@@ -54,6 +54,7 @@ async function functionTests() {
   eq(cloud.col('members')[0].memberNo, '100001', '编号存进会员记录');
   eq(cloud.col('counters')[0].next, 100002, '计数集合自动建好，记着下一个号');
   eq(r.data.member.points, 500, '注册送 500 积分');
+  eq(r.data.isNew, true, '第一次注册是新会员');
   eq(r.data.member.nickname, '', '昵称一开始是空的');
   ok(!JSON.stringify(r.data).includes('13800001234'), '不把完整手机号返回给小程序端');
   eq(cloud.col('members')[0].phone, '13800001234', '库里存完整手机号');
@@ -62,6 +63,7 @@ async function functionTests() {
   eq(cloud.col('members').length, 1, '不重复建会员');
   eq(r.data.member.memberNo, '100001', '重复注册不换编号');
   eq(r.data.member.points, 500, '重复注册不重复送积分');
+  eq(r.data.isNew, false, '已经是会员的再登录不算新会员');
 
   // 积分页：当前积分和积分记录
   r = await call('points');

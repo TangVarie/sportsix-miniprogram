@@ -40,7 +40,7 @@
     ]
   },
   "fuelEntry": {
-    "eyebrow": "FUEL PLAN", "title": "分段补给计算", "body": "选项目和目标时间，算出带几支、什么时候吃", "button": "开始计算",
+    "eyebrow": "FUEL PLAN", "title": "分段补给计算", "body": "选项目和预计时长，算出带几支、什么时候吃", "button": "开始计算",
     "image": "assets/photos/web/road-silhouettes.jpg", "to": "fuel"
   },
   "lineup": { "eyebrow": "LINE-UP", "title": "全周期运动产品线", "data": "products.json#lineup" },
@@ -51,10 +51,10 @@
     { "value": "45", "unit": "g", "title": "大容量", "body": "一支适配 30 分钟高强度运动" }
   ],
   "certification": {
-    "title": ["Informed-Sport", "权威认证产品"],
-    "badge": "Informed-Sport 认证",
+    "title": ["Informed Sport", "权威认证产品"],
+    "badge": "Informed Sport 认证",
     "body": "Informed Sport 是由全球体育反兴奋剂研究所对产品进行检测，确认其不含运动员禁用物质的认证项目。",
-    "checks": ["SPORTSIX 约对 250 种体育禁用成分进行彻底管理", "生产的所有批次均经过严格分析和管理"],
+    "checks": ["SPORTSIX 对约 250 种体育禁用成分进行彻底管理", "生产的所有批次均经过严格分析和管理"],
     "confirm": "认证标已使用（文件取自 Informed Sport 官网）；用标的授权范围需要品牌方确认"
   },
   "races": {

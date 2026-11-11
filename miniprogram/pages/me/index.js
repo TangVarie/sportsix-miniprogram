@@ -222,7 +222,7 @@ Page({
     // 没勾选协议就点按钮：提示一句，不然看起来像按钮坏了
     if (!this.data.agreed) { wx.showToast({ title: messages.register.needAgree, icon: 'none' }); return; }
     if (this.data.cloudMode) return;
-    store.register().then(() => this.afterRegister());
+    store.register().then((r) => this.afterRegister(r));
   },
 
   /**
@@ -234,13 +234,13 @@ Page({
     if (!code || this.registering) return;
     this.registering = true;
     store.register(code)
-      .then(() => this.afterRegister())
+      .then((r) => this.afterRegister(r))
       .catch(() => wx.showToast({ title: messages.register.failed, icon: 'none' }))
       .then(() => { this.registering = false; });
   },
 
-  /** 注册完成 */
-  afterRegister() {
+  /** 注册完成。joined.isNew 为 false 时是老会员重新登录，不提「已送积分」 */
+  afterRegister(joined) {
     // 本页切到会员状态
     this.setData(readState());
     this.syncShareMenu();
@@ -249,7 +249,7 @@ Page({
 
     // 从计算页点「保存到我的」过来的：把那份输入存下，成功后回到计算页，由它按刚存下的输入还原
     const pending = store.getPendingPlan();
-    if (!pending) { wx.showToast({ title: messages.register.ok, icon: 'none' }); return; }
+    if (!pending) { wx.showToast({ title: joined && joined.isNew === false ? messages.register.back : messages.register.ok, icon: 'none' }); return; }
     const r = fuel.planFuel(pending);
     store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).then(() => {
       store.clearPendingPlan();
