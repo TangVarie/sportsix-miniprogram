@@ -18,13 +18,13 @@ const { assetUrl } = require('../../utils/assets.js');
 /** 去向还没定的入口：点击只给方括号占位提示 */
 const PENDING = {
   group: '[加群方式待定]',
-  doc: '[隐私政策文本待提供]',
   chat: '[联系方式待定]',
-  用户协议: '[用户协议文本待提供]',
-  隐私政策: '[隐私政策文本待提供]',
   registerFailed: '[注册失败提示文案]',
   saveFailed: '[保存失败提示文案]'
 };
+
+/** 协议那句话里的书名号 → 正文类型（pages/doc 的 type 参数） */
+const DOC_TYPE = { 用户协议: 'agreement', 隐私政策: 'privacy' };
 
 /** 把协议那句话按书名号拆开，《…》部分单独可点。文字本身不改。 */
 function splitAgreement(text) {
@@ -180,10 +180,13 @@ Page({
     this.setData({ agreed: !this.data.agreed });
   },
 
-  /** 《用户协议》《隐私政策》两份文本还没有（docs/04-open-items.md），先给占位提示 */
+  /** 点协议那句话里的《用户协议》《隐私政策》：打开对应的正文 */
   onDoc(e) {
-    wx.showToast({ title: PENDING[e.currentTarget.dataset.doc] || '[待定]', icon: 'none' });
+    go('doc', { type: DOC_TYPE[e.currentTarget.dataset.doc] });
   },
+
+  /** 手机号按钮同时是「同意隐私政策」的按钮（open-type 里的 agreePrivacyAuthorization），微信会在这里记下用户已同意 */
+  onAgreePrivacy() {},
 
   /**
    * 注册（没配云环境时）。必须先勾选协议。不取手机号，只在本机记「已注册」，用来看页面状态。
@@ -241,6 +244,9 @@ Page({
 
   /** 加入社群 / 隐私政策 / 联系我们：去向都没定（docs/04-open-items.md） */
   onMenu(e) {
-    wx.showToast({ title: PENDING[e.currentTarget.dataset.key] || '[待定]', icon: 'none' });
+    const key = e.currentTarget.dataset.key;
+    // 隐私政策有正文了；加入社群、联系我们的去向还没定（docs/04-open-items.md）
+    if (key === 'doc') { go('doc', { type: 'privacy' }); return; }
+    wx.showToast({ title: PENDING[key] || '[待定]', icon: 'none' });
   }
 });

@@ -102,9 +102,9 @@
         </view>
       </view>
 
-      <!-- 云开发且已勾选协议：手机号快速验证组件；否则是普通按钮（未勾选时不可用，没配云环境时只在本机记录） -->
+      <!-- 云开发且已勾选协议：手机号快速验证组件，同时作为微信要求的「同意隐私政策」按钮；否则是普通按钮（未勾选时不可用，没配云环境时只在本机记录） -->
       <view class="sx-rise" style="animation-delay: .7s">
-        <button wx:if="{{cloudMode && agreed}}" class="sx-btn-reset me-join__btn sx-pressable" hover-class="sx-press" open-type="getPhoneNumber" bindgetphonenumber="onPhone">{{join.button}}</button>
+        <button wx:if="{{cloudMode && agreed}}" class="sx-btn-reset me-join__btn sx-pressable" hover-class="sx-press" open-type="getPhoneNumber|agreePrivacyAuthorization" bindgetphonenumber="onPhone" bindagreeprivacyauthorization="onAgreePrivacy">{{join.button}}</button>
         <view wx:else class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister">{{join.button}}</view>
       </view>
 

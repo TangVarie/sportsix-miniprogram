@@ -24,17 +24,19 @@ npm run assets
 | `npm run content` | 由 `reference/content/*.json` 生成 `miniprogram/content/*.js` |
 | `npm run assets` | 本地资源服务，`http://127.0.0.1:8787/assets/...` |
 | `npm run size` | 包体积检查（单包上限 2M） |
+| `npm run cdn` | 把小程序用到的资源挑到 `out/cdn/assets/`，用来上传到云存储 |
 | `npm run shot -- --route pages/home/index --compare design/screens/01-home.png` | 不开开发者工具，渲染页面并和设计稿并排对照，见 `tools/preview/README.md` |
 
 ## 上线前要换掉的配置
 
 都在 `miniprogram/config.js` 和 `project.config.json`：
 
-- `assetBase`：把 `assets/` 传到 CDN 或云存储，换成 https 地址，域名加进小程序的合法域名。
+- `assetBase`：运行 `npm run cdn` 挑出用到的资源，上传到云存储，换成 https 地址。步骤见 `cloudfunctions/README.md` 的「资源放到云存储」。
 - `cloudEnv`：微信云开发的环境 ID。留空时会员、提醒、补给计划只存在本机，用来看页面状态；填了以后走云开发。开通和部署步骤见 `cloudfunctions/README.md`。
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
 - `sampleEvents`：现在显示的是三种活动卡片的占位示例，上线前改成 `false`，改用云数据库 `events` 集合里的活动。
 - `appid`：现在是测试号，测试号不能用云开发。
+- `reference/content/legal.json` 的 `fill`：用户协议和隐私政策里的运营主体全称、联系方式、生效日期、管辖地，现在是占位。正文是初稿，上线前请法务审阅。
 
 工程约定（目录、样式、动效、状态栏等）写在 `CLAUDE.md` 末尾。
 
