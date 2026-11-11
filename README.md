@@ -12,7 +12,7 @@ SPORTSIX 小程序做三件事：品牌和产品介绍、活动通知、会员�
 npm run assets
 ```
 
-2. 用微信开发者工具导入仓库根目录（`project.config.json` 已把小程序目录指到 `miniprogram/`，AppID 暂用测试号）。在「详情 → 本地设置」里勾选「不校验合法域名」，否则本地资源加载不出来。
+2. 用微信开发者工具导入仓库根目录（`project.config.json` 已把小程序目录指到 `miniprogram/`，AppID 已填好）。在「详情 → 本地设置」里勾选「不校验合法域名」，否则本地资源加载不出来。
 
 改了 `reference/content/*.json` 之后跑 `npm run content`，把文案同步到 `miniprogram/content/`。
 
@@ -35,7 +35,6 @@ npm run assets
 - `cloudEnv`：微信云开发的环境 ID。留空时会员、提醒、补给计划只存在本机，用来看页面状态；填了以后走云开发。开通和部署步骤见 `cloudfunctions/README.md`。
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
 - `sampleEvents`：现在显示的是三种活动卡片的占位示例，上线前改成 `false`，改用云数据库 `events` 集合里的活动。
-- `appid`：现在是测试号，测试号不能用云开发。
 - `reference/content/legal.json` 的 `fill`：用户协议和隐私政策里的运营主体全称、联系方式、生效日期、管辖地，现在是占位。正文是初稿，上线前请法务审阅。
 
 工程约定（目录、样式、动效、状态栏等）写在 `CLAUDE.md` 末尾。
