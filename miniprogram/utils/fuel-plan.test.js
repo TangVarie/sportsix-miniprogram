@@ -3,7 +3,7 @@
  * 这些用例是设计稿里公式的预期结果，改公式时先改这里。
  */
 const assert = require('assert');
-const { planFuel, SPORTS, SCENES } = require('./fuel-plan.js');
+const { planFuel, carbRate, SPORTS, SCENES } = require('./fuel-plan.js');
 
 const seq = (r) => r.items.map((i) => i.label + (i.product === 'gel' ? 'G' : 'P')).join(' ');
 let n = 0;
@@ -37,10 +37,24 @@ check('全马 4:00，下午、高温、第一次', { start: 'pm', hot: true, fir
 check('全马 4:00，晚上，50kg', { start: 'night', kg: 50 }, { total: 12, gelCount: 0 });
 check('徒步 5:00', { sport: 'hike', minutes: 300, scene: 'long' }, { carbRate: 45, total: 8, gelCount: 4, seq: '开始前P 0:40G 1:20G 2:00G 2:40G 3:20P 3:50P 4:20P' });
 
-// 项目：六个，排成两行三列。徒步、登山、滑雪不分强度（steady），都按「轻松训练」那一档算
+// 下面两组时间表是按上面的每小时碳水、用和其他项目同一套排法排出来的
+const SKI_240 = { total: 5, gelCount: 2, seq: '开始前P 1:00G 2:00G 3:00P 3:40P' };
+const CLIMB_240 = { total: 9, gelCount: 4, seq: '开始前P 0:30G 1:00G 1:30G 2:00G 2:30P 2:50P 3:10P 3:30P' };
+
+// 项目：六个，排成两行三列。徒步、登山、滑雪不分强度（steady），各有自己的每小时碳水：
+//   徒步  30 / 45（原有）
+//   登山  45 / 60：负重爬升是中到高强度，取推荐范围（1–2.5 小时 30–60g，更长 60g 起）的中上段
+//   滑雪  30 / 30：滑一段、坐一段缆车，是间歇性的中等强度，取范围的下限，时间再长也不加
+// 超过 6 小时一律不超过 45（原有的规则）
 assert.deepStrictEqual(SPORTS.map((s) => s.label), ['路跑', '越野', '骑行', '徒步', '登山', '滑雪'], '项目的顺序和名称');
 assert.deepStrictEqual(SPORTS.filter((s) => s.steady).map((s) => s.key), ['hike', 'climb', 'ski'], '不分强度的项目');
-check('滑雪 4:00', { sport: 'ski', minutes: 240 }, { carbRate: 45, total: 7, gelCount: 3, seq: '开始前P 0:40G 1:20G 2:00G 2:40P 3:10P 3:40P' });
+const rate = (sport, minutes) => carbRate({ sport: sport, scene: 'long', minutes: minutes });
+assert.deepStrictEqual([90, 240, 360].map((m) => rate('hike', m)), [30, 45, 45], '徒步每小时碳水');
+assert.deepStrictEqual([90, 240, 360, 480].map((m) => rate('climb', m)), [45, 60, 45, 45], '登山每小时碳水');
+assert.deepStrictEqual([90, 240, 360, 480].map((m) => rate('ski', m)), [30, 30, 30, 30], '滑雪每小时碳水');
+assert.strictEqual(rate('climb', 45), 0, '不足 1 小时不排');
+check('滑雪 4:00', { sport: 'ski', minutes: 240 }, { carbRate: 30, total: SKI_240.total, gelCount: SKI_240.gelCount, seq: SKI_240.seq });
+check('登山 4:00', { sport: 'climb', minutes: 240 }, { carbRate: 60, total: CLIMB_240.total, gelCount: CLIMB_240.gelCount, seq: CLIMB_240.seq });
 check('登山 6:00', { sport: 'climb', minutes: 360 }, { carbRate: 45, total: 10, gelCount: 4 });
 check('滑雪 1:30', { sport: 'ski', minutes: 90 }, { carbRate: 30 });
 for (const sport of ['hike', 'climb', 'ski']) {
@@ -48,15 +62,20 @@ for (const sport of ['hike', 'climb', 'ski']) {
   for (const scene of ['race', 'hard']) {
     assert.strictEqual(seq(planFuel({ sport: sport, scene: scene, minutes: 300 })), base, sport + ' 不分强度：选什么强度结果都一样');
   }
-  assert.strictEqual(seq(planFuel({ sport: sport, minutes: 300 })), seq(planFuel({ sport: 'hike', minutes: 300 })), sport + ' 和徒步同一套节奏');
 }
-assert.ok(planFuel({ sport: 'ski', minutes: 240 }).reasons[0].indexOf('4:00 的滑雪，按每小时约 45g') === 0, '滑雪的说明里不带强度');
+assert.strictEqual(planFuel({ sport: 'ski', minutes: 240 }).reasons[0], '4:00 的滑雪，按每小时约 30g 碳水安排。', '滑雪的说明里不带强度');
+assert.ok(planFuel({ sport: 'ski', minutes: 240 }).reasons[1].indexOf('缆车') > 0, '滑雪多一条针对这个项目的说明');
+assert.ok(planFuel({ sport: 'climb', minutes: 240 }).reasons[1].indexOf('登山') === 0, '登山多一条针对这个项目的说明');
+assert.ok(planFuel({ sport: 'hike', minutes: 300 }).reasons[0].indexOf('5:00 的徒步，按每小时约 45g 碳水安排：') === 0, '徒步的说明不变');
+assert.ok(planFuel({ sport: 'ski', minutes: 420 }).reasons.indexOf('超过 6 小时，胶按每小时约 30g 排，其余靠补给站和固体食物。') > 0, '超过 6 小时的那句用实际的数');
+assert.ok(planFuel({ sport: 'trail', minutes: 480 }).reasons.indexOf('超过 6 小时，胶按每小时约 45g 排，其余靠补给站和固体食物。') > 0, '其他项目超过 6 小时的那句不变');
 assert.ok(planFuel({ sport: 'ski', minutes: 45, scene: 'race' }).total === 0, '不足 1 小时的滑雪不用带胶');
-n += 4;
+n += 12;
 
 // 强度：三档，从轻到重。key 不变（long、hard、race），已保存的计划照常能用；每档带一句说明
 assert.deepStrictEqual(SCENES.map((s) => s.key + ':' + s.label), ['long:轻松训练', 'hard:高强度训练', 'race:比赛'], '强度的顺序和名称');
 assert.ok(SCENES.every((s) => typeof s.hint === 'string' && s.hint.length > 0), '每档强度都有一句说明');
+assert.ok(SCENES[0].hint.indexOf('60–75%') > 0 && SCENES[1].hint.indexOf('80%') > 0, '轻松和高强度用说话测试和心率区间来界定');
 assert.ok(planFuel({ scene: 'long', minutes: 120 }).reasons[0].indexOf('2:00 的路跑轻松训练，') === 0, '说明里用新的叫法');
 n += 3;
 
