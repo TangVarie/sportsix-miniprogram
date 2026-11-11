@@ -56,13 +56,25 @@ function fromCloud(e) {
   return withAssets(view);
 }
 
+/** 缓存里的活动列表；从没缓存过时返回 null（和「缓存过、但云端一场活动都没有」的 [] 区分开） */
+function readCache() {
+  try {
+    const v = wx.getStorageSync(CACHE_KEY);
+    return Array.isArray(v) ? v : null;
+  } catch (e) {
+    return null;
+  }
+}
 function cached() {
-  try { return wx.getStorageSync(CACHE_KEY) || []; } catch (e) { return []; }
+  return readCache() || [];
 }
 
-/** 本机还没有缓存过活动、要等云端返回：这段时间列表显示占位块，不先闪一下「敬请期待」 */
+/**
+ * 本机从没取到过活动列表、要等云端返回：这段时间列表显示占位块，不先闪一下「敬请期待」。
+ * 取到过一次以后（哪怕是空的）就不再算首次加载，回到这一页时直接显示缓存里的结果。
+ */
 function isFirstLoad() {
-  return !config.sampleEvents && cloud.enabled() && cached().length === 0;
+  return !config.sampleEvents && cloud.enabled() && readCache() === null;
 }
 
 /** 即将开始的活动（同步，读缓存） */

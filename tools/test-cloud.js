@@ -320,6 +320,29 @@ async function clientTests() {
     ok(q.data.registered && !!e4.wx.__storage.sx_member, '迟到的旧快照没有覆盖注册状态');
   }
 
+  // 云端一场活动都没有：第一次等返回时显示占位块，之后回到这一页直接显示「敬请期待」，不再闪占位块
+  {
+    const c5 = createCloud();
+    const api5 = c5.load('api');
+    const wxc = { init() {}, callFunction(o) { return c5.run(() => api5.main(o.data)).then((result) => ({ result: result })); } };
+    const e5 = createEnv({ wx: { cloud: wxc } });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
+    e5.launch();
+    const q = e5.openPage('pages/events/index', {});
+    ok(q.data.loading && !q.data.hasUpcoming, '第一次取活动、还没返回：显示占位块');
+    await tick();
+    ok(!q.data.loading && !q.data.hasUpcoming, '云端没有活动：显示「敬请期待」');
+    eq(q.data.empty.title, '敬请期待', '空状态的文案');
+    q.onShow();
+    ok(!q.data.loading, '再回到这一页：不再显示占位块');
+    await tick();
+    c5.state.data.events = [{ _id: 'new', type: '赛事', title: '新活动', status: 'published', date: new Date(c5.state.now + 5 * DAY) }];
+    q.onShow();
+    ok(!q.data.loading && !q.data.hasUpcoming, '后台新增了活动、还没取回来：先显示上次的结果');
+    await tick();
+    eq(q.data.upcoming.map((e) => e.id), ['new'], '取回来以后显示新活动');
+  }
+
   // 换设备（本机没有缓存）：启动时从云端同步回来
   const env2 = createEnv({ wx: { cloud: wxCloud } });
   Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
