@@ -1,0 +1,31 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/fuel/index",
+    "pages/events/index",
+    "pages/me/index",
+    "pages/product/index",
+    "pages/event-detail/index"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#FFFFFF",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#5E6170",
+    "selectedColor": "#061A70",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "介绍" },
+      { "pagePath": "pages/fuel/index", "text": "补给" },
+      { "pagePath": "pages/events/index", "text": "活动" },
+      { "pagePath": "pages/me/index", "text": "我的" }
+    ]
+  },
+  "usingComponents": {},
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

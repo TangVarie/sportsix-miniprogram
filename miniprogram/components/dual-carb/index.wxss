@@ -1,0 +1,13 @@
+/* 数值取自 design/html/01-home.html 的 DUAL CARB 分区 */
+:host { display: block; }
+.dual-carb { display: flex; flex-direction: column; gap: 12rpx; padding: 77rpx 38rpx 69rpx; color: #FFFFFF; }
+.dual-carb__eyebrow { color: #C2E541; }
+.dual-carb__title { font-size: 46rpx; line-height: 65rpx; font-weight: 900; }
+.dual-carb__body { margin: 12rpx 0 27rpx; font-size: 27rpx; line-height: 42rpx; color: #C9CEE8; }
+.dual-carb__chart { display: block; width: 673rpx; height: 442rpx; }
+.dual-carb__legend { display: flex; flex-direction: column; gap: 15rpx; font-size: 23rpx; line-height: 35rpx; }
+.dual-carb__legend-row { display: flex; align-items: center; gap: 19rpx; }
+.dual-carb__legend-row--dim { color: #C9CEE8; }
+.dual-carb__line { flex-shrink: 0; width: 42rpx; height: 8rpx; border-radius: 4rpx; background: #C2E541; }
+.dual-carb__line--dashed { height: 0; border-radius: 0; background: none; border-top: 4rpx dashed #FFFFFF; }
+.dual-carb__footnote { margin-top: 23rpx; font-size: 21rpx; line-height: 33rpx; color: #9AA1C8; }

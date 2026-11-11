@@ -1,0 +1,27 @@
+{
+  "description": "SPORTSIX 微信小程序。AppID 未定，先用测试号。",
+  "miniprogramRoot": "miniprogram/",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "sportsix-miniprogram",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "preloadBackgroundData": false,
+    "showShadowRootInWxmlPanel": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "ignoreUploadUnusedFiles": true
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "file", "value": "utils/fuel-plan.test.js" }
+    ]
+  },
+  "editorSetting": { "tabIndent": "insertSpaces", "tabSize": 2 }
+}

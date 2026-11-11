@@ -1,0 +1,13 @@
+<view class="tabbar">
+  <view
+    wx:for="{{items}}" wx:key="key"
+    class="tabbar__item {{item.raised ? 'tabbar__item--raised' : ''}} {{selected === index || item.raised ? 'tabbar__item--on' : ''}}"
+    data-index="{{index}}" bindtap="onTap"
+  >
+    <view wx:if="{{item.raised}}" class="tabbar__raised sx-pressable" hover-class="sx-press">
+      <image class="tabbar__icon" src="{{item.icon}}" />
+    </view>
+    <image wx:else class="tabbar__icon" src="{{selected === index ? item.iconOn : item.icon}}" />
+    <text>{{item.text}}</text>
+  </view>
+</view>

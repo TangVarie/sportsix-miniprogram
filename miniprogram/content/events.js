@@ -1,0 +1,38 @@
+// 由 tools/sync-content.js 从 reference/content/events.json 生成，不要手改。
+module.exports = {
+  "_note": "past 是电商页上列出的真实赛事。upcoming 是三种卡片样式的示例，方括号内全部是占位，上线后由后台或配置提供。",
+  "types": ["赛事", "试用装", "抽奖"],
+  "upcoming": [
+    {
+      "style": "poster", "type": "赛事", "tag": "会员优先报名",
+      "title": "[活动名称]", "date": "[活动日期]", "city": "[城市]", "signupOpens": "[开放时间]",
+      "image": "assets/photos/web/trail-sunset.jpg", "graphic": "assets/graphics/ridge-line.svg",
+      "action": "提醒我", "actionDone": "已设提醒"
+    },
+    {
+      "style": "lime", "type": "试用装", "tag": "会员专享 · 试用装",
+      "title": "[试用装活动名称]", "window": "[申领时间]", "quota": "[名额]",
+      "image": "assets/product/energy-gel-pro-pineapple.png", "action": "申领"
+    },
+    {
+      "style": "row", "type": "抽奖", "title": "[抽奖活动名称]", "drawAt": "[开奖时间]", "icon": "ticket"
+    }
+  ],
+  "detail": {
+    "fields": [
+      { "k": "日期", "v": "[活动日期]" }, { "k": "城市", "v": "[城市]" }, { "k": "名额", "v": "[名额]" },
+      { "k": "时间", "v": "[活动日期与时间]" }, { "k": "地点", "v": "[城市与场地]" }, { "k": "报名", "v": "[报名起止时间]" }
+    ],
+    "memberBanner": { "title": "会员优先报名", "body": "会员报名 [会员开放时间] 开始" },
+    "about": { "eyebrow": "ABOUT", "title": "活动介绍", "body": "[活动介绍文案]" },
+    "group": { "title": "加入活动群", "body": "后续通知在群内发布", "button": "加群" },
+    "reminderHint": "点一次“提醒我”，报名开放时收到一条微信提醒。",
+    "buttons": ["提醒我", "立即报名"]
+  },
+  "past": [
+    { "year": "2026", "name": "韩国汉江跑步节", "nameEn": "Hangang Running Festival", "image": "assets/photos/endorsement/2026-hangang-running-festival.jpg" },
+    { "year": "2026", "name": "乌兰巴托马拉松", "nameEn": "Ulaanbaatar Marathon", "image": "assets/photos/endorsement/2026-ulaanbaatar-marathon.jpg" },
+    { "year": "2026", "name": "蔚州九峰越野赛", "nameEn": "APTRC 亚太越野跑锦标赛", "image": "assets/photos/endorsement/2026-ulju-nine-peaks-trail.jpg" },
+    { "year": "2025", "name": "韩国自由跑", "nameEn": "Hangang StyleRun", "image": "assets/photos/endorsement/2025-hangang-stylerun.jpg" }
+  ]
+};

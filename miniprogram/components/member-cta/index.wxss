@@ -1,0 +1,27 @@
+:host { display: block; }
+.member-cta { position: relative; background: #010439; }
+.member-cta__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 85rpx 38rpx 58rpx;
+  background: #C2E541;
+  color: #010439;
+  clip-path: polygon(0 50rpx, 100% 0, 100% 100%, 0 100%);
+}
+.member-cta__title { font-size: 46rpx; line-height: 62rpx; font-weight: 900; }
+.member-cta__body { margin-bottom: 27rpx; font-size: 27rpx; line-height: 42rpx; font-weight: 500; }
+.member-cta__btn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  height: 92rpx;
+  padding: 0 54rpx;
+  border-radius: 46rpx;
+  background: #010439;
+  color: #FFFFFF;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+.member-cta__arrow { display: block; width: 31rpx; height: 31rpx; }
