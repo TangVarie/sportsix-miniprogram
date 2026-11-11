@@ -27,9 +27,15 @@ function staticHandler(mounts) {
       'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes'
     };
     const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
-    if (range) {
-      const start = range[1] ? parseInt(range[1], 10) : 0;
-      const end = range[2] ? Math.min(parseInt(range[2], 10), size - 1) : size - 1;
+    if (range && (range[1] || range[2])) {
+      // bytes=a-b、bytes=a-（到结尾）、bytes=-n（最后 n 个字节）
+      const start = range[1] ? parseInt(range[1], 10) : Math.max(size - parseInt(range[2], 10), 0);
+      const end = range[1] && range[2] ? Math.min(parseInt(range[2], 10), size - 1) : size - 1;
+      if (start > end || start >= size) {
+        res.writeHead(416, { 'Content-Range': 'bytes */' + size, 'Access-Control-Allow-Origin': '*' });
+        res.end();
+        return;
+      }
       res.writeHead(206, Object.assign(headers, { 'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Content-Length': end - start + 1 }));
       fs.createReadStream(file, { start: start, end: end }).pipe(res);
       return;

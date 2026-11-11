@@ -1,5 +1,5 @@
 const events = require('../../utils/events.js');
-const { baseData, selectTab, go } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 Page({
@@ -14,6 +14,12 @@ Page({
   onLoad() {
     this.setData(baseData());
     this.setData({ past: events.listPast() });
+    // 头部设计高 176px，状态栏滚出它之后文字换成黑色
+    this.toneAt = headerTone(176);
+  },
+
+  onPageScroll(e) {
+    navTone(this, e.scrollTop, this.toneAt);
   },
 
   onShow() {

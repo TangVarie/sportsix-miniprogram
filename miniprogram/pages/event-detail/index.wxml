@@ -58,7 +58,7 @@
     <view class="ed-bar__btns">
       <view class="ed-btn ed-btn--ghost sx-pressable {{reminded ? 'ed-btn--done' : ''}}" hover-class="sx-press" bindtap="onRemind">
         <image class="ed-btn__icon" src="/assets/icons/bell-{{reminded ? 'grey' : 'navy'}}.svg" />
-        <text>{{reminded ? event.actionDone : detail.buttons[0]}}</text>
+        <text>{{reminded ? remindedText : detail.buttons[0]}}</text>
       </view>
       <view class="ed-btn ed-btn--primary sx-pressable" hover-class="sx-press" bindtap="onSignup">{{detail.buttons[1]}}</view>
     </view>

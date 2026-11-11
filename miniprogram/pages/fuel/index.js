@@ -1,6 +1,6 @@
 const { planFuel, SPORTS, SCENES, STARTS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
-const { baseData, selectTab, go, navTone } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /*
@@ -91,9 +91,7 @@ Page({
   onLoad() {
     this.setData(baseData());
     // 头图设计高 212px，滚过它之后状态栏文字换成黑色
-    let width = 390;
-    try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 用设计宽度 */ }
-    this.headerPx = Math.round(212 * width / 390);
+    this.toneAt = headerTone(212);
   },
 
   onShow() {
@@ -108,7 +106,7 @@ Page({
   },
 
   onPageScroll(e) {
-    navTone(this, e.scrollTop, this.headerPx || 212);
+    navTone(this, e.scrollTop, this.toneAt);
   },
 
   /** 改一项或几项输入后重算 */

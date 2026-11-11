@@ -50,6 +50,17 @@ function navTone(page, scrollTop, threshold) {
 }
 
 /**
+ * 只有首屏头部是深色的页面：按头部的设计高度（390px 设计稿下的 px）算出 navTone 的阈值。
+ * 头部实际高度是 设计高度 × 屏宽 ÷ 390 + 状态栏高度；状态栏中线滚出头部下沿时换色。
+ */
+function headerTone(designPx) {
+  let width = 390;
+  try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 取不到就按设计宽度 */ }
+  const app = getApp();
+  return designPx * width / 390 + ((app && app.globalData.safeTop) || 0) / 2;
+}
+
+/**
  * 量出页面上深色分区的位置（节点 class 里带 js-dark），供 navTone 使用。
  * 在 onReady 里调用；图片加载会撑开布局，所以稍后再量一次。返回的函数在 onUnload 里调用。
  */
@@ -83,4 +94,4 @@ function selectTab(page, index) {
   if (typeof page.getTabBar === 'function' && page.getTabBar()) page.getTabBar().setData({ selected: index });
 }
 
-module.exports = { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, TABS };
+module.exports = { baseData, watchReveal, navTone, headerTone, measureDarkZones, go, selectTab, TABS };
