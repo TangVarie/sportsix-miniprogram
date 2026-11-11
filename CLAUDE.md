@@ -94,6 +94,7 @@ tools/
 - 全局 `navigationStyle: custom`。每个页面的根节点写 `style="--sx-safe-top: {{safeTop}}px"`，`data` 用 `baseData()`（`utils/page.js`）初始化并在 `onLoad` 里再 `setData(baseData())`。
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
+- 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」没有开（要另外适配单页模式）。
 - 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效

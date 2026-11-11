@@ -109,9 +109,21 @@ function go(to, params) {
   if (to === 'event-detail') { wx.navigateTo({ url: '/pages/event-detail/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
 }
 
+/**
+ * 转发给朋友时卡片上的内容，给页面的 onShareAppMessage 用。
+ * 页面不定义 onShareAppMessage 的话，右上角菜单里的「转发」是灰的，所以每个能转发的页面都要写。
+ * title 不传时微信用小程序的名称；配图不指定，微信会截取当前页面顶部的画面。
+ * 「分享到朋友圈」没有开：朋友圈里打开的是「单页模式」，不能跳转、没有底部导航、云开发也不能直接用，页面要另外适配。
+ */
+function shareCard(path, title) {
+  const card = { path: path };
+  if (title) card.title = title;
+  return card;
+}
+
 /** 页面在底部导航里的序号，写进自定义 tabBar 的选中态 */
 function selectTab(page, index) {
   if (typeof page.getTabBar === 'function' && page.getTabBar()) page.getTabBar().setData({ selected: index });
 }
 
-module.exports = { baseData, watchReveal, navTone, headerTone, measureDarkZones, imgLoaded, tick, go, selectTab, TABS };
+module.exports = { baseData, watchReveal, navTone, headerTone, measureDarkZones, imgLoaded, tick, go, selectTab, shareCard, TABS };

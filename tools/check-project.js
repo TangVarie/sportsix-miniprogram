@@ -1,6 +1,7 @@
 /**
  * 工程自检，不依赖微信开发者工具。运行：npm run check
  * - app.json 里的页面、usingComponents 里的组件，四个文件是否齐全
+ * - 每个页面都定义了 onShareAppMessage（否则不能转发）
  * - WXML / JS 里引用的随包图标是否存在；content 里的 assets/ 路径在仓库的 assets/ 下是否存在
  * - WXSS 里不生效的写法：属性选择器、带参数的伪类、通配符
  * - WXML 能否被预览工具解析（标签配对）
@@ -38,6 +39,10 @@ for (const f of files.filter((x) => x.endsWith('.json'))) {
 }
 for (const u of new Set(units)) {
   for (const ext of ['.js', '.json', '.wxml', '.wxss']) if (!exists(u + ext)) errors.push('缺文件：' + rel(u + ext));
+}
+// 页面不定义 onShareAppMessage 的话，右上角菜单里的「转发」是灰的
+for (const p of app.pages) {
+  if (!/\bonShareAppMessage\s*\(/.test(fs.readFileSync(path.join(root, p + '.js'), 'utf8'))) errors.push('页面没有定义 onShareAppMessage，不能转发：' + p);
 }
 for (const t of app.tabBar.list) if (!app.pages.includes(t.pagePath)) errors.push('tabBar 页面不在 pages 里：' + t.pagePath);
 

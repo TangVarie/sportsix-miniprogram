@@ -1,7 +1,7 @@
 const { planFuel, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
 const messages = require('../../content/messages.js');
-const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /*
@@ -109,6 +109,10 @@ Page({
   /** 图片加载完（或加载失败）：让它淡入 */
   onImgLoad(e) {
     imgLoaded(this, e);
+  },
+
+  onShareAppMessage() {
+    return shareCard(TABS.fuel);
   },
 
   onLoad() {

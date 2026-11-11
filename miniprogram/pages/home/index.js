@@ -1,7 +1,7 @@
 const home = require('../../content/home.js');
 const products = require('../../content/products.js');
 const events = require('../../utils/events.js');
-const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, imgLoaded } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 /*
@@ -128,6 +128,10 @@ Page({
   },
 
   /** 产品线：只有 detail 为 true 的两款能量胶有详情页 */
+  onShareAppMessage() {
+    return shareCard(TABS.home);
+  },
+
   onProduct(e) {
     const { id, detail } = e.currentTarget.dataset;
     if (detail) go(id);

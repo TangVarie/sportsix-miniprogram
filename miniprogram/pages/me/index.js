@@ -7,7 +7,7 @@ const messages = require('../../content/messages.js');
 const legal = require('../../content/legal.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
-const { baseData, selectTab, go, navTone, imgLoaded, tick } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /**
@@ -166,7 +166,7 @@ Page({
     this.setData(baseData());
     this.toneAt = toneThreshold();
     // 云端数据同步完成后重读（会员状态以云端为准）
-    this.offStore = store.onChange(() => this.setData(readState()));
+    this.offStore = store.onChange(() => { this.setData(readState()); this.syncShareMenu(); });
   },
 
   onUnload() {
@@ -177,7 +177,24 @@ Page({
     selectTab(this, 3);
     // 注册状态、补给计划、提醒、报名都可能在别的页面变了，每次显示都重读；活动列表再从云端取一次
     this.setData(readState());
+    this.syncShareMenu();
     events.refresh().then((changed) => { if (changed) this.setData(readState()); });
+  },
+
+  /** 只有注册页能转发，收到的人打开看到的也是注册页 */
+  onShareAppMessage() {
+    return shareCard(TABS.me);
+  },
+
+  /**
+   * 会员页上有昵称、手机号、会员编号，转发卡片的配图又是当前页面的截图，所以注册以后把「转发」收起来；
+   * 没注册时是注册页，可以转发。
+   */
+  syncShareMenu() {
+    try {
+      if (this.data.registered) wx.hideShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+      else wx.showShareMenu({ menus: ['shareAppMessage'] });
+    } catch (e) { /* 旧基础库没有 menus 参数时忽略 */ }
   },
 
   onPageScroll(e) {
@@ -223,6 +240,7 @@ Page({
   afterRegister() {
     // 本页切到会员状态
     this.setData(readState());
+    this.syncShareMenu();
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     navTone(this, 0, this.toneAt);
 

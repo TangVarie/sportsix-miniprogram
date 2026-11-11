@@ -1,5 +1,5 @@
 const products = require('../../content/products.js');
-const { baseData, watchReveal, navTone, measureDarkZones, go, imgLoaded } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, imgLoaded, shareCard } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 const PRODUCTS = { 'energy-gel': products.energyGel, 'energy-gel-pro': products.energyGelPro };
@@ -96,6 +96,11 @@ Page({
     let width = 390;
     try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 取不到就按设计宽度 */ }
     this.heroHeight = Math.round((HERO_H * width) / 390);
+  },
+
+  /** 转发出去的是这一款的详情页，标题用款名 */
+  onShareAppMessage() {
+    return shareCard('/pages/product/index?id=' + this.data.id, this.data.p ? this.data.p.name : '');
   },
 
   onReady() {

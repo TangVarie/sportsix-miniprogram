@@ -253,6 +253,10 @@ async function clientTests() {
   eq(p.data.profile.nickname, 'SPORTSIX 会员', '没填昵称时的显示');
   ok(!JSON.stringify(p.data.profile).includes('['), '会员信息里没有方括号占位');
 
+  // 转发：会员页有个人信息，注册以后把「转发」收起来
+  eq(p.onShareAppMessage(), { path: '/pages/me/index' }, '注册页转发出去的是注册页');
+  ok(lastCall('hideShareMenu'), '注册以后会员页收起转发');
+
   // 改昵称：等微信的昵称检测结果，通过才保存
   p.onNameEdit();
   ok(p.data.nameEditing, '点名字打开改昵称的弹层');

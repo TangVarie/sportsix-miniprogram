@@ -3,7 +3,7 @@ const store = require('../../utils/store.js');
 const member = require('../../content/member.js');
 const messages = require('../../content/messages.js');
 const config = require('../../config.js');
-const { baseData, go, navTone, headerTone, imgLoaded } = require('../../utils/page.js');
+const { baseData, go, navTone, headerTone, imgLoaded, shareCard } = require('../../utils/page.js');
 
 // 「已设提醒」的说法：活动自己带 actionDone 就用它（目前只有赛事示例有），否则用会员文案里同一个状态名
 const REMINDED_TEXT = member.me.events.states[1];
@@ -44,6 +44,12 @@ Page({
       if (!this.data.event) go('events');
     });
     this.offStore = store.onChange(() => this.render());
+  },
+
+  /** 转发出去的是这场活动的详情页，标题用活动名称 */
+  onShareAppMessage() {
+    const e = this.data.event;
+    return shareCard('/pages/event-detail/index?id=' + this.eventId, e ? e.title : '');
   },
 
   onShow() {

@@ -1,5 +1,5 @@
 const legal = require('../../content/legal.js');
-const { baseData, go, navTone, headerTone } = require('../../utils/page.js');
+const { baseData, go, navTone, headerTone, shareCard } = require('../../utils/page.js');
 
 /** 把正文里的 {operator} 等换成 content/legal 的 fill 里填的主体信息 */
 function fill(text) {
@@ -25,6 +25,7 @@ Page({
   data: Object.assign(baseData(), { doc: build('agreement') }),
 
   onLoad(query) {
+    this.docType = query.type;
     this.setData(Object.assign(baseData(), { doc: build(query.type) }));
     // 头部设计高 132px
     this.toneAt = headerTone(132);
@@ -32,6 +33,10 @@ Page({
 
   onPageScroll(e) {
     navTone(this, e.scrollTop, this.toneAt);
+  },
+
+  onShareAppMessage() {
+    return shareCard('/pages/doc/index?type=' + (this.docType || 'agreement'), this.data.doc ? this.data.doc.title : '');
   },
 
   onBack() {
