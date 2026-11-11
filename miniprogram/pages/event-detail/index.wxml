@@ -1,0 +1,66 @@
+<view class="page ed-page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="ed-header sx-in">
+    <view class="ed-header__photo sx-photo"><image class="sx-photo__img ed-header__img" src="{{event.image}}" mode="aspectFill" /></view>
+    <image wx:if="{{event.graphic}}" class="ed-header__ridge sx-draw" src="{{event.graphic}}" />
+    <view class="ed-back" bindtap="onBack">
+      <image class="ed-back__icon" src="/assets/icons/back-white.svg" />
+      <text>活动</text>
+    </view>
+    <view class="ed-header__title">
+      <view class="ed-header__tags">
+        <text wx:if="{{event.tag}}" class="ed-tag sx-slant">{{event.tag}}</text>
+        <text class="ed-type">{{event.type}}</text>
+      </view>
+      <view class="ed-header__h1">{{event.title}}</view>
+    </view>
+    <view class="ed-facts">
+      <view wx:for="{{headFields}}" wx:key="k" class="ed-fact {{index > 0 ? 'ed-fact--split' : ''}}">
+        <text class="ed-fact__k">{{item.k}}</text>
+        <text class="ed-fact__v">{{item.v}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="ed-body">
+    <view class="ed-rows">
+      <view wx:for="{{rowFields}}" wx:key="k" class="ed-row {{index < rowFields.length - 1 ? 'ed-row--line' : ''}}">
+        <text class="ed-row__k">{{item.k}}</text>
+        <text class="ed-row__v">{{item.v}}</text>
+      </view>
+    </view>
+
+    <view class="ed-member">
+      <image class="ed-member__icon" src="/assets/icons/flag-navy.svg" />
+      <view class="ed-member__text">
+        <text class="ed-member__title">{{detail.memberBanner.title}}</text>
+        <text class="ed-member__body">{{detail.memberBanner.body}}</text>
+      </view>
+    </view>
+
+    <view class="ed-about">
+      <text class="sx-eyebrow ed-about__eyebrow">{{detail.about.eyebrow}}</text>
+      <view class="ed-about__title">{{detail.about.title}}</view>
+      <view class="ed-about__body">{{detail.about.body}}</view>
+    </view>
+
+    <view class="ed-group">
+      <view class="ed-group__icon"><image class="ed-group__icon-img" src="/assets/icons/group-lime.svg" /></view>
+      <view class="ed-group__text">
+        <text class="ed-group__title">{{detail.group.title}}</text>
+        <text class="ed-group__body">{{detail.group.body}}</text>
+      </view>
+      <view class="ed-group__btn sx-pressable" hover-class="sx-press" bindtap="onGroup">{{detail.group.button}}</view>
+    </view>
+  </view>
+
+  <view class="ed-bar">
+    <view class="ed-bar__hint">{{detail.reminderHint}}</view>
+    <view class="ed-bar__btns">
+      <view class="ed-btn ed-btn--ghost sx-pressable {{reminded ? 'ed-btn--done' : ''}}" hover-class="sx-press" bindtap="onRemind">
+        <image class="ed-btn__icon" src="/assets/icons/bell-{{reminded ? 'grey' : 'navy'}}.svg" />
+        <text>{{reminded ? remindedText : detail.buttons[0]}}</text>
+      </view>
+      <view class="ed-btn ed-btn--primary sx-pressable" hover-class="sx-press" bindtap="onSignup">{{detail.buttons[1]}}</view>
+    </view>
+  </view>
+</view>

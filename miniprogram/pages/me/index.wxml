@@ -1,0 +1,116 @@
+<view class="page sx-tab-page {{registered ? '' : 'sx-grid-bg'}}" style="--sx-safe-top: {{safeTop}}px">
+
+  <!-- 已注册：会员页 -->
+  <view wx:if="{{registered}}" class="sx-in">
+    <view class="me-head sx-grid-bg">
+      <view class="me-head__avatar sx-rise"><image class="me-head__avatar-icon" src="/assets/icons/user-white.svg" /></view>
+      <view class="me-head__text sx-rise" style="animation-delay: .1s">
+        <text class="me-head__name">{{me.profile.nickname}}</text>
+        <text class="me-head__phone">{{me.profile.phone}}</text>
+      </view>
+    </view>
+
+    <view class="me-card sx-rise" style="animation-delay: .15s">
+      <view class="me-card__lines" />
+      <image class="me-card__arc" src="{{cardArc}}" />
+      <view class="me-card__top">
+        <image class="me-card__wordmark" src="{{wordmark}}" />
+        <text class="me-card__no">{{me.card.memberNo}}</text>
+      </view>
+      <view class="me-card__bottom">
+        <text class="me-card__label">{{me.card.pointsLabel}}</text>
+        <text class="me-card__points">{{me.card.points}}</text>
+      </view>
+      <image class="me-card__slogan" src="{{slogan}}" />
+    </view>
+
+    <view class="me-perks sx-rise" style="animation-delay: .25s">
+      <view class="me-h2">{{me.perksTitle}}</view>
+      <view class="me-perks__grid">
+        <view wx:for="{{perks}}" wx:key="title" class="me-perks__item">
+          <view class="me-perks__circle"><image wx:if="{{item.icon}}" class="me-perks__icon" src="/assets/icons/{{item.icon}}-lime.svg" /></view>
+          <text>{{item.title}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="me-plan sx-rise" style="animation-delay: .35s">
+      <view class="me-h2">{{me.plan.title}}</view>
+      <view class="me-plan__card sx-grid-bg sx-pressable" hover-class="sx-press" bindtap="onPlan">
+        <view class="me-plan__text">
+          <text class="me-plan__line1">{{plan.line1}}</text>
+          <text class="me-plan__line2">{{plan.line2}}</text>
+          <view wx:if="{{plan.dots.length}}" class="me-plan__dots">
+            <view wx:for="{{plan.dots}}" wx:key="key" class="me-plan__dot {{item.product === 'gel' ? 'me-plan__dot--gel' : 'me-plan__dot--pro'}}" />
+          </view>
+        </view>
+        <view class="me-plan__go"><image class="me-plan__go-icon" src="/assets/icons/bolt-navy.svg" /></view>
+      </view>
+    </view>
+
+    <!-- 没有任何记录时整个分区不显示 -->
+    <view wx:if="{{myEvents.length}}" class="me-events sx-rise" style="animation-delay: .45s">
+      <view class="me-h2">{{me.events.title}}</view>
+      <view class="me-events__list">
+        <view wx:for="{{myEvents}}" wx:key="id" class="me-events__row" data-id="{{item.id}}" bindtap="onEvent">
+          <view class="me-events__text">
+            <text class="me-events__name">{{item.title}}</text>
+            <text wx:if="{{item.meta}}" class="me-events__meta">{{item.meta}}</text>
+          </view>
+          <text class="me-events__state {{item.state === 'signed' ? 'me-events__state--signed' : 'me-events__state--reminded'}}">{{item.stateText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="me-menu sx-rise" style="animation-delay: .5s">
+      <view wx:for="{{me.menu}}" wx:key="icon" class="me-menu__row {{index < me.menu.length - 1 ? 'me-menu__row--line' : ''}}" data-key="{{item.icon}}" bindtap="onMenu">
+        <image class="me-menu__icon" src="/assets/icons/{{item.icon}}-blue.svg" />
+        <text class="me-menu__text">{{item.text}}</text>
+        <image class="me-menu__arrow" src="/assets/icons/chevron-grey.svg" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 未注册：注册页 -->
+  <view wx:else class="sx-in">
+    <view class="me-join__hero">
+      <view class="me-join__lines" />
+      <image class="me-join__arc" src="{{joinArc}}" />
+      <view class="me-join__pack me-join__pack--pro sx-float" style="animation-duration: 6s; animation-delay: .8s">
+        <image class="me-join__pack-img me-join__pack-img--pro" src="{{packPro}}" mode="heightFix" />
+      </view>
+      <view class="me-join__pack me-join__pack--gel sx-float">
+        <image class="me-join__pack-img me-join__pack-img--gel" src="{{packGel}}" mode="heightFix" />
+      </view>
+      <view class="me-join__title">
+        <image class="me-join__wordmark sx-rise" src="{{wordmark}}" />
+        <text class="sx-eyebrow me-join__eyebrow sx-rise" style="animation-delay: .1s">{{join.eyebrow}}</text>
+        <view class="me-join__h1 sx-rise" style="animation-delay: .2s">
+          <view wx:for="{{join.title}}" wx:key="*this">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="me-join__body">
+      <view class="me-join__perks">
+        <view wx:for="{{join.perks}}" wx:key="title" class="me-join__perk sx-rise" style="animation-delay: {{0.3 + index * 0.1}}s">
+          <view class="me-join__perk-head">
+            <image class="me-join__perk-icon" src="/assets/icons/{{item.icon}}-lime.svg" />
+            <text class="me-join__perk-title">{{item.title}}</text>
+          </view>
+          <text class="me-join__perk-body">{{item.body}}</text>
+        </view>
+      </view>
+
+      <!-- 待接后台：这里换成 button open-type="getPhoneNumber"，见 index.js 的 onRegister -->
+      <view class="sx-rise" style="animation-delay: .7s">
+        <view class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister">{{join.button}}</view>
+      </view>
+
+      <view class="me-join__agree sx-rise" style="animation-delay: .8s" bindtap="onAgree">
+        <view class="{{agreed ? 'sx-check' : 'me-join__box'}}" />
+        <view class="me-join__agree-text"><block wx:for="{{agreement}}" wx:key="text"><text wx:if="{{item.doc}}" data-doc="{{item.doc}}" catchtap="onDoc">{{item.text}}</text><text wx:else>{{item.text}}</text></block></view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,19 @@
+<view class="dual-carb sx-grid-bg {{shown ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow dual-carb__eyebrow">{{s.eyebrow}}</text>
+  <view class="dual-carb__title">
+    <view wx:for="{{s.title}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view class="dual-carb__body">{{s.body}}</view>
+  <image class="dual-carb__chart sx-draw" src="{{s.graphic}}" />
+  <view class="dual-carb__legend">
+    <view class="dual-carb__legend-row">
+      <view class="dual-carb__line"></view>
+      <text>{{s.legend[0]}}</text>
+    </view>
+    <view class="dual-carb__legend-row dual-carb__legend-row--dim">
+      <view class="dual-carb__line dual-carb__line--dashed"></view>
+      <text>{{s.legend[1]}}</text>
+    </view>
+  </view>
+  <view class="dual-carb__footnote">{{short ? shortFootnote : s.footnote}}</view>
+</view>

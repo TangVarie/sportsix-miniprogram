@@ -1,0 +1,76 @@
+/* 数值取自 design/html/06-event-detail.html，px × 750 ÷ 390 */
+.ed-page { display: flex; flex-direction: column; box-sizing: border-box; min-height: 100vh; }
+
+/* 头部：设计高 356px（照片 290px），上方让出状态栏 */
+.ed-header { position: relative; flex-shrink: 0; height: calc(685rpx + var(--sx-safe-top)); overflow: hidden; background: #010439; color: #FFFFFF; }
+.ed-header__photo { position: absolute; left: 0; top: 0; width: 750rpx; height: calc(558rpx + var(--sx-safe-top)); }
+.ed-header__img { opacity: .85; }
+.ed-header__ridge { position: absolute; left: 0; top: calc(254rpx + var(--sx-safe-top)); width: 750rpx; height: 250rpx; }
+.ed-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; gap: 8rpx;
+  height: 85rpx; padding: 0 15rpx; font-size: 27rpx; font-weight: 500;
+}
+.ed-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.ed-header__title { position: absolute; left: 38rpx; top: calc(123rpx + var(--sx-safe-top)); display: flex; flex-direction: column; align-items: flex-start; gap: 15rpx; }
+.ed-header__tags { display: flex; align-items: center; gap: 15rpx; }
+.ed-tag { display: inline-block; padding: 8rpx 31rpx; background: #C2E541; color: #010439; font-size: 23rpx; line-height: 35rpx; font-weight: 700; }
+.ed-type { display: flex; align-items: center; box-sizing: border-box; height: 50rpx; padding: 0 19rpx; border: 1px solid #FFFFFF; font-size: 23rpx; }
+.ed-header__h1 { font-size: 54rpx; line-height: 73rpx; font-weight: 900; }
+.ed-facts {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 27rpx 38rpx 35rpx; background: #010439;
+}
+.ed-fact { display: flex; flex-direction: column; gap: 4rpx; }
+.ed-fact--split { padding-left: 27rpx; border-left: 1px solid #2A3373; }
+.ed-fact__k { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.ed-fact__v { font-size: 31rpx; line-height: 46rpx; font-weight: 900; }
+
+.ed-body { flex-shrink: 0; display: flex; flex-direction: column; padding: 15rpx 38rpx 0; }
+.ed-row { display: flex; align-items: center; height: 100rpx; font-size: 27rpx; line-height: 38rpx; }
+.ed-row--line { border-bottom: 1px solid #E6E6E7; }
+.ed-row__k { width: 138rpx; color: #5E6170; }
+.ed-row__v { font-weight: 700; }
+
+.ed-member {
+  display: flex; align-items: center; gap: 23rpx;
+  margin-top: 23rpx; padding: 31rpx 35rpx; background: #C2E541; color: #010439;
+  clip-path: polygon(19rpx 0, 100% 0, calc(100% - 19rpx) 100%, 0 100%);
+}
+.ed-member__icon { flex-shrink: 0; display: block; width: 50rpx; height: 50rpx; margin-left: 12rpx; }
+.ed-member__text { display: flex; flex-direction: column; }
+.ed-member__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; }
+.ed-member__body { font-size: 23rpx; line-height: 35rpx; font-weight: 500; }
+
+.ed-about { display: flex; flex-direction: column; gap: 12rpx; margin-top: 54rpx; }
+.ed-about__eyebrow { color: #061A70; }
+.ed-about__title { font-size: 38rpx; line-height: 54rpx; font-weight: 900; color: #010439; }
+.ed-about__body { min-height: 169rpx; margin-top: 8rpx; font-size: 27rpx; line-height: 42rpx; }
+
+.ed-group { display: flex; align-items: center; gap: 27rpx; height: 154rpx; margin-top: 31rpx; padding: 0 31rpx; border-radius: 27rpx; background: #F5F5F5; }
+.ed-group__icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 85rpx; height: 85rpx; border-radius: 42rpx; background: #010439; }
+.ed-group__icon-img { display: block; width: 42rpx; height: 42rpx; }
+.ed-group__text { flex: 1; display: flex; flex-direction: column; }
+.ed-group__title { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #010439; }
+.ed-group__body { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ed-group__btn {
+  flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box;
+  height: 85rpx; padding: 0 35rpx; border-radius: 42rpx; border: 3rpx solid #010439;
+  color: #010439; font-size: 25rpx; font-weight: 700;
+}
+
+/* 底部操作条：内容短时贴在页面底部，内容长时吸在屏幕底部 */
+.ed-bar {
+  position: sticky; bottom: 0; flex-shrink: 0; margin-top: auto;
+  display: flex; flex-direction: column; gap: 19rpx;
+  padding: 23rpx 38rpx calc(46rpx + env(safe-area-inset-bottom));
+  border-top: 1px solid #E6E6E7; background: #FFFFFF;
+}
+.ed-bar__hint { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ed-bar__btns { display: flex; gap: 23rpx; }
+.ed-btn { display: flex; align-items: center; justify-content: center; gap: 12rpx; box-sizing: border-box; height: 100rpx; border-radius: 50rpx; font-size: 31rpx; color: #010439; }
+.ed-btn--ghost { flex: 1; border: 3rpx solid #010439; background: #FFFFFF; font-weight: 700; }
+.ed-btn--done { border-color: #F5F5F5; background: #F5F5F5; color: #5E6170; }
+.ed-btn--primary { flex: 1.4; background: #C2E541; font-weight: 900; }
+.ed-btn__icon { display: block; width: 38rpx; height: 38rpx; }

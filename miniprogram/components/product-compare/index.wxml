@@ -1,0 +1,24 @@
+<view class="product-compare {{shown ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow product-compare__eyebrow">{{eyebrow}}</text>
+  <view class="product-compare__title">{{title}}</view>
+  <view class="product-compare__head">
+    <view wx:for="{{columns}}" wx:key="id" class="product-compare__col {{item.on ? 'product-compare__col--on' : ''}}" data-id="{{item.id}}" bindtap="onOpen">
+      <image class="product-compare__img" src="{{item.image}}" mode="heightFix" />
+      <text class="product-compare__name">{{item.name}}</text>
+      <view class="product-compare__mark"></view>
+    </view>
+  </view>
+  <view wx:for="{{rows}}" wx:key="label" class="product-compare__row {{index < rows.length - 1 ? 'product-compare__row--line' : ''}}">
+    <text class="product-compare__label">{{item.label}}</text>
+    <view class="product-compare__cells">
+      <text wx:for="{{item.cells}}" wx:for-item="cell" wx:key="id" class="product-compare__cell {{cell.on ? 'product-compare__cell--on' : ''}}">{{cell.text}}</text>
+    </view>
+  </view>
+  <view class="product-compare__link sx-pressable" hover-class="sx-press" data-id="{{crossLink.to}}" bindtap="onOpen">
+    <view class="product-compare__link-text">
+      <text class="product-compare__link-title">{{crossLink.title}}</text>
+      <text class="product-compare__link-sub">{{crossLink.sub}}</text>
+    </view>
+    <image class="product-compare__arrow" src="/assets/icons/chevron-blue.svg" />
+  </view>
+</view>

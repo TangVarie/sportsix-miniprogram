@@ -1,0 +1,94 @@
+<!-- 能量胶：成分与原理六块（products.energyGel.sections 里 howTo 之前的各块），由 index.wxml include -->
+
+<!-- 5 维能量方案。五个名称画在雷达图文件里 -->
+<view id="rv-sources" class="pd-sec pd-sources {{seen.sources ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.sources.eyebrow}}</text>
+  <view class="pd-h2">{{s.sources.title}}</view>
+  <view class="pd-sub pd-sources__sub">{{s.sources.sub}}</view>
+  <view class="pd-radar pd-radar--5 sx-rise">
+    <image class="pd-radar__chart" src="{{s.sources.graphic}}" />
+    <image class="pd-radar__pack pd-radar__pack--5" src="{{packImage}}" mode="heightFix" />
+  </view>
+</view>
+
+<!-- 快慢双碳：和首页共用的组件 -->
+<dual-carb id="rv-dualCarb" class="js-dark" shown="{{seen.dualCarb}}" />
+
+<!-- 高配比能量胶：柱形图 -->
+<view id="rv-density" class="pd-sec pd-density {{seen.density ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.density.eyebrow}}</text>
+  <view class="pd-h2">{{s.density.title}}</view>
+  <view class="pd-sub pd-density__sub">{{s.density.sub}}</view>
+  <view class="pd-density__hl">
+    <text class="pd-density__hl-label">{{s.density.highlight.label}}</text>
+    <text class="pd-density__hl-value sx-num">{{s.density.highlight.value}}</text>
+  </view>
+  <view class="pd-cols">
+    <view wx:for="{{s.density.bars}}" wx:key="label" class="pd-col {{item.highlight ? 'pd-col--on' : ''}}">
+      <text class="pd-col__value {{item.highlight ? 'sx-num' : 'sx-num-700'}}">{{item.value}}</text>
+      <view class="pd-col__bar sx-grow-y" style="height: {{item.height}}rpx"></view>
+      <view class="pd-col__label">
+        <view wx:for="{{item.labelLines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="pd-foot pd-density__foot">{{s.density.footnote}}</view>
+</view>
+
+<!-- 45mg 轻咖啡因：横条 -->
+<view id="rv-caffeine" class="pd-sec pd-caffeine {{seen.caffeine ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.caffeine.eyebrow}}</text>
+  <view class="pd-h2">
+    <view wx:for="{{s.caffeine.titleLines}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view class="pd-sub pd-caffeine__body">{{s.caffeine.body}}</view>
+  <view class="pd-hbars">
+    <view wx:for="{{s.caffeine.bars}}" wx:key="value" class="pd-hbar {{item.highlight ? 'pd-hbar--on' : ''}}">
+      <view class="pd-hbar__top">
+        <view class="pd-hbar__label">{{item.label}}<text class="pd-hbar__sub">{{item.sub}}</text></view>
+        <text class="pd-hbar__value sx-num">{{item.value}}{{item.unit}}</text>
+      </view>
+      <view class="pd-hbar__track">
+        <view class="pd-hbar__fill sx-grow-x" style="width: {{item.pct}}%"></view>
+      </view>
+    </view>
+  </view>
+  <view class="pd-caffeine__note">{{s.caffeine.note}}</view>
+  <view class="pd-foot pd-caffeine__foot">{{s.caffeine.footnote}}</view>
+</view>
+
+<!-- 全链路电解质补给：对比表 -->
+<view id="rv-electrolytes" class="pd-sec pd-elec {{seen.electrolytes ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.electrolytes.eyebrow}}</text>
+  <view class="pd-h2">{{s.electrolytes.title}}</view>
+  <view class="pd-sub pd-elec__sub">{{s.electrolytes.sub}}</view>
+  <view class="pd-elec__head">
+    <text class="pd-elec__cell pd-elec__th">{{s.electrolytes.compare.columns[0]}}</text>
+    <text class="pd-elec__cell pd-elec__th pd-elec__th--ours">{{s.electrolytes.compare.columns[1]}}</text>
+  </view>
+  <view wx:for="{{s.electrolytes.compare.rows}}" wx:key="item" class="pd-elec__row sx-rise {{index < s.electrolytes.compare.rows.length - 1 ? 'pd-elec__row--line' : ''}}" style="animation-delay: {{index * 0.1}}s">
+    <text class="pd-elec__item">{{item.item}}</text>
+    <view class="pd-elec__pair">
+      <text class="pd-elec__cell pd-elec__other">{{item.other}}</text>
+      <view class="pd-elec__cell pd-elec__ours">
+        <view class="sx-check pd-elec__check"></view>
+        <text class="pd-elec__ours-text">{{item.ours}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 全球甄选进口原料：四个 0 -->
+<view id="rv-clean" class="pd-sec pd-clean sx-grid-bg js-dark {{seen.clean ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.clean.eyebrow}}</text>
+  <view class="pd-h2 pd-h2--light">
+    <view wx:for="{{s.clean.titleLines}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view class="pd-clean__grid">
+    <view wx:for="{{s.clean.zero}}" wx:key="*this" class="pd-zero sx-rise" style="animation-delay: {{index * 0.08}}s">
+      <text class="pd-zero__num sx-num">0</text>
+      <text class="pd-zero__label">{{item}}</text>
+    </view>
+  </view>
+  <view class="pd-clean__body">{{s.clean.body}}</view>
+</view>

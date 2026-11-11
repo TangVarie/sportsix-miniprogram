@@ -1,0 +1,149 @@
+/* 数值取自 design/html/01-home.html，px × 750 ÷ 390。盒模型是默认的 content-box。 */
+
+
+.hm-eyebrow { color: #061A70; }
+.hm-eyebrow--lime { color: #C2E541; }
+
+/* 1 首屏：设计高 548px，上方让出状态栏，背景图形贴底 */
+.hm-hero { position: relative; height: calc(1054rpx + var(--sx-safe-top)); overflow: hidden; }
+.hm-hero__bg { position: absolute; left: 0; bottom: 0; width: 750rpx; height: 1054rpx; }
+.hm-hero__pack { position: absolute; }
+/* 后面一支（桃子味）：浮动 6 秒，晚 0.8 秒起 */
+.hm-hero__pack--0 { left: 515rpx; top: calc(377rpx + var(--sx-safe-top)); animation-duration: 6s; animation-delay: .8s; }
+.hm-hero__pack--1 { left: 377rpx; top: calc(308rpx + var(--sx-safe-top)); }
+.hm-hero__pack-img { display: block; transform-origin: 50% 60%; }
+.hm-hero__pack-img--0 { height: 577rpx; transform: rotate(26deg); }
+.hm-hero__pack-img--1 { height: 654rpx; transform: rotate(13deg); }
+.hm-hero__text { position: absolute; left: 38rpx; top: calc(46rpx + var(--sx-safe-top)); display: flex; flex-direction: column; align-items: flex-start; }
+.hm-hero__logo { display: block; width: 265rpx; height: 46rpx; }
+.hm-hero__slogan { display: block; margin-top: 85rpx; width: 485rpx; height: 50rpx; }
+.hm-hero__headline { margin-top: 35rpx; font-size: 42rpx; line-height: 62rpx; font-weight: 900; color: #FFFFFF; }
+.hm-hero__brand { margin-top: 19rpx; width: 288rpx; font-size: 23rpx; line-height: 37rpx; color: #C9CEE8; }
+.hm-hero__tag-wrap { margin-top: 27rpx; }
+.hm-hero__tag { display: inline-block; padding: 8rpx 31rpx; background: #C2E541; color: #010439; font-size: 23rpx; line-height: 35rpx; font-weight: 700; }
+
+/* 2 三个数字 */
+.hm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 8rpx 38rpx 58rpx; }
+.hm-stats__item { display: flex; flex-direction: column; gap: 8rpx; }
+.hm-stats__item--rule { padding-left: 31rpx; border-left: 1px solid #2A3373; }
+.hm-stats__value { font-size: 85rpx; line-height: 88rpx; color: #C2E541; }
+.hm-stats__label { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+
+/* 3 三个卖点卡片 */
+.hm-kw { display: flex; flex-direction: column; gap: 12rpx; padding: 69rpx 38rpx 54rpx; background: #F5F5F5; }
+.hm-kw__title { margin-bottom: 27rpx; font-size: 46rpx; line-height: 65rpx; font-weight: 900; color: #010439; }
+.hm-kw__list { display: flex; flex-direction: column; gap: 23rpx; }
+.hm-kw__card { position: relative; display: flex; flex-direction: column; gap: 12rpx; padding: 38rpx 35rpx 35rpx; border-radius: 35rpx; overflow: hidden; background: #FFFFFF; }
+/* 右上角的空心序号：1.5px 描边 */
+.hm-kw__n { position: absolute; right: 27rpx; top: 4rpx; font-size: 146rpx; line-height: 154rpx; color: transparent; -webkit-text-stroke: 3rpx #D9DCE8; }
+.hm-kw__word { font-size: 65rpx; line-height: 85rpx; font-weight: 900; color: #010439; }
+.hm-kw__line { font-size: 31rpx; line-height: 46rpx; font-weight: 700; color: #061A70; }
+.hm-kw__graphic { margin: 15rpx 0 8rpx; }
+.hm-kw__chart { display: block; width: 604rpx; }
+.hm-kw__chart--01 { height: 185rpx; }
+.hm-kw__chart--02 { height: 146rpx; }
+.hm-kw__hbcd { display: flex; align-items: center; gap: 27rpx; }
+.hm-kw__molecule { flex-shrink: 0; display: block; width: 162rpx; height: 162rpx; }
+.hm-kw__trio { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; }
+.hm-kw__trio-item { display: flex; align-items: center; justify-content: center; height: 100rpx; border-radius: 19rpx; background: #F5F5F5; font-size: 27rpx; font-weight: 900; color: #061A70; }
+.hm-kw__body { font-size: 25rpx; line-height: 40rpx; color: #14141E; }
+.hm-kw__chips { display: flex; gap: 12rpx; margin-top: 15rpx; }
+.hm-kw__chip { display: flex; align-items: center; height: 46rpx; padding: 0 19rpx; border-radius: 23rpx; background: #010439; color: #FFFFFF; font-size: 21rpx; font-weight: 700; }
+
+/* 4 分段补给计算入口 */
+.hm-fuel { padding: 54rpx 38rpx 0; }
+.hm-fuel__card { position: relative; height: 338rpx; border-radius: 31rpx; overflow: hidden; background: #010439; color: #FFFFFF; }
+.hm-fuel__photo { position: absolute; left: 0; top: 0; width: 100%; height: 338rpx; }
+.hm-fuel__photo-img { opacity: .7; }
+.hm-fuel__shade { position: absolute; left: 0; top: 0; width: 100%; height: 338rpx; background: linear-gradient(90deg, #010439 30%, rgba(1, 4, 57, 0) 86%); }
+.hm-fuel__text { position: absolute; left: 35rpx; top: 38rpx; width: 385rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.hm-fuel__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
+.hm-fuel__body { font-size: 25rpx; line-height: 38rpx; color: #E4E7F5; }
+.hm-fuel__btn { position: absolute; left: 35rpx; bottom: 35rpx; display: flex; align-items: center; gap: 8rpx; height: 77rpx; padding: 0 35rpx; border-radius: 38rpx; background: #C2E541; color: #010439; font-size: 27rpx; font-weight: 900; }
+.hm-fuel__btn-icon { display: block; width: 31rpx; height: 31rpx; }
+
+/* 5 全周期运动产品线：一条竖线串起三个阶段 */
+.hm-lineup { display: flex; flex-direction: column; gap: 12rpx; padding: 69rpx 38rpx 23rpx; }
+.hm-lineup__title { margin-bottom: 35rpx; font-size: 42rpx; line-height: 58rpx; font-weight: 900; color: #010439; }
+.hm-lineup__list { position: relative; display: flex; flex-direction: column; gap: 23rpx; padding-bottom: 23rpx; }
+.hm-lineup__rail { position: absolute; left: 19rpx; top: 27rpx; bottom: 0; width: 8rpx; background: #C2E541; }
+.hm-lineup__stage { display: flex; flex-direction: column; gap: 23rpx; }
+/* 阶段之间比卡片之间多空 18px（设计稿里的 6px 占位加一道 12px 间距） */
+.hm-lineup__stage--next { margin-top: 35rpx; }
+.hm-lineup__head { display: flex; align-items: center; gap: 23rpx; height: 54rpx; }
+.hm-lineup__dot { position: relative; flex-shrink: 0; box-sizing: border-box; width: 46rpx; height: 46rpx; border-radius: 23rpx; background: #010439; border: 6rpx solid #C2E541; }
+.hm-lineup__stage-name { font-size: 31rpx; line-height: 46rpx; font-weight: 700; color: #010439; }
+.hm-lineup__stage-en { color: #5E6170; }
+.hm-lineup__item { margin-left: 69rpx; }
+.hm-lineup__card { display: flex; align-items: center; gap: 8rpx; height: 208rpx; padding-right: 23rpx; border-radius: 27rpx; background: #F5F5F5; }
+.hm-lineup__pack { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 162rpx; height: 208rpx; }
+.hm-lineup__img { display: block; height: 177rpx; transform: rotate(-8deg); }
+.hm-lineup__img--booster-gel, .hm-lineup__img--revital-drink { height: 162rpx; }
+.hm-lineup__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.hm-lineup__name { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #061A70; }
+.hm-lineup__role { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.hm-lineup__fact { margin-top: 8rpx; font-size: 25rpx; line-height: 35rpx; font-weight: 700; color: #010439; }
+.hm-lineup__arrow { flex-shrink: 0; display: block; width: 35rpx; height: 35rpx; }
+
+/* 7 三个规格 */
+.hm-specs { display: flex; flex-direction: column; padding: 38rpx 38rpx 46rpx; }
+.hm-specs__row { display: flex; align-items: center; gap: 31rpx; padding: 35rpx 0; }
+.hm-specs__row--rule { border-bottom: 1px solid #E6E6E7; }
+.hm-specs__num { flex-shrink: 0; display: flex; align-items: baseline; gap: 8rpx; width: 246rpx; }
+.hm-specs__value { font-size: 100rpx; line-height: 104rpx; color: #061A70; }
+.hm-specs__unit { font-size: 31rpx; line-height: normal; color: #061A70; }
+.hm-specs__text { display: flex; flex-direction: column; gap: 4rpx; }
+.hm-specs__title { font-size: 31rpx; line-height: 46rpx; font-weight: 700; color: #010439; }
+.hm-specs__body { font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+
+/* 8 Informed-Sport 认证 */
+.hm-cert { display: flex; flex-direction: column; gap: 23rpx; margin: 0 38rpx; padding: 46rpx 38rpx; border-radius: 31rpx; background: #F5F5F5; }
+.hm-cert__head { display: flex; align-items: center; gap: 23rpx; }
+.hm-cert__badge { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 85rpx; height: 85rpx; border-radius: 42rpx; background: #010439; }
+.hm-cert__badge-icon { display: block; width: 46rpx; height: 46rpx; }
+.hm-cert__title { font-size: 33rpx; line-height: 46rpx; font-weight: 700; color: #010439; }
+.hm-cert__body { font-size: 25rpx; line-height: 40rpx; color: #14141E; }
+.hm-cert__row { display: flex; align-items: flex-start; gap: 19rpx; }
+/* 这里的勾选方块是直角 */
+.hm-cert__check { margin-top: 6rpx; border-radius: 0; }
+.hm-cert__check-text { font-size: 25rpx; line-height: 40rpx; }
+
+/* 9 合作伙伴和赛事 */
+.hm-races { display: flex; flex-direction: column; gap: 12rpx; padding: 77rpx 38rpx 62rpx; }
+.hm-races__title { margin-bottom: 19rpx; font-size: 42rpx; line-height: 58rpx; font-weight: 900; color: #010439; }
+.hm-races__partner { display: flex; align-items: center; justify-content: space-between; height: 108rpx; padding: 0 31rpx; background: #010439; color: #FFFFFF; clip-path: polygon(19rpx 0, 100% 0, calc(100% - 19rpx) 100%, 0 100%); }
+.hm-races__partner-label { padding-left: 15rpx; font-size: 23rpx; line-height: 35rpx; font-weight: 700; color: #C2E541; }
+.hm-races__partner-name { padding-right: 15rpx; font-size: 27rpx; line-height: 38rpx; font-weight: 700; }
+/* 横滑区域左右出血到屏幕边缘 */
+.hm-races__scroll { width: 750rpx; margin: 27rpx -38rpx 0; white-space: nowrap; }
+.hm-races__scroll ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.hm-races__track { display: inline-flex; vertical-align: top; gap: 23rpx; padding: 0 38rpx; white-space: normal; }
+.hm-races__card { flex-shrink: 0; display: flex; flex-direction: column; width: 469rpx; border-radius: 27rpx; overflow: hidden; background: #010439; color: #FFFFFF; }
+.hm-races__img { display: block; width: 469rpx; height: 315rpx; }
+.hm-races__info { display: flex; align-items: center; gap: 23rpx; padding: 23rpx 27rpx 27rpx; }
+.hm-races__year { font-size: 50rpx; line-height: 52rpx; color: #C2E541; }
+.hm-races__names { display: flex; flex-direction: column; }
+.hm-races__name { font-size: 29rpx; line-height: 42rpx; font-weight: 700; }
+.hm-races__en { font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
+.hm-races__hint { margin-top: 15rpx; font-size: 21rpx; line-height: 31rpx; color: #5E6170; }
+
+/* 10 厂房照片、品牌介绍、六大运动核心价值 */
+.hm-factory { position: relative; height: 385rpx; overflow: hidden; background: #010439; }
+.hm-factory__img { display: block; width: 750rpx; height: 385rpx; }
+.hm-factory__shade { position: absolute; left: 0; right: 0; bottom: 0; height: 173rpx; background: linear-gradient(rgba(1, 4, 57, 0), #010439); }
+.hm-brand { display: flex; flex-direction: column; gap: 12rpx; padding: 23rpx 38rpx 85rpx; color: #FFFFFF; }
+.hm-brand__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
+.hm-brand__body { margin: 8rpx 0 31rpx; font-size: 27rpx; line-height: 42rpx; color: #C9CEE8; }
+.hm-brand__values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 19rpx; }
+.hm-brand__value { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 15rpx; height: 177rpx; padding: 27rpx 19rpx; border: 1px solid #2A3373; border-radius: 23rpx; text-align: center; font-size: 23rpx; line-height: 33rpx; }
+/* 和设计稿一致：文字占两行时格子里放不下 26px 的图标，图标让出高度、等比缩小（配合 mode="aspectFit"） */
+.hm-brand__icon { display: block; width: 50rpx; height: 50rpx; min-height: 0; }
+.hm-brand__value-text { flex-shrink: 0; }
+
+/* 11 品牌影片 */
+.hm-film { display: flex; flex-direction: column; gap: 12rpx; padding: 8rpx 38rpx 85rpx; color: #FFFFFF; }
+.hm-film__title { margin-bottom: 23rpx; font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
+/* 圆角写在外框上：video 是原生组件，自身的圆角不一定生效 */
+.hm-film__frame { width: 673rpx; height: 379rpx; border-radius: 27rpx; overflow: hidden; background: #000000; }
+.hm-film__video { display: block; width: 673rpx; height: 379rpx; border-radius: 27rpx; }
+.hm-film__caption { margin-top: 15rpx; font-size: 25rpx; line-height: 40rpx; color: #C9CEE8; }

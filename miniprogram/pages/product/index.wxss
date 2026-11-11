@@ -1,0 +1,300 @@
+/* 数值取自 design/html/03-product-energy-gel.html 和 04-product-energy-gel-pro.html，px × 750 ÷ 390 */
+
+/* 设计稿整页开了 text-wrap: pretty（段落末行不留单字）；不支持的内核会忽略这一条，按普通规则换行 */
+.pd-page { background: #FFFFFF; text-wrap: pretty; }
+
+/* ---------- 首屏：设计高 500px，上方让出状态栏 ---------- */
+.pd-hero { position: relative; height: calc(962rpx + var(--sx-safe-top)); overflow: hidden; color: #FFFFFF; }
+
+/*
+ * 能量胶首屏的两条细线和黄绿弧线。设计稿里是内联 svg（二次曲线），assets/graphics 里没有对应文件，
+ * 这里把曲线取点成多边形，用 clip-path 画。画布比首屏左右各宽 30px（58rpx），和 svg 里曲线的起止点一致。
+ */
+.pd-hero__gfx { position: absolute; left: -58rpx; top: var(--sx-safe-top); width: 886rpx; height: 980rpx; }
+.pd-hero__line, .pd-hero__arc, .pd-hero__glow { position: absolute; left: 0; top: 0; width: 886rpx; height: 980rpx; }
+.pd-hero__line { background: rgba(255, 255, 255, 0.16); }
+.pd-hero__line--1 { clip-path: polygon(-0.5rpx 577.7rpx, 34.8rpx 599.1rpx, 70.3rpx 618.2rpx, 106rpx 635.2rpx, 141.8rpx 649.9rpx, 177.7rpx 662.5rpx, 213.7rpx 672.8rpx, 249.9rpx 680.9rpx, 286.2rpx 686.9rpx, 322.6rpx 690.6rpx, 359.2rpx 692.1rpx, 395.9rpx 691.4rpx, 432.8rpx 688.5rpx, 469.8rpx 683.3rpx, 506.9rpx 676rpx, 544.1rpx 666.5rpx, 581.5rpx 654.8rpx, 619rpx 640.8rpx, 656.6rpx 624.7rpx, 694.4rpx 606.3rpx, 732.3rpx 585.8rpx, 770.3rpx 563rpx, 808.5rpx 538.1rpx, 846.8rpx 510.9rpx, 885.2rpx 481.5rpx, 884rpx 480rpx, 845.7rpx 509.3rpx, 807.4rpx 536.5rpx, 769.3rpx 561.4rpx, 731.4rpx 584.1rpx, 693.5rpx 604.6rpx, 655.9rpx 622.9rpx, 618.3rpx 639rpx, 580.9rpx 652.9rpx, 543.6rpx 664.6rpx, 506.5rpx 674.1rpx, 469.5rpx 681.4rpx, 432.6rpx 686.5rpx, 395.9rpx 689.4rpx, 359.3rpx 690.1rpx, 322.8rpx 688.6rpx, 286.5rpx 684.9rpx, 250.2rpx 679rpx, 214.2rpx 670.9rpx, 178.2rpx 660.6rpx, 142.4rpx 648.1rpx, 106.8rpx 633.4rpx, 71.2rpx 616.5rpx, 35.8rpx 597.4rpx, 0.5rpx 576.1rpx); }
+.pd-hero__line--2 { clip-path: polygon(-0.5rpx 858.5rpx, 36.4rpx 880.4rpx, 73.3rpx 900.1rpx, 110.2rpx 917.3rpx, 147.1rpx 932.3rpx, 184rpx 944.9rpx, 220.9rpx 955.3rpx, 257.8rpx 963.2rpx, 294.8rpx 968.9rpx, 331.7rpx 972.2rpx, 368.6rpx 973.2rpx, 405.5rpx 971.9rpx, 442.4rpx 968.3rpx, 479.3rpx 962.3rpx, 516.3rpx 954rpx, 553.2rpx 943.3rpx, 590.1rpx 930.4rpx, 627rpx 915.1rpx, 663.9rpx 897.5rpx, 700.8rpx 877.6rpx, 737.7rpx 855.3rpx, 774.6rpx 830.7rpx, 811.5rpx 803.8rpx, 848.4rpx 774.6rpx, 885.3rpx 743rpx, 884rpx 741.6rpx, 847.1rpx 773.1rpx, 810.3rpx 802.3rpx, 773.5rpx 829.1rpx, 736.7rpx 853.7rpx, 699.8rpx 875.9rpx, 663rpx 895.8rpx, 626.2rpx 913.3rpx, 589.4rpx 928.6rpx, 552.6rpx 941.5rpx, 515.8rpx 952.1rpx, 479rpx 960.4rpx, 442.2rpx 966.4rpx, 405.4rpx 970rpx, 368.6rpx 971.3rpx, 331.8rpx 970.3rpx, 295rpx 967rpx, 258.2rpx 961.4rpx, 221.4rpx 953.4rpx, 184.6rpx 943.1rpx, 147.8rpx 930.5rpx, 111rpx 915.6rpx, 74.1rpx 898.3rpx, 37.3rpx 878.8rpx, 0.5rpx 856.9rpx); }
+.pd-hero__arc { background: #C2E541; clip-path: polygon(0rpx 654rpx, 43rpx 679rpx, 87rpx 701rpx, 130rpx 719rpx, 174rpx 735rpx, 218rpx 747rpx, 261rpx 757rpx, 305rpx 763rpx, 349rpx 766rpx, 393rpx 766rpx, 438rpx 763rpx, 482rpx 756rpx, 526rpx 747rpx, 571rpx 734rpx, 615rpx 718rpx, 660rpx 699rpx, 705rpx 677rpx, 749rpx 652rpx, 794rpx 624rpx, 839rpx 592rpx, 885rpx 558rpx, 885rpx 677rpx, 840rpx 714rpx, 796rpx 749rpx, 752rpx 779rpx, 708rpx 806rpx, 663rpx 830rpx, 619rpx 851rpx, 575rpx 868rpx, 531rpx 881rpx, 487rpx 891rpx, 442rpx 898rpx, 398rpx 901rpx, 354rpx 901rpx, 310rpx 898rpx, 265rpx 891rpx, 221rpx 880rpx, 177rpx 866rpx, 133rpx 849rpx, 88rpx 829rpx, 44rpx 804rpx, 0rpx 777rpx); }
+/* 光晕：同一条弧线模糊 16px、60% 透明度。和其他页面的弧线一样保持静止。 */
+.pd-hero__glow { opacity: .6; filter: blur(31rpx); }
+
+/* 能量胶PRO 首屏：镂空的 PRO 字样和弧线文件 */
+.pd-hero__ghost {
+  position: absolute; left: 288rpx; top: calc(550rpx + var(--sx-safe-top));
+  font-size: 365rpx; line-height: 365rpx; white-space: nowrap;
+  color: transparent; -webkit-text-stroke: 4rpx #2F3A86;
+}
+.pd-hero__arc-img { position: absolute; left: 0; top: var(--sx-safe-top); width: 750rpx; height: 962rpx; }
+
+/* 包装 */
+.pd-hero__packs { position: absolute; left: 0; top: var(--sx-safe-top); width: 0; height: 0; }
+.pd-hero__pack { position: absolute; }
+.pd-hero__pack--back { left: 504rpx; top: 288rpx; }
+.pd-hero__pack--front { left: 346rpx; top: 231rpx; }
+.pd-hero__pack--pro { left: 415rpx; top: calc(185rpx + var(--sx-safe-top)); }
+.pd-hero__img { display: block; transform-origin: 50% 60%; }
+.pd-hero__img--back { height: 577rpx; transform: rotate(24deg); }
+.pd-hero__img--front { height: 635rpx; transform: rotate(10deg); }
+.pd-hero__img--pro { height: 673rpx; transform: rotate(12deg); }
+
+.pd-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; gap: 8rpx;
+  height: 85rpx; padding: 0 15rpx; font-size: 27rpx; font-weight: 500;
+}
+.pd-back__icon { display: block; width: 38rpx; height: 38rpx; }
+
+.pd-hero__text {
+  position: absolute; left: 38rpx; top: calc(131rpx + var(--sx-safe-top)); width: 365rpx;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 19rpx;
+}
+.pd-hero__text--pro { width: 404rpx; }
+.pd-hero__tag { display: inline-block; padding: 8rpx 31rpx; background: #C2E541; color: #010439; font-size: 23rpx; line-height: 35rpx; font-weight: 700; }
+.pd-hero__h1 { margin-top: 8rpx; font-size: 77rpx; line-height: 92rpx; font-weight: 900; }
+.pd-hero__en { color: #C2E541; }
+.pd-hero__lead { font-size: 29rpx; line-height: 46rpx; font-weight: 500; }
+
+/* 口味切换（能量胶） */
+.pd-flavors { margin-top: 12rpx; display: flex; flex-direction: column; align-items: flex-start; gap: 15rpx; }
+.pd-flavor {
+  display: flex; align-items: center; box-sizing: border-box;
+  height: 85rpx; padding: 0 31rpx; border-radius: 42rpx; border: 1px solid #FFFFFF;
+  font-size: 25rpx; font-weight: 700; color: #FFFFFF;
+}
+.pd-flavor--on { background: #FFFFFF; color: #010439; }
+
+/* 特点标签（能量胶PRO） */
+.pd-chips { margin-top: 12rpx; display: flex; flex-wrap: wrap; gap: 12rpx; width: 365rpx; }
+.pd-chip {
+  display: flex; align-items: center;
+  height: 54rpx; padding: 0 23rpx; border-radius: 27rpx;
+  background: #FFFFFF; color: #010439; font-size: 23rpx; font-weight: 700;
+}
+.pd-chip--line { box-sizing: border-box; border: 1px solid #FFFFFF; background: transparent; color: #FFFFFF; font-weight: 400; }
+
+/* ---------- 四个数字 ---------- */
+.pd-facts { display: flex; flex-wrap: wrap; justify-content: space-between; row-gap: 19rpx; padding: 38rpx 38rpx 15rpx; }
+.pd-fact {
+  display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;
+  width: 327rpx; height: 162rpx; padding: 23rpx 27rpx; border-radius: 23rpx; background: #F5F5F5;
+}
+.pd-fact__num { display: flex; align-items: baseline; gap: 8rpx; color: #061A70; }
+.pd-fact__value { font-size: 65rpx; line-height: 67rpx; }
+.pd-fact__unit { font-size: 29rpx; line-height: 1.2; }
+.pd-fact__label { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+
+/* ---------- 各分区共用 ---------- */
+.pd-sec { display: flex; flex-direction: column; gap: 12rpx; }
+.pd-eyebrow { color: #061A70; }
+.pd-eyebrow--lime { color: #C2E541; }
+.pd-h2 { font-size: 42rpx; line-height: 58rpx; font-weight: 900; color: #010439; }
+.pd-h2--light { color: #FFFFFF; }
+.pd-sub { font-size: 27rpx; line-height: 42rpx; color: #5E6170; }
+.pd-foot { font-size: 21rpx; line-height: 33rpx; color: #5E6170; }
+.pd-foot--navy { color: #9AA1C8; }
+/* 时间顺序的圆点：深蓝实心、黄绿描边 */
+.pd-dot { flex-shrink: 0; box-sizing: border-box; width: 46rpx; height: 46rpx; border-radius: 23rpx; background: #010439; border: 6rpx solid #C2E541; }
+
+/* 雷达图：能量胶的 5 SOURCES、能量胶PRO 的 6 INGREDIENTS */
+.pd-sources { padding: 69rpx 38rpx 38rpx; }
+.pd-ingredients { padding: 54rpx 38rpx 46rpx; }
+.pd-sources__sub { margin-bottom: 12rpx; }
+.pd-radar { position: relative; width: 673rpx; }
+.pd-radar--5 { height: 558rpx; }
+.pd-radar--6 { height: 577rpx; }
+.pd-radar__chart { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.pd-radar__pack { position: absolute; left: 292rpx; }
+.pd-radar__pack--5 { top: 146rpx; height: 288rpx; }
+.pd-radar__pack--6 { top: 142rpx; height: 292rpx; }
+
+/* ---------- 能量胶：高配比（柱形图） ---------- */
+.pd-density { padding: 77rpx 38rpx 54rpx; }
+.pd-density__sub { margin-bottom: 8rpx; }
+.pd-density__hl { align-self: flex-start; display: flex; align-items: baseline; gap: 15rpx; margin: 12rpx 0 4rpx; }
+.pd-density__hl-label { font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+.pd-density__hl-value { font-size: 85rpx; line-height: 88rpx; color: #061A70; }
+.pd-cols { display: flex; align-items: flex-end; gap: 23rpx; height: 454rpx; border-bottom: 4rpx solid #010439; }
+.pd-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12rpx; }
+.pd-col__value { font-size: 42rpx; line-height: 44rpx; color: #5E6170; }
+.pd-col__bar { width: 108rpx; background: #C8CAD3; }
+.pd-col__label { height: 69rpx; font-size: 23rpx; line-height: 35rpx; text-align: center; color: #5E6170; }
+.pd-col--on .pd-col__value { font-size: 50rpx; line-height: 52rpx; color: #061A70; }
+.pd-col--on .pd-col__bar { background: #C2E541; }
+.pd-col--on .pd-col__label { font-weight: 700; color: #010439; }
+.pd-density__foot { margin-top: 19rpx; }
+
+/* ---------- 能量胶：咖啡因（横条） ---------- */
+.pd-caffeine { padding: 69rpx 38rpx 62rpx; background: #F5F5F5; }
+.pd-caffeine__body { margin-bottom: 27rpx; }
+.pd-hbars { display: flex; flex-direction: column; gap: 31rpx; }
+.pd-hbar { display: flex; flex-direction: column; gap: 12rpx; }
+.pd-hbar__top { display: flex; align-items: baseline; justify-content: space-between; }
+.pd-hbar__label { font-size: 25rpx; line-height: 38rpx; font-weight: 500; color: #010439; }
+.pd-hbar__sub { margin-left: 6rpx; font-weight: 400; color: #5E6170; }
+.pd-hbar__value { font-size: 38rpx; line-height: 42rpx; color: #5E6170; }
+.pd-hbar__track { height: 19rpx; background: #FFFFFF; }
+.pd-hbar__fill { height: 19rpx; background: #C8CAD3; }
+.pd-hbar--on .pd-hbar__label { font-weight: 700; }
+.pd-hbar--on .pd-hbar__value { color: #061A70; }
+.pd-hbar--on .pd-hbar__fill { background: #C2E541; }
+.pd-caffeine__note { margin-top: 27rpx; font-size: 25rpx; line-height: 40rpx; font-weight: 500; color: #010439; }
+.pd-caffeine__foot { margin-top: 8rpx; }
+
+/* ---------- 能量胶：电解质（对比表） ---------- */
+.pd-elec { padding: 77rpx 38rpx 46rpx; }
+.pd-elec__sub { margin-bottom: 15rpx; }
+.pd-elec__head { display: flex; gap: 23rpx; padding-bottom: 15rpx; border-bottom: 4rpx solid #010439; font-size: 25rpx; line-height: 38rpx; font-weight: 700; }
+.pd-elec__cell { flex: 1 1 0; min-width: 0; }
+.pd-elec__th { color: #5E6170; }
+.pd-elec__th--ours { color: #010439; }
+.pd-elec__row { display: flex; flex-direction: column; gap: 15rpx; padding: 27rpx 0; }
+.pd-elec__row--line { border-bottom: 1px solid #E6E6E7; }
+.pd-elec__item { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.pd-elec__pair { display: flex; gap: 23rpx; }
+.pd-elec__other { font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.pd-elec__ours { display: flex; align-items: flex-start; gap: 15rpx; }
+.pd-elec__check { margin-top: 4rpx; }
+.pd-elec__ours-text { font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+
+/* ---------- 能量胶：进口原料（四个 0） ---------- */
+.pd-clean { padding: 69rpx 38rpx; color: #FFFFFF; }
+.pd-clean__grid { display: flex; flex-wrap: wrap; justify-content: space-between; row-gap: 19rpx; margin-top: 23rpx; }
+.pd-zero {
+  display: flex; align-items: center; gap: 19rpx; box-sizing: border-box;
+  width: 327rpx; height: 123rpx; padding: 0 27rpx; border: 1px solid #2A3373; border-radius: 23rpx;
+}
+.pd-zero__num { font-size: 65rpx; line-height: 67rpx; color: #C2E541; }
+.pd-zero__label { font-size: 25rpx; line-height: 38rpx; font-weight: 500; }
+.pd-clean__body { margin-top: 23rpx; font-size: 25rpx; line-height: 40rpx; color: #C9CEE8; }
+
+/* ---------- 食用方法上方的照片 ---------- */
+.pd-banner { position: relative; overflow: hidden; background: #010439; }
+.pd-banner--gel { height: 365rpx; }
+.pd-banner--pro { height: 346rpx; }
+.pd-banner__photo { width: 750rpx; height: 100%; }
+.pd-banner__img--gel { opacity: .7; }
+.pd-banner__img--pro { opacity: .6; }
+.pd-banner__text { position: absolute; left: 38rpx; bottom: 38rpx; display: flex; flex-direction: column; gap: 4rpx; color: #FFFFFF; }
+.pd-banner__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
+.pd-banner__fade { position: absolute; left: 0; right: 0; bottom: 0; height: 173rpx; background: linear-gradient(rgba(1, 4, 57, 0), #010439); }
+
+/* ---------- 能量胶：食用方法 ---------- */
+.pd-howto { padding: 62rpx 38rpx 54rpx; }
+.pd-howto__sub { margin-bottom: 23rpx; }
+.pd-tl { position: relative; display: flex; padding: 35rpx 0 31rpx; border-radius: 27rpx; background: #F5F5F5; }
+/* 设计稿里横线压在圆点上面 */
+.pd-tl__line { position: absolute; z-index: 1; left: 112rpx; right: 112rpx; top: 110rpx; height: 8rpx; background: #C2E541; }
+.pd-tl__step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 19rpx; }
+.pd-tl__label { font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+.pd-tl__dot { width: 42rpx; height: 42rpx; border-radius: 21rpx; }
+.pd-tl__time { display: flex; align-items: baseline; gap: 4rpx; }
+.pd-tl__num { font-size: 54rpx; line-height: 56rpx; color: #061A70; }
+.pd-tl__unit { font-size: 23rpx; line-height: 1.45; color: #5E6170; }
+.pd-howto__tl-note { margin: 12rpx 0 27rpx; }
+.pd-card { border: 1px solid #E6E6E7; border-radius: 27rpx; overflow: hidden; }
+.pd-card--next { margin-top: 23rpx; }
+.pd-card__head { display: flex; align-items: center; justify-content: space-between; height: 92rpx; padding: 0 31rpx; background: #010439; color: #FFFFFF; }
+.pd-card__title { font-size: 31rpx; font-weight: 900; }
+.pd-card__rule { font-size: 23rpx; font-weight: 700; color: #C2E541; }
+.pd-card__body { display: flex; flex-direction: column; gap: 15rpx; padding: 27rpx 31rpx 31rpx; }
+.pd-card__row { display: flex; align-items: flex-start; gap: 19rpx; font-size: 25rpx; line-height: 40rpx; }
+.pd-card__k { flex-shrink: 0; width: 69rpx; font-weight: 700; color: #061A70; }
+.pd-card__check { margin-top: 6rpx; }
+.pd-howto__foot { margin-top: 19rpx; }
+
+/* ---------- 能量胶PRO：HBCD ---------- */
+.pd-hbcd { padding: 69rpx 38rpx 54rpx; }
+.pd-hbcd__body { margin-top: 8rpx; font-size: 27rpx; line-height: 42rpx; color: #14141E; }
+.pd-trio { display: flex; gap: 23rpx; margin: 31rpx 0 42rpx; }
+.pd-trio__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12rpx; padding-top: 23rpx; border-top: 6rpx solid #C2E541; }
+.pd-trio__title { font-size: 33rpx; line-height: 46rpx; font-weight: 900; color: #061A70; }
+.pd-trio__body { font-size: 23rpx; line-height: 37rpx; color: #14141E; }
+.pd-flow { position: relative; display: flex; flex-direction: column; padding: 38rpx 31rpx; border-radius: 27rpx; background: #F5F5F5; }
+.pd-flow__line { position: absolute; left: 62rpx; top: 58rpx; bottom: 77rpx; width: 8rpx; background: #C2E541; }
+.pd-flow__step { position: relative; display: flex; gap: 27rpx; padding-bottom: 35rpx; }
+.pd-flow__step--last { padding-bottom: 0; }
+.pd-flow__n { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 69rpx; height: 69rpx; border-radius: 35rpx; background: #010439; }
+.pd-flow__n-text { font-size: 35rpx; line-height: 35rpx; color: #C2E541; }
+.pd-flow__text { display: flex; flex-direction: column; gap: 4rpx; padding-top: 4rpx; }
+.pd-flow__small { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.pd-flow__title { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #010439; }
+.pd-hbcd__foot { margin-top: 19rpx; }
+
+/* ---------- 能量胶PRO：吸收曲线 ---------- */
+.pd-release { padding: 69rpx 38rpx 62rpx; color: #FFFFFF; }
+.pd-release__cols { display: flex; gap: 23rpx; margin-top: 27rpx; }
+.pd-release__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 15rpx; }
+.pd-release__chart { display: block; width: 325rpx; height: 212rpx; }
+.pd-release__label { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.pd-release__col--on .pd-release__label { font-weight: 700; color: #C2E541; }
+.pd-release__title { font-size: 33rpx; line-height: 46rpx; font-weight: 900; }
+.pd-release__body { font-size: 25rpx; line-height: 38rpx; color: #C9CEE8; }
+.pd-release__foot { margin-top: 27rpx; }
+
+/* ---------- 能量胶PRO：口感 ---------- */
+.pd-taste { padding: 69rpx 38rpx 62rpx; background: #F5F5F5; }
+.pd-taste__h3 { margin-top: 35rpx; font-size: 31rpx; line-height: 46rpx; font-weight: 700; color: #061A70; }
+.pd-taste__p { font-size: 25rpx; line-height: 40rpx; }
+.pd-brix { display: flex; flex-direction: column; gap: 23rpx; margin-top: 23rpx; }
+.pd-brix__row { display: flex; align-items: center; gap: 23rpx; }
+.pd-brix__label { flex-shrink: 0; width: 185rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.pd-brix__track { flex: 1; height: 23rpx; background: #FFFFFF; }
+.pd-brix__fill { height: 23rpx; background: #C8CAD3; }
+.pd-brix__value { flex-shrink: 0; width: 119rpx; text-align: right; font-size: 38rpx; line-height: 1.2; color: #5E6170; }
+.pd-brix__row--on .pd-brix__label { font-weight: 700; color: #010439; }
+.pd-brix__row--on .pd-brix__fill { background: #C2E541; }
+.pd-brix__row--on .pd-brix__value { color: #061A70; }
+
+/* ---------- 能量胶PRO：85 大卡（四格） ---------- */
+.pd-lean { padding: 77rpx 38rpx 38rpx; }
+.pd-lean__grid { display: flex; flex-wrap: wrap; justify-content: space-between; row-gap: 19rpx; margin-top: 23rpx; }
+.pd-quad {
+  display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;
+  width: 327rpx; height: 185rpx; padding: 27rpx; border-radius: 23rpx; background: #F5F5F5;
+}
+.pd-quad__title { font-size: 33rpx; line-height: 46rpx; font-weight: 900; color: #061A70; }
+.pd-quad__body { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+
+/* ---------- 能量胶PRO：食用指南 ---------- */
+.pd-guide { padding: 8rpx 38rpx 69rpx; color: #FFFFFF; }
+.pd-steps { position: relative; display: flex; flex-direction: column; margin-top: 23rpx; }
+.pd-steps__line { position: absolute; left: 19rpx; top: 58rpx; bottom: 58rpx; width: 8rpx; background: #C2E541; }
+.pd-step { position: relative; display: flex; align-items: center; gap: 27rpx; height: 123rpx; }
+.pd-step__dot { position: relative; }
+.pd-step__when { flex-shrink: 0; width: 177rpx; font-size: 29rpx; line-height: 42rpx; font-weight: 900; }
+.pd-step__card { flex: 1; display: flex; align-items: center; justify-content: space-between; height: 92rpx; padding: 0 27rpx; border-radius: 19rpx; background: #061A70; }
+.pd-step__what { font-size: 29rpx; font-weight: 900; }
+.pd-step__qty { font-size: 23rpx; font-weight: 700; color: #C2E541; }
+.pd-guide__note { margin-top: 19rpx; font-size: 25rpx; line-height: 40rpx; color: #C9CEE8; }
+
+/* ---------- 能量胶PRO：Q&A ---------- */
+.pd-qa { padding: 77rpx 38rpx 54rpx; }
+.pd-qa__list { display: flex; flex-direction: column; gap: 19rpx; margin-top: 23rpx; }
+.pd-qa__item { border-radius: 27rpx; background: #F5F5F5; overflow: hidden; }
+.pd-qa__head { display: flex; align-items: center; gap: 27rpx; box-sizing: border-box; min-height: 123rpx; padding: 27rpx 31rpx; }
+.pd-qa__n { flex-shrink: 0; width: 65rpx; font-size: 54rpx; line-height: 58rpx; color: #061A70; }
+.pd-qa__q { flex: 1; font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #010439; }
+/* 图标是向右的箭头：转 90° 朝下，展开时朝上 */
+.pd-qa__arrow { flex-shrink: 0; display: block; width: 35rpx; height: 35rpx; transform: rotate(90deg); transition: transform .25s ease; }
+.pd-qa__arrow--open { transform: rotate(270deg); }
+.pd-qa__a { padding: 0 31rpx 31rpx 123rpx; font-size: 25rpx; line-height: 40rpx; color: #14141E; animation: sxRise .3s ease-out both; }
+
+/* ---------- 营养成分表 ---------- */
+.pd-nutri { padding: 23rpx 38rpx 54rpx; }
+.pd-nutri__head { display: flex; align-items: center; justify-content: space-between; height: 92rpx; padding: 0 31rpx; background: #061A70; color: #FFFFFF; }
+.pd-nutri__title { font-size: 31rpx; font-weight: 900; }
+.pd-nutri__per { font-size: 23rpx; }
+.pd-nutri__body { padding: 0 31rpx; border: 1px solid #E6E6E7; border-top: 0; }
+.pd-nutri__row { display: flex; align-items: center; justify-content: space-between; height: 85rpx; font-size: 27rpx; }
+.pd-nutri__row--line { border-bottom: 1px solid #E6E6E7; }
+.pd-nutri__k { color: #5E6170; }
+.pd-nutri__v { font-weight: 700; }
+.pd-nutri__foot { margin-top: 19rpx; }
+
+/* ---------- 成为会员 ---------- */
+.pd-join { padding: 0 38rpx 54rpx; }
+.pd-join__btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 100rpx; border-radius: 50rpx; background: #C2E541; color: #010439; font-size: 31rpx; font-weight: 900;
+}

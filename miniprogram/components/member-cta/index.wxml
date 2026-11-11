@@ -1,0 +1,10 @@
+<view class="member-cta">
+  <view class="member-cta__panel">
+    <view class="member-cta__title">{{cta.title}}</view>
+    <view class="member-cta__body">{{cta.body}}</view>
+    <view class="member-cta__btn sx-pressable" hover-class="sx-press" bindtap="onJoin">
+      <text>{{cta.button}}</text>
+      <image class="member-cta__arrow" src="/assets/icons/chevron-white.svg" />
+    </view>
+  </view>
+</view>

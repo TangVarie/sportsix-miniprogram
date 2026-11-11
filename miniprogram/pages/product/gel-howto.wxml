@@ -1,0 +1,61 @@
+<!-- 能量胶：食用方法（products.energyGel.sections 的 howTo），由 index.wxml include -->
+
+<view class="pd-banner pd-banner--gel js-dark">
+  <view class="pd-banner__photo sx-photo">
+    <image class="sx-photo__img pd-banner__img--gel" src="{{s.howTo.banner.image}}" mode="aspectFill" />
+  </view>
+  <view class="pd-banner__text">
+    <text class="sx-eyebrow pd-eyebrow--lime">{{s.howTo.banner.eyebrow}}</text>
+    <text class="pd-banner__title">{{s.howTo.banner.title}}</text>
+  </view>
+</view>
+
+<view id="rv-howTo" class="pd-sec pd-howto {{seen.howTo ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.howTo.eyebrow}}</text>
+  <view class="pd-h2">{{s.howTo.title}}</view>
+  <view class="pd-sub pd-howto__sub">{{s.howTo.sub}}</view>
+
+  <!-- 30 / 60 / 90 分钟 -->
+  <view class="pd-tl">
+    <view class="pd-tl__line sx-grow-x"></view>
+    <view wx:for="{{s.howTo.timeline}}" wx:key="minutes" class="pd-tl__step sx-rise" style="animation-delay: {{index * 0.12}}s">
+      <text class="pd-tl__label">{{item.label}}</text>
+      <view class="pd-dot pd-tl__dot"></view>
+      <view class="pd-tl__time">
+        <text class="pd-tl__num sx-num">{{item.minutes}}</text>
+        <text class="pd-tl__unit">分钟</text>
+      </view>
+    </view>
+  </view>
+  <view class="pd-foot pd-howto__tl-note">{{s.howTo.timelineNote}}</view>
+
+  <!-- 比赛时怎么吃 -->
+  <view class="pd-card sx-rise">
+    <view class="pd-card__head">
+      <text class="pd-card__title">{{s.howTo.race.title}}</text>
+      <text class="pd-card__rule">{{s.howTo.race.rule}}</text>
+    </view>
+    <view class="pd-card__body">
+      <view wx:for="{{s.howTo.race.rows}}" wx:key="k" class="pd-card__row">
+        <text class="pd-card__k">{{item.k}}</text>
+        <text>{{item.v}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 训练时怎么吃 -->
+  <view class="pd-card pd-card--next sx-rise" style="animation-delay: .1s">
+    <view class="pd-card__head">
+      <text class="pd-card__title">{{s.howTo.training.title}}</text>
+      <text class="pd-card__rule">{{s.howTo.training.rule}}</text>
+    </view>
+    <view class="pd-card__body">
+      <view wx:for="{{s.howTo.training.rows}}" wx:key="*this" class="pd-card__row">
+        <view class="sx-check pd-card__check"></view>
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="pd-foot pd-howto__foot">{{s.howTo.footnote}}</view>
+</view>

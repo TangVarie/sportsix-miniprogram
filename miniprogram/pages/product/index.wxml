@@ -1,0 +1,106 @@
+<!--
+  产品详情：一个页面按 id 渲染两款，内容全部来自 content/products.js。
+  两款共用骨架：首屏 → 四个数字 → 直白卖点 → 各自的成分与原理 → 场景推荐 → 食用方法 → 营养成分表 → 速选对比 → 成为会员。
+  各款特有的分区放在同目录的 gel-*.wxml / pro-*.wxml 里，用 include 引入。
+-->
+<view class="page pd-page" style="--sx-safe-top: {{safeTop}}px">
+
+  <!-- 首屏 -->
+  <view class="pd-hero sx-grid-bg js-dark sx-in">
+    <block wx:if="{{isPro}}">
+      <text class="pd-hero__ghost sx-num">{{nameEn}}</text>
+      <image class="pd-hero__arc-img" src="{{heroArc}}" />
+      <view class="pd-hero__pack pd-hero__pack--pro sx-float">
+        <image class="pd-hero__img pd-hero__img--pro" src="{{p.image}}" mode="heightFix" />
+      </view>
+    </block>
+    <block wx:else>
+      <!-- 细线和弧线：assets/graphics 里没有这一款的文件，用 view 画（clip-path 多边形） -->
+      <view class="pd-hero__gfx">
+        <view class="pd-hero__line pd-hero__line--1"></view>
+        <view class="pd-hero__line pd-hero__line--2"></view>
+        <view class="pd-hero__glow"><view class="pd-hero__arc"></view></view>
+        <view class="pd-hero__arc"></view>
+      </view>
+      <!-- 切换口味时 key 变化，节点重建，弹出动效重新播放 -->
+      <view wx:for="{{packs}}" wx:key="key" class="pd-hero__packs sx-pop">
+        <view class="pd-hero__pack pd-hero__pack--back sx-float" style="animation-duration: 6s; animation-delay: .8s">
+          <image class="pd-hero__img pd-hero__img--back" src="{{item.back}}" mode="heightFix" />
+        </view>
+        <view class="pd-hero__pack pd-hero__pack--front sx-float">
+          <image class="pd-hero__img pd-hero__img--front" src="{{item.front}}" mode="heightFix" />
+        </view>
+      </view>
+    </block>
+
+    <view class="pd-back" bindtap="onBack">
+      <image class="pd-back__icon" src="/assets/icons/back-white.svg" />
+      <text>介绍</text>
+    </view>
+
+    <view class="pd-hero__text {{isPro ? 'pd-hero__text--pro' : ''}}">
+      <text class="pd-hero__tag sx-slant sx-rise">{{p.tag}}</text>
+      <view class="pd-hero__h1 sx-rise" style="animation-delay: .1s">{{nameCn}}<text wx:if="{{nameEn}}" class="pd-hero__en sx-num">{{nameEn}}</text></view>
+      <view class="pd-hero__lead sx-rise" style="animation-delay: .2s">
+        <view wx:for="{{p.headline}}" wx:key="*this">{{item}}</view>
+      </view>
+      <view wx:if="{{isPro}}" class="pd-chips sx-rise" style="animation-delay: .3s">
+        <text wx:for="{{p.chips}}" wx:key="*this" class="pd-chip">{{item}}</text>
+        <text class="pd-chip pd-chip--line">{{p.flavor}}</text>
+      </view>
+      <view wx:else class="pd-flavors sx-rise" style="animation-delay: .3s">
+        <view wx:for="{{p.flavors}}" wx:key="key" class="pd-flavor sx-pressable {{flavor === item.key ? 'pd-flavor--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onFlavor">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 四个数字 -->
+  <view id="rv-facts" class="pd-facts {{seen.facts ? 'sx-in' : 'sx-wait'}}">
+    <view wx:for="{{p.facts}}" wx:key="label" class="pd-fact sx-rise" style="animation-delay: {{index * 0.08}}s">
+      <view class="pd-fact__num">
+        <text class="pd-fact__value sx-num">{{item.value}}</text>
+        <text class="pd-fact__unit sx-num-700">{{item.unit}}</text>
+      </view>
+      <text class="pd-fact__label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 直白卖点 -->
+  <product-key-points id="rv-keyPoints" shown="{{seen.keyPoints}}" title="{{p.positioning}}" points="{{p.keyPoints}}" />
+
+  <!-- 各自的成分与原理 -->
+  <block wx:if="{{isPro}}"><include src="pro-sections.wxml" /></block>
+  <block wx:else><include src="gel-sections.wxml" /></block>
+
+  <!-- 场景推荐 -->
+  <product-scenes id="rv-scenes" shown="{{seen.scenes}}" scenes="{{p.scenes}}" />
+
+  <!-- 食用方法 -->
+  <block wx:if="{{isPro}}"><include src="pro-howto.wxml" /></block>
+  <block wx:else><include src="gel-howto.wxml" /></block>
+
+  <!-- 营养成分表 -->
+  <view id="rv-nutrition" class="pd-nutri {{seen.nutrition ? 'sx-in' : 'sx-wait'}}">
+    <view class="pd-nutri__table sx-rise">
+      <view class="pd-nutri__head">
+        <text class="pd-nutri__title">营养成分表</text>
+        <text class="pd-nutri__per">{{p.nutrition.per}}</text>
+      </view>
+      <view class="pd-nutri__body">
+        <view wx:for="{{nutritionRows}}" wx:key="k" class="pd-nutri__row {{index < nutritionRows.length - 1 ? 'pd-nutri__row--line' : ''}}">
+          <text class="pd-nutri__k">{{item.k}}</text>
+          <text class="pd-nutri__v">{{item.v}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="pd-foot pd-nutri__foot">{{p.nutrition.footnote}}</view>
+  </view>
+
+  <!-- 产品速选对比 -->
+  <product-compare id="rv-compare" shown="{{seen.compare}}" current="{{id}}" cross-link="{{p.crossLink}}" bind:open="onOpenProduct" />
+
+  <!-- 成为会员 -->
+  <view class="pd-join">
+    <view class="pd-join__btn sx-pressable" hover-class="sx-press" bindtap="onJoin">成为会员</view>
+  </view>
+</view>

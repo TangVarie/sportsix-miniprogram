@@ -1,0 +1,42 @@
+<!-- 能量胶PRO：食用方法（products.energyGelPro.sections 的 guide 和 qa），由 index.wxml include -->
+
+<view class="pd-banner pd-banner--pro js-dark">
+  <view class="pd-banner__photo sx-photo">
+    <image class="sx-photo__img pd-banner__img--pro" src="{{s.guide.banner.image}}" mode="aspectFill" />
+  </view>
+  <view class="pd-banner__fade"></view>
+</view>
+
+<!-- 食用指南：竖线加圆点 -->
+<view id="rv-guide" class="pd-sec pd-guide sx-grid-bg js-dark {{seen.guide ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.guide.eyebrow}}</text>
+  <view class="pd-h2 pd-h2--light">{{s.guide.title}}</view>
+  <view class="pd-steps">
+    <view class="pd-steps__line sx-grow-y"></view>
+    <view wx:for="{{s.guide.steps}}" wx:key="when" class="pd-step sx-rise" style="animation-delay: {{index * 0.1}}s">
+      <view class="pd-dot pd-step__dot"></view>
+      <text class="pd-step__when">{{item.when}}</text>
+      <view wx:if="{{item.what}}" class="pd-step__card">
+        <text class="pd-step__what">{{item.what}}</text>
+        <text class="pd-step__qty">{{item.qty}}</text>
+      </view>
+    </view>
+  </view>
+  <view class="pd-guide__note">{{s.guide.note}}</view>
+</view>
+
+<!-- 新手吃胶 Q&A：同一时间只展开一条 -->
+<view id="rv-qa" class="pd-sec pd-qa {{seen.qa ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.qa.eyebrow}}</text>
+  <view class="pd-h2">{{s.qa.title}}</view>
+  <view class="pd-qa__list">
+    <view wx:for="{{s.qa.items}}" wx:key="n" class="pd-qa__item">
+      <view class="pd-qa__head" data-index="{{index}}" bindtap="onQa">
+        <text class="pd-qa__n sx-num">{{item.n}}</text>
+        <text class="pd-qa__q">{{item.q}}</text>
+        <image class="pd-qa__arrow {{qaOpen === index ? 'pd-qa__arrow--open' : ''}}" src="/assets/icons/chevron-blue.svg" />
+      </view>
+      <view wx:if="{{qaOpen === index}}" class="pd-qa__a">{{item.a}}</view>
+    </view>
+  </view>
+</view>

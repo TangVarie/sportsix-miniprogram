@@ -1,0 +1,13 @@
+{
+  "name": "sportsix-miniprogram",
+  "private": true,
+  "description": "SPORTSIX 微信小程序",
+  "scripts": {
+    "test": "node miniprogram/utils/fuel-plan.test.js && node tools/sync-content.js --check && node tools/check-project.js",
+    "content": "node tools/sync-content.js",
+    "assets": "node tools/serve-assets.js",
+    "shot": "node tools/preview/shot.js",
+    "size": "node tools/check-size.js",
+    "check": "node tools/check-project.js"
+  }
+}

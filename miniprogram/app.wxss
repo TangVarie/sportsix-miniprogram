@@ -1,0 +1,93 @@
+@import "styles/tokens.wxss";
+
+/*
+ * 全局只放各页都要用的东西：基础排版、几个原子类、动效类。
+ * 页面和组件自己的样式写在各自的 wxss 里，数值取自 design/html/。
+ */
+page {
+  background: var(--sx-white);
+  color: var(--sx-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  font-size: 27rpx;
+  line-height: 42rpx;
+  -webkit-font-smoothing: antialiased;
+  /* 设计稿整页开了它：段落末行不留单字。不支持的内核会忽略。 */
+  text-wrap: pretty;
+}
+
+/* 底部导航页：给固定在底部的导航让出位置 */
+.sx-tab-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding-bottom: calc(var(--sx-tabbar-h) + 1px + env(safe-area-inset-bottom));
+}
+
+/* 数字和英文：Barlow Condensed 斜体。只套在数字和英文上，中文不要套。 */
+.sx-num { font-family: var(--sx-font-num); font-style: italic; font-weight: 800; }
+.sx-num-700 { font-family: var(--sx-font-num); font-style: italic; font-weight: 700; }
+/* 英文小标签 */
+.sx-eyebrow {
+  display: block;
+  font-family: var(--sx-font-num);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 27rpx;
+  line-height: 31rpx;
+  letter-spacing: 0.08em;
+}
+
+/* 按压：hover-class="sx-press" */
+.sx-press { transform: scale(.96); }
+.sx-pressable { transition: transform .15s ease, background-color .2s ease, color .2s ease; }
+
+/* 用到 open-type 的地方才用 button，去掉默认外观 */
+.sx-btn-reset {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  overflow: visible;
+}
+.sx-btn-reset::after { border: 0; }
+
+/* 勾选项：31rpx（16px）黄绿方块加深蓝对勾 */
+.sx-check {
+  position: relative;
+  flex-shrink: 0;
+  width: 31rpx;
+  height: 31rpx;
+  border-radius: 6rpx;
+  background: var(--sx-lime);
+}
+.sx-check::after {
+  content: '';
+  position: absolute;
+  left: 10rpx;
+  top: 4rpx;
+  width: 8rpx;
+  height: 15rpx;
+  border: solid var(--sx-navy);
+  border-width: 0 4rpx 4rpx 0;
+  transform: rotate(45deg);
+}
+
+/*
+ * 动效。容器用 sx-in（已进入视口）或 sx-wait（还没进入），见 utils/page.js 的 watchReveal。
+ * 首屏内容直接写死 sx-in。延迟用 style="animation-delay: .15s" 写在节点上。
+ */
+.sx-wait .sx-rise, .sx-wait .sx-draw, .sx-wait .sx-grow-x, .sx-wait .sx-grow-y, .sx-wait .sx-pop { opacity: 0; }
+.sx-in .sx-rise { animation: sxRise .7s cubic-bezier(.2, .7, .2, 1) both; }
+.sx-in .sx-draw { animation: sxDraw 1.6s ease-out .3s both; }
+.sx-in .sx-grow-x { transform-origin: left center; animation: sxGrowX .9s cubic-bezier(.2, .7, .2, 1) .2s both; }
+.sx-in .sx-grow-y { transform-origin: center bottom; animation: sxGrowY .9s cubic-bezier(.2, .7, .2, 1) .2s both; }
+.sx-in .sx-pop { animation: sxPop .3s ease-out both; }
+.sx-float { animation: sxFloat 5s ease-in-out infinite alternate; }
+.sx-glow { animation: sxGlow 2.8s ease-in-out infinite alternate; }
+
+/* 场景照片压成深蓝单色：外层深蓝底，照片去色、提高对比后以 screen 叠上去。透明度按设计稿在各处单独写。 */
+.sx-photo { position: relative; overflow: hidden; background: var(--sx-navy); }
+.sx-photo__img { display: block; width: 100%; height: 100%; filter: grayscale(1) contrast(1.15); mix-blend-mode: screen; opacity: .8; }
