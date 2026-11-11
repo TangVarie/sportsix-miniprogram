@@ -5,7 +5,8 @@
     "pages/events/index",
     "pages/me/index",
     "pages/product/index",
-    "pages/event-detail/index"
+    "pages/event-detail/index",
+    "pages/doc/index"
   ],
   "window": {
     "navigationStyle": "custom",

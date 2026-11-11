@@ -8,6 +8,7 @@
     "assets": "node tools/serve-assets.js",
     "shot": "node tools/preview/shot.js",
     "size": "node tools/check-size.js",
-    "check": "node tools/check-project.js"
+    "check": "node tools/check-project.js",
+    "cdn": "node tools/pack-assets.js"
   }
 }

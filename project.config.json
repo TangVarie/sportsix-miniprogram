@@ -1,9 +1,9 @@
 {
-  "description": "SPORTSIX 微信小程序。AppID 未定，先用测试号。",
+  "description": "SPORTSIX 微信小程序",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",
-  "appid": "touristappid",
+  "appid": "wx224e462fe4941de6",
   "projectname": "sportsix-miniprogram",
   "setting": {
     "es6": true,

@@ -1,0 +1,17 @@
+<view class="page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="doc-header sx-grid-bg">
+    <view class="doc-back" bindtap="onBack">
+      <image class="doc-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="doc-header__title">{{doc.title}}</view>
+  </view>
+
+  <view class="doc-body">
+    <view class="doc-meta">{{doc.meta}}</view>
+    <view wx:for="{{doc.intro}}" wx:key="*this" class="doc-p">{{item}}</view>
+    <view wx:for="{{doc.sections}}" wx:key="h" class="doc-section">
+      <view class="doc-h">{{item.h}}</view>
+      <view wx:for="{{item.p}}" wx:for-item="p" wx:key="*this" class="doc-p">{{p}}</view>
+    </view>
+  </view>
+</view>

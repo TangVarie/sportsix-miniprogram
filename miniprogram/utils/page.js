@@ -86,6 +86,7 @@ function go(to, params) {
   if (TABS[to]) { wx.switchTab({ url: TABS[to] }); return; }
   if (to === 'join') { wx.switchTab({ url: TABS.me }); return; }
   if (to === 'energy-gel' || to === 'energy-gel-pro') { wx.navigateTo({ url: '/pages/product/index?id=' + to }); return; }
+  if (to === 'doc') { wx.navigateTo({ url: '/pages/doc/index?type=' + ((params && params.type) || 'agreement') }); return; }
   if (to === 'event-detail') { wx.navigateTo({ url: '/pages/event-detail/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
 }
 

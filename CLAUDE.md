@@ -54,7 +54,7 @@ miniprogram/
   app.js  app.json  app.wxss     全局样式：styles/tokens.wxss 加几个原子类和动效类
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
-  pages/<页面>/index.*           home、fuel、events、event-detail、product、me
+  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、doc（用户协议和隐私政策）
   components/<组件>/index.*      member-cta、dual-carb 等
   utils/                         assets.js、page.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
@@ -65,6 +65,7 @@ cloudfunctions/
 tools/
   sync-content.js                改了 reference/content/*.json 之后跑 npm run content
   serve-assets.js                npm run assets：把根目录 assets/ 当 CDN，默认 http://127.0.0.1:8787
+  pack-assets.js                 npm run cdn：把用到的资源挑到 out/cdn/assets/，用来上传到云存储
   preview/                       本地预览和设计稿对照，见 tools/preview/README.md
   cloud-mock.js  test-cloud.js   wx-server-sdk 的内存替身和云开发测试
 ```
@@ -91,7 +92,7 @@ tools/
 - 全局 `navigationStyle: custom`。每个页面的根节点写 `style="--sx-safe-top: {{safeTop}}px"`，`data` 用 `baseData()`（`utils/page.js`）初始化并在 `onLoad` 里再 `setData(baseData())`。
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 
