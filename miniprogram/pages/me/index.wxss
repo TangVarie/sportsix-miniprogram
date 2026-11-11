@@ -1,0 +1,141 @@
+/* 数值取自 design/html/07-me-not-registered.html、08-me-member.html，px × 750 ÷ 390 */
+
+/* ========== 未注册：注册页（整页深蓝网格底，写在根节点上） ========== */
+
+/* 首屏：设计高 420px，上方让出状态栏；图形贴底 */
+.me-join__hero { position: relative; height: calc(808rpx + var(--sx-safe-top)); overflow: hidden; color: #FFFFFF; }
+/* 两条细线：assets/graphics/ 里没有对应文件，按设计稿的路径内嵌（白色 16% 透明度，1px） */
+.me-join__lines {
+  position: absolute; left: 0; bottom: 0; width: 750rpx; height: 808rpx;
+  background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzOTAiIGhlaWdodD0iNDIwIiB2aWV3Qm94PSIwIDAgMzkwIDQyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utb3BhY2l0eT0iMC4xNiIgc3Ryb2tlLXdpZHRoPSIxIj48cGF0aCBkPSJNLTMwIDIzNiBRMTkwIDM4NiA0MzAgMTk2Ii8+PHBhdGggZD0iTS0zMCAzNjYgUTIwMCA1MDYgNDMwIDMyMiIvPjwvc3ZnPg==") no-repeat 0 0 / 100% 100%;
+}
+.me-join__arc { position: absolute; left: 0; bottom: 0; width: 750rpx; height: 808rpx; }
+
+/* 两支包装：外层悬浮，里层旋转 */
+.me-join__pack { position: absolute; }
+.me-join__pack--pro { left: 585rpx; top: calc(185rpx + var(--sx-safe-top)); }
+.me-join__pack--gel { left: 454rpx; top: calc(135rpx + var(--sx-safe-top)); }
+.me-join__pack-img { display: block; transform-origin: 50% 60%; }
+.me-join__pack-img--pro { height: 500rpx; transform: rotate(28deg); }
+.me-join__pack-img--gel { height: 558rpx; transform: rotate(13deg); }
+
+.me-join__title { position: absolute; left: 38rpx; top: calc(54rpx + var(--sx-safe-top)); display: flex; flex-direction: column; align-items: flex-start; }
+.me-join__wordmark { display: block; width: 265rpx; height: 46rpx; }
+/* 设计稿里这一行是 16px 行高的行内文字放在默认行高的块里：块高约 24px，文字偏下，用上下内边距补出来 */
+.me-join__eyebrow { margin-top: 77rpx; padding: 10rpx 0 5rpx; color: #C2E541; }
+.me-join__h1 { margin-top: 8rpx; font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+
+.me-join__body { padding: 8rpx 38rpx 46rpx; display: flex; flex-direction: column; }
+.me-join__perks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19rpx; }
+.me-join__perk {
+  box-sizing: border-box; height: 177rpx; padding: 27rpx;
+  border: 1px solid #2A3373; border-radius: 27rpx; background: #010439;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.me-join__perk-head { display: flex; align-items: center; gap: 15rpx; }
+.me-join__perk-icon { flex-shrink: 0; display: block; width: 42rpx; height: 42rpx; }
+.me-join__perk-title { font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #FFFFFF; }
+.me-join__perk-body { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+
+.me-join__btn {
+  margin-top: 42rpx; height: 104rpx; border-radius: 52rpx;
+  display: flex; align-items: center; justify-content: center;
+  background: #C2E541; color: #010439; font-size: 31rpx; font-weight: 900;
+}
+/* 没勾选协议时不可点。设计稿没画这个状态，这里只降低不透明度 */
+.me-join__btn--off { opacity: .4; }
+
+/* 勾选行：设计稿上边距 14px、行高 20px；上下各加 12px 的可点区域，所以外边距减到 2px */
+.me-join__agree {
+  margin-top: 4rpx; padding: 23rpx 0;
+  display: flex; align-items: center; justify-content: center; gap: 15rpx;
+  font-size: 23rpx; line-height: 38rpx; color: #C9CEE8;
+}
+/* 未勾选：16px 白色方块；勾选后换成全局的 sx-check */
+.me-join__box { flex-shrink: 0; width: 31rpx; height: 31rpx; border-radius: 6rpx; background: #FFFFFF; }
+
+/* ========== 已注册：会员页 ========== */
+
+/* 头部：设计高 210px（含内边距），上方让出状态栏 */
+.me-head {
+  box-sizing: border-box; height: calc(404rpx + var(--sx-safe-top));
+  padding: calc(54rpx + var(--sx-safe-top)) 38rpx 0;
+  display: flex; align-items: flex-start; gap: 27rpx; color: #FFFFFF;
+}
+.me-head__avatar {
+  flex-shrink: 0; box-sizing: border-box; width: 108rpx; height: 108rpx; border-radius: 54rpx;
+  background: #061A70; border: 4rpx solid #C2E541;
+  display: flex; align-items: center; justify-content: center;
+}
+.me-head__avatar-icon { display: block; width: 54rpx; height: 54rpx; }
+.me-head__text { display: flex; flex-direction: column; gap: 8rpx; padding-top: 8rpx; }
+.me-head__name { font-size: 38rpx; line-height: 54rpx; font-weight: 900; }
+.me-head__phone { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+
+/* 会员卡：压在头部下半截上 */
+.me-card {
+  position: relative; margin: -188rpx 38rpx 0; height: 365rpx; border-radius: 35rpx; overflow: hidden;
+  background: #061A70; color: #FFFFFF; box-shadow: 0 23rpx 54rpx rgba(1, 4, 57, 0.28);
+}
+/* 两条细线：assets/graphics/ 里没有对应文件，按设计稿的路径内嵌（白色 14% 透明度，1px） */
+.me-card__lines {
+  position: absolute; left: 0; top: 0; width: 673rpx; height: 365rpx;
+  background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNTAiIGhlaWdodD0iMTkwIiB2aWV3Qm94PSIwIDAgMzUwIDE5MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utb3BhY2l0eT0iMC4xNCIgc3Ryb2tlLXdpZHRoPSIxIj48cGF0aCBkPSJNLTIwIDk2IFExNzAgMjEwIDM3MCA2MCIvPjxwYXRoIGQ9Ik0tMjAgMTE2IFExNzAgMjMwIDM3MCA4MCIvPjwvc3ZnPg==") no-repeat 0 0 / 100% 100%;
+}
+.me-card__arc { position: absolute; left: 0; top: 0; width: 673rpx; height: 365rpx; }
+.me-card__top { position: absolute; left: 38rpx; top: 38rpx; display: flex; flex-direction: column; align-items: flex-start; gap: 19rpx; }
+.me-card__wordmark { display: block; width: 235rpx; height: 40rpx; }
+.me-card__no { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.me-card__bottom { position: absolute; left: 38rpx; bottom: 35rpx; display: flex; flex-direction: column; }
+.me-card__label { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.me-card__points { font-size: 65rpx; line-height: 85rpx; font-weight: 900; color: #FFFFFF; }
+.me-card__slogan { position: absolute; right: 38rpx; top: 46rpx; display: block; width: 177rpx; height: 17rpx; }
+
+.me-h2 { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #010439; }
+
+/* 会员权益 */
+.me-perks { padding: 54rpx 38rpx 0; display: flex; flex-direction: column; gap: 27rpx; }
+.me-perks__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15rpx; }
+.me-perks__item { display: flex; flex-direction: column; align-items: center; gap: 15rpx; font-size: 23rpx; line-height: 35rpx; font-weight: 500; }
+.me-perks__circle { display: flex; align-items: center; justify-content: center; width: 100rpx; height: 100rpx; border-radius: 50rpx; background: #010439; }
+.me-perks__icon { display: block; width: 46rpx; height: 46rpx; }
+
+/* 我的补给计划。设计稿是固定高 104px；圆点多了会折行，所以改成最小高度加上下内边距 */
+.me-plan { padding: 58rpx 38rpx 0; display: flex; flex-direction: column; gap: 23rpx; }
+.me-plan__card {
+  box-sizing: border-box; min-height: 200rpx; padding: 31rpx; border-radius: 31rpx; color: #FFFFFF;
+  display: flex; align-items: center; justify-content: space-between; gap: 23rpx;
+}
+.me-plan__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
+.me-plan__line1 { font-size: 31rpx; line-height: 46rpx; font-weight: 900; }
+.me-plan__line2 { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.me-plan__dots { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 8rpx; }
+.me-plan__dot { box-sizing: border-box; width: 19rpx; height: 19rpx; border-radius: 10rpx; }
+.me-plan__dot--gel { background: #C2E541; }
+.me-plan__dot--pro { border: 4rpx solid #FFFFFF; }
+.me-plan__go { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 85rpx; height: 85rpx; border-radius: 42rpx; background: #C2E541; }
+.me-plan__go-icon { display: block; width: 42rpx; height: 42rpx; }
+
+/* 我的活动 */
+.me-events { padding: 58rpx 38rpx 0; display: flex; flex-direction: column; gap: 8rpx; }
+.me-events__list { display: flex; flex-direction: column; }
+.me-events__row { height: 131rpx; display: flex; align-items: center; justify-content: space-between; gap: 23rpx; border-bottom: 1px solid #E6E6E7; }
+.me-events__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.me-events__name { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #14141E; }
+.me-events__meta { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.me-events__state { flex-shrink: 0; font-size: 21rpx; line-height: 31rpx; }
+/* 已报名：黄绿斜切标签，左右各切 6px（比全局 sx-slant 的 8px 小） */
+.me-events__state--signed {
+  padding: 6rpx 23rpx; background: #C2E541; color: #010439; font-weight: 700;
+  clip-path: polygon(12rpx 0, 100% 0, calc(100% - 12rpx) 100%, 0 100%);
+}
+/* 已设提醒：灰色标签 */
+.me-events__state--reminded { padding: 6rpx 19rpx; background: #F5F5F5; color: #5E6170; }
+
+/* 菜单 */
+.me-menu { padding: 31rpx 38rpx; display: flex; flex-direction: column; }
+.me-menu__row { height: 108rpx; display: flex; align-items: center; gap: 23rpx; font-size: 29rpx; color: #14141E; }
+.me-menu__row--line { border-bottom: 1px solid #E6E6E7; }
+.me-menu__icon { flex-shrink: 0; display: block; width: 42rpx; height: 42rpx; }
+.me-menu__text { flex: 1; }
+.me-menu__arrow { flex-shrink: 0; display: block; width: 31rpx; height: 31rpx; }
