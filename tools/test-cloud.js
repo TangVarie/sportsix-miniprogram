@@ -103,9 +103,59 @@ async function functionTests() {
   ok(cloud.col('reminders').find((x) => x._id === 'user-b_trial').sent === true, '失败的也标记，不重试');
   cloud.state.sendError = null;
 
+  eq(cloud.col('reminders').find((x) => x._id === 'user-b_trial').status, 'failed', '失败的记成 failed');
+  cloud.state.sendError = null;
+
   cloud.state.now += 20 * DAY;
   cloud.state.openid = 'user-a';
   eq((await call('signup', { eventId: 'trial' })).code, 'closed', '报名已结束');
+}
+
+/** 报名写入的两种异常：没写进去，和写进去了但响应丢了 */
+async function signupFailureTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  cloud.state.now += DAY + HOUR;
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const count = () => cloud.col('events').find((e) => e._id === 'race').signupCount;
+  await call('register', { code: 'code-a' });
+
+  cloud.state.addFails = 'before';
+  eq((await call('signup', { eventId: 'race' })).code, 'server_error', '报名记录没写进去时报错');
+  eq(count(), 0, '没写进去：占的名额退回');
+  eq(cloud.col('signups').length, 0, '没有留下报名记录');
+
+  cloud.state.addFails = 'after';
+  eq((await call('signup', { eventId: 'race' })).data, { eventId: 'race', already: false }, '写进去了但响应丢失：按成功处理');
+  eq(count(), 1, '响应丢失时不退名额');
+
+  cloud.state.openid = 'user-b';
+  await call('register', { code: 'code-b' });
+  eq((await call('signup', { eventId: 'race' })).code, 'full', '名额没有被多放出去');
+  eq(cloud.col('signups').length, 1, '只有一条报名记录');
+}
+
+/** 定时提醒：两次执行重叠不重复发；活动很多时不漏 */
+async function remindTests() {
+  const cloud = createCloud();
+  const now = cloud.state.now;
+  // 150 场已经开放报名的活动，只有最后一场有人设了提醒；再加一批过期但没撤下的活动
+  const events = [];
+  for (let i = 0; i < 120; i++) events.push({ _id: 'old' + i, type: '赛事', title: '往期' + i, status: 'published', date: new Date(now - (400 - i) * DAY), signupStart: new Date(now - 500 * DAY) });
+  for (let i = 0; i < 150; i++) events.push({ _id: 'e' + i, type: '赛事', title: '活动' + i, status: 'published', date: new Date(now + (i + 2) * DAY), signupStart: new Date(now - HOUR) });
+  cloud.state.data.events = events;
+  cloud.state.data.reminders = [
+    { _id: 'u1_e149', openid: 'u1', eventId: 'e149', templateId: 'tmpl', sent: false },
+    { _id: 'u2_e149', openid: 'u2', eventId: 'e149', templateId: 'tmpl', sent: false },
+    { _id: 'u1_old5', openid: 'u1', eventId: 'old5', templateId: 'tmpl', sent: false }
+  ];
+  const remind = cloud.load('remind');
+  const results = await cloud.run(() => Promise.all([remind.main(), remind.main()]));
+  eq(results[0].sent + results[1].sent, 2, '两次执行重叠：每条提醒只发一次');
+  eq(cloud.state.sent.map((m) => m.touser).sort(), ['u1', 'u2'], '排在 100 场以后的活动也检查到了');
+  eq(cloud.col('reminders').filter((r) => r.status === 'sent').length, 2, '发完记成 sent');
+  ok(cloud.col('reminders').find((r) => r._id === 'u1_old5').sent === false, '活动日期已过的不发');
 }
 
 async function clientTests() {
@@ -189,6 +239,76 @@ async function clientTests() {
   eq(p.data.myEvents.map((e) => [e.id, e.state]), [['race', 'signed']], '我的活动：同一场只显示已报名');
   ok(p.data.plan.saved, '我的补给计划');
 
+  // 注册后保存计划失败：提示，待保存的输入留着，不跳回计算页
+  {
+    const c2 = createCloud();
+    seed(c2);
+    const api2 = c2.load('api');
+    let failSave = true;
+    const wxc = {
+      init() {},
+      callFunction(o) {
+        if (o.data.action === 'savePlan' && failSave) return Promise.reject({ errMsg: 'cloud.callFunction:fail timeout' });
+        return c2.run(() => api2.main(o.data)).then((result) => ({ result: result }));
+      }
+    };
+    const e3 = createEnv({ wx: { cloud: wxc } });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
+    e3.launch();
+    await tick();
+    const last3 = (name) => e3.wx.__calls.filter((c) => c.api === name).slice(-1)[0];
+    let q = e3.openPage('pages/fuel/index', {});
+    q.onPick({ currentTarget: { dataset: { field: 'sport', index: 2 } } });
+    q.onSave();
+    await tick();
+    q = e3.openPage('pages/me/index', {});
+    q.onAgree({});
+    q.onPhone({ detail: { code: 'code-a' } });
+    await tick();
+    ok(q.data.registered, '保存失败不影响注册');
+    ok(last3('showToast').args.title.includes('保存失败'), '保存失败有提示');
+    eq(last3('switchTab').args.url, '/pages/me/index', '保存失败不跳回计算页');
+    eq(e3.wx.__storage.sx_pending_plan.sport, 'bike', '待保存的输入还在');
+    ok(!q.data.plan.saved, '我的补给计划还是未保存');
+    // 关掉重进：计算页把那份输入摆回来，再点保存
+    q = e3.openPage('pages/fuel/index', {});
+    eq(q.data.input.sport, 'bike', '计算页恢复没存上的输入');
+    failSave = false;
+    q.onSave();
+    await tick();
+    eq(c2.col('plans')[0].input.sport, 'bike', '重试保存成功');
+    ok(!e3.wx.__storage.sx_pending_plan, '存上以后清掉待保存的输入');
+  }
+
+  // 启动同步很慢，期间用户完成了注册：迟到的旧快照不能把注册状态冲掉
+  {
+    const c4 = createCloud();
+    seed(c4);
+    const api4 = c4.load('api');
+    let slow = 80;
+    const wxc = {
+      init() {},
+      callFunction(o) {
+        // bootstrap 先取到云端结果，再拖一会儿才返回
+        const res = c4.run(() => api4.main(o.data)).then((result) => ({ result: result }));
+        if (o.data.action !== 'bootstrap') return res;
+        const delay = slow;
+        slow = 0;
+        return res.then((r) => new Promise((resolve) => setTimeout(() => resolve(r), delay)));
+      }
+    };
+    const e4 = createEnv({ wx: { cloud: wxc } });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
+    e4.launch();
+    const q = e4.openPage('pages/me/index', {});
+    q.onAgree({});
+    q.onPhone({ detail: { code: 'code-a' } });
+    await tick();
+    ok(q.data.registered, '同步返回前注册成功');
+    await new Promise((r) => setTimeout(r, 150));
+    ok(q.data.registered && !!e4.wx.__storage.sx_member, '迟到的旧快照没有覆盖注册状态');
+  }
+
   // 换设备（本机没有缓存）：启动时从云端同步回来
   const env2 = createEnv({ wx: { cloud: wxCloud } });
   Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
@@ -201,6 +321,8 @@ async function clientTests() {
 
 (async () => {
   await functionTests();
+  await signupFailureTests();
+  await remindTests();
   await clientTests();
   console.log('云开发测试通过：' + n + ' 项');
   process.exit(0);

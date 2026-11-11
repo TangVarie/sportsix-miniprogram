@@ -18,7 +18,7 @@ cloudfunctions/
 2. **开通云开发**：在微信开发者工具里点左上角「云开发」，创建环境，记下环境 ID。
 3. **填环境 ID**：`miniprogram/config.js` 的 `cloudEnv` 填上环境 ID。
 4. **建集合**：在云开发控制台的数据库里新建五个集合：`members`、`events`、`signups`、`reminders`、`plans`。权限都设成「所有用户不可读写」（只有云函数能读写）。
-5. **上传云函数**：在开发者工具的文件树里右键 `cloudfunctions/api` 和 `cloudfunctions/remind`，各选一次「上传并部署：云端安装依赖」。`remind` 再右键选「上传触发器」。
+5. **上传云函数**：在开发者工具的文件树里右键 `cloudfunctions/api` 和 `cloudfunctions/remind`，各选一次「上传并部署：云端安装依赖」。`remind` 再右键选「上传触发器」。云函数默认的超时时间很短，在云开发控制台的云函数配置里把 `remind` 调到 60 秒、`api` 调到 10 秒。
 6. **申请订阅消息模板**：在公众平台的「订阅消息」里申请一条「活动开始提醒」类的一次性模板，把模板 ID 填到 `miniprogram/config.js` 的 `subscribeTemplateId`。然后按模板的字段改 `cloudfunctions/remind/template.js`（见下），重新上传 `remind`。
 7. **录入活动**：按下面的格式在 `events` 集合里添加活动，再把 `miniprogram/config.js` 的 `sampleEvents` 改成 `false`。
 
@@ -30,8 +30,8 @@ cloudfunctions/
 |---|---|---|
 | `members` 会员 | openid | `openid`、`phone`、`countryCode`、`memberNo`、`points`、`createdAt` |
 | `events` 活动 | 自动 | 见下 |
-| `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`createdAt` |
-| `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`sentAt`、`error`、`createdAt` |
+| `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
+| `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 
 会员编号和积分的规则还没定：注册时 `memberNo` 留空、`points` 为 0。`memberNo` 为空时页面上保持占位，规则定了以后在这里补发号逻辑。
@@ -60,13 +60,13 @@ cloudfunctions/
 
 活动没有提供的项，页面上不显示，不会留方括号占位。
 
-**报名规则目前的做法**：报名要先是会员；从 `memberSignupStart`（没填就用 `signupStart`）到 `signupEnd` 之间可以报；有 `quota` 时不超额；同一个人同一场只算一次。会员优先报名提前多久、试用装和抽奖怎么领怎么开（`docs/04-open-items.md`）定了以后，改 `api/index.js` 的 `signup`。
+**报名规则目前的做法**：报名要先是会员；从 `memberSignupStart`（没填就用 `signupStart`）到 `signupEnd` 之间可以报；有 `quota` 时不超额；同一个人同一场只算一次。名额是先占后写报名记录，中途出错时 `signupCount` 只会偏多不会偏少，最坏情况是空出一个名额，不会超额。会员优先报名提前多久、试用装和抽奖怎么领怎么开（`docs/04-open-items.md`）定了以后，改 `api/index.js` 的 `signup`。
 
 ## 订阅消息的字段
 
 `remind/template.js` 里的 `data` 决定消息内容。字段名（`thing1`、`time2` 这些）由申请到的模板决定，现在写的是示意，**必须按公众平台上该模板的「详细内容」改成实际的字段名**，否则发送会失败。`miniprogramState` 上线后用 `formal`，调试时改成 `developer` 或 `trial`。
 
-提醒的流程：用户点「提醒我」→ 调起订阅授权 → 同意后在 `reminders` 里登记 → 报名开放后 `remind` 发一条并标记 `sent`。一次授权只能发一条；发送失败（用户取消订阅等）会把原因记在 `error` 里，不重试。
+提醒的流程：用户点「提醒我」→ 调起订阅授权 → 同意后在 `reminders` 里登记 → 报名开放后 `remind` 先把记录标成 `sent: true`、`status: 'sending'`（领取），再发送，发完记成 `sent` 或 `failed`。一次授权只能发一条，所以宁可漏发不重发：发送失败（用户取消订阅等）会把原因记在 `error` 里，不重试；如果执行中途中断，记录会停在 `sending`，也不会自动重发，可以在数据库里按 `status` 查出来。一次执行最多发 300 条，多出来的下一次接着发。
 
 ## 测试
 

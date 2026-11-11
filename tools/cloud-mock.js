@@ -12,7 +12,8 @@ function createCloud() {
     data: {},          // 集合名 → 文档数组
     phones: {},        // code → 手机号
     sent: [],          // 发出的订阅消息
-    sendError: null    // 设了就让发送失败
+    sendError: null,   // 设了就让发送失败
+    addFails: null     // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
   };
   let seq = 0;
   const col = (name) => (state.data[name] = state.data[name] || []);
@@ -39,15 +40,16 @@ function createCloud() {
   }
   const copy = (d) => Object.assign({}, d);
 
-  function query(name, cond, order, max) {
+  function query(name, cond, order, max, offset) {
     const q = {
-      where: (c) => query(name, c, order, max),
-      orderBy: (field, dir) => query(name, cond, { field: field, dir: dir }, max),
-      limit: (n) => query(name, cond, order, n),
+      where: (c) => query(name, c, order, max, offset),
+      orderBy: (field, dir) => query(name, cond, { field: field, dir: dir }, max, offset),
+      limit: (n) => query(name, cond, order, n, offset),
+      skip: (n) => query(name, cond, order, max, n),
       async get() {
         let list = col(name).filter((d) => match(d, cond || {}));
         if (order) list = list.slice().sort((a, b) => (val(a[order.field]) - val(b[order.field])) * (order.dir === 'desc' ? -1 : 1));
-        return { data: list.slice(0, max || 20).map(copy) };
+        return { data: list.slice(offset || 0, (offset || 0) + (max || 20)).map(copy) };
       },
       async count() { return { total: col(name).filter((d) => match(d, cond || {})).length }; },
       async update(o) {
@@ -59,7 +61,11 @@ function createCloud() {
         const doc = copy(o.data);
         if (!doc._id) doc._id = 'id' + (++seq);
         if (col(name).some((d) => d._id === doc._id)) throw new Error('duplicate key: ' + doc._id);
+        const mode = state.addFails;
+        state.addFails = null;
+        if (mode === 'before') throw new Error('network error');
         col(name).push(doc);
+        if (mode === 'after') throw new Error('response lost');
         return { _id: doc._id };
       },
       doc: (id) => ({

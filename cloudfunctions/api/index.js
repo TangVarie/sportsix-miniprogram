@@ -130,7 +130,10 @@ const actions = {
     return { eventId: e._id };
   },
 
-  /** 报名：要先是会员；在报名时间内；有名额限制时不超额 */
+  /**
+   * 报名：要先是会员；在报名时间内；有名额限制时不超额。
+   * 先用条件更新占名额，再写报名记录。任何一步中断，signupCount 只会多不会少，所以不会超额（最坏是空出一个名额）。
+   */
   async signup(event, openid) {
     if (!(await findById('members', openid))) throw fail('not_member');
     const e = await findById('events', event.eventId);
@@ -149,12 +152,17 @@ const actions = {
       const res = await db.collection('events').where({ _id: e._id, signupCount: _.lt(e.quota) }).update({ data: { signupCount: _.inc(1) } });
       if (!res.stats.updated) throw fail('full');
     }
+    // 报名记录带上本次请求的标记，写入出错时靠它分清是哪种情况
+    const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
     try {
-      await db.collection('signups').add({ data: { _id: id, openid: openid, eventId: e._id, createdAt: db.serverDate() } });
+      await db.collection('signups').add({ data: { _id: id, openid: openid, eventId: e._id, token: token, createdAt: db.serverDate() } });
     } catch (err) {
-      // 同一个人并发点了两次：第二次写入会因 _id 重复失败，把多占的名额还回去
+      const existing = await findById('signups', id);
+      // 记录在，而且是这次请求写的：写入其实成功了，只是响应丢了。名额已经占上，不能退。
+      if (existing && existing.token === token) return { eventId: e._id, already: false };
+      // 记录在，但是别的请求写的（同一个人并发点了两次），或者确实没写进去：把这次多占的名额还回去
       if (typeof e.quota === 'number') await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(-1) } });
-      if (await findById('signups', id)) return { eventId: e._id, already: true };
+      if (existing) return { eventId: e._id, already: true };
       throw err;
     }
     return { eventId: e._id, already: false };

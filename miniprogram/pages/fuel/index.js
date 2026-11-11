@@ -92,6 +92,9 @@ Page({
     this.setData(baseData());
     // 头图设计高 212px，滚过它之后状态栏文字换成黑色
     this.toneAt = headerTone(212);
+    // 上次点了「保存到我的」但还没存上（没注册完，或注册后保存失败）就关掉了小程序：把那份输入摆回来
+    const pending = store.getPendingPlan();
+    if (pending) this.setData(view(normalize(pending)));
   },
 
   onShow() {
@@ -140,7 +143,10 @@ Page({
       const plan = this.data.plan;
       // 设计稿和原型里没有保存成功、失败的提示文案，先留占位
       store.savePlan(input, { total: plan.total, gelCount: plan.gelCount, proCount: plan.proCount })
-        .then(() => wx.showToast({ title: '[已保存提示文案]', icon: 'none' }))
+        .then(() => {
+          store.clearPendingPlan(); // 之前没存上的那份不再需要
+          wx.showToast({ title: '[已保存提示文案]', icon: 'none' });
+        })
         .catch((e) => {
           // 云端说还不是会员（本机缓存是旧的）：按未注册处理
           if (e.code === 'not_member') { store.setPendingPlan(input); go('join'); return; }

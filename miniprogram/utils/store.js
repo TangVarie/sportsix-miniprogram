@@ -34,10 +34,24 @@ function emit() {
   listeners.slice().forEach((fn) => { try { fn(); } catch (e) { /* 某个页面出错不影响其他页面 */ } });
 }
 
+// 每次写操作开始和结束时各加一。同步期间这个数变了，说明拿到的云端快照可能比本机旧，不能用它覆盖缓存。
+let activity = 0;
+/** 包一层写操作：让进行中的同步知道缓存被动过 */
+function tracked(promise) {
+  activity += 1;
+  const done = () => { activity += 1; };
+  promise.then(done, done);
+  return promise;
+}
+
 /** 进入小程序时调用：用云端数据覆盖本机缓存。没配云环境时什么也不做。 */
-function sync() {
+function sync(retries) {
   if (!cloud.enabled()) return Promise.resolve(false);
+  const before = activity;
+  const left = retries == null ? 3 : retries;
   return cloud.call('bootstrap').then((d) => {
+    // 同步期间用户注册、保存了计划或报了名：这份快照可能还不包含那次写入，丢掉重取
+    if (activity !== before) return left > 0 ? sync(left - 1) : false;
     write(KEY.member, d.member);
     write(KEY.plan, d.plan);
     write(KEY.reminders, d.reminders || []);
@@ -61,10 +75,10 @@ function register(code) {
     write(KEY.member, member);
     return Promise.resolve(member);
   }
-  return cloud.call('register', { code: code }).then((d) => {
+  return tracked(cloud.call('register', { code: code }).then((d) => {
     write(KEY.member, d.member);
     return d.member;
-  });
+  }));
 }
 
 function addTo(key, id) {
@@ -78,7 +92,7 @@ function hasReminder(eventId) { return getReminders().indexOf(eventId) >= 0; }
 /** 登记提醒。templateId 是用户刚授权的订阅消息模板；没配云环境或没有模板时只记在本机。 */
 function addReminder(eventId, templateId) {
   if (!cloud.enabled() || !templateId) { addTo(KEY.reminders, eventId); return Promise.resolve(); }
-  return cloud.call('remind', { eventId: eventId, templateId: templateId }).then(() => { addTo(KEY.reminders, eventId); });
+  return tracked(cloud.call('remind', { eventId: eventId, templateId: templateId }).then(() => { addTo(KEY.reminders, eventId); }));
 }
 
 /** 已报名的活动 id 列表 */
@@ -90,7 +104,7 @@ function hasSignup(eventId) { return getSignups().indexOf(eventId) >= 0; }
  */
 function signup(eventId) {
   if (!cloud.enabled()) return Promise.reject(Object.assign(new Error('no_backend'), { code: 'no_backend' }));
-  return cloud.call('signup', { eventId: eventId }).then(() => { addTo(KEY.signups, eventId); });
+  return tracked(cloud.call('signup', { eventId: eventId }).then(() => { addTo(KEY.signups, eventId); }));
 }
 
 /** 补给计划：只保存最近一份。input 是 planFuel 的输入，展示时用 planFuel(input) 重算。 */
@@ -102,24 +116,24 @@ function savePlan(input, result) {
     write(KEY.plan, plan);
     return Promise.resolve(plan);
   }
-  return cloud.call('savePlan', { input: input, result: result }).then((d) => {
+  return tracked(cloud.call('savePlan', { input: input, result: result }).then((d) => {
     write(KEY.plan, d.plan);
     return d.plan;
-  });
+  }));
 }
 
-/** 未注册时点「保存到我的」：先记下输入，注册完成后再保存 */
+/**
+ * 未注册时点「保存到我的」：先记下输入，注册完成后再保存。
+ * 保存成功后才清掉（clearPendingPlan）；保存失败时它还在，回到计算页可以接着存。
+ */
 function setPendingPlan(input) { write(KEY.pending, input); }
-function takePendingPlan() {
-  const input = read(KEY.pending, null);
-  if (input) write(KEY.pending, null);
-  return input;
-}
+function getPendingPlan() { return read(KEY.pending, null); }
+function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
   sync, onChange,
   getMember, isMember, register,
   getReminders, hasReminder, addReminder,
   getSignups, hasSignup, signup,
-  getPlan, savePlan, setPendingPlan, takePendingPlan
+  getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan
 };

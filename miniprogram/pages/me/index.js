@@ -22,7 +22,8 @@ const PENDING = {
   chat: '[联系方式待定]',
   用户协议: '[用户协议文本待提供]',
   隐私政策: '[隐私政策文本待提供]',
-  registerFailed: '[注册失败提示文案]'
+  registerFailed: '[注册失败提示文案]',
+  saveFailed: '[保存失败提示文案]'
 };
 
 /** 把协议那句话按书名号拆开，《…》部分单独可点。文字本身不改。 */
@@ -208,26 +209,24 @@ Page({
 
   /** 注册完成 */
   afterRegister() {
-    // 从计算页点「保存到我的」过来的，先把那份输入存下
-    const pending = store.takePendingPlan();
-    let saving = Promise.resolve();
-    if (pending) {
-      const r = fuel.planFuel(pending);
-      saving = store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).catch(() => {});
-    }
-
     // 本页切到会员状态
     this.setData(readState());
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     navTone(this, 0, this.toneAt);
 
-    // 有待保存的计划时回到计算页，由它按刚存下的输入还原
-    if (pending) {
-      saving.then(() => {
-        getApp().globalData.fuelRestore = true;
-        go('fuel');
-      });
-    }
+    // 从计算页点「保存到我的」过来的：把那份输入存下，成功后回到计算页，由它按刚存下的输入还原
+    const pending = store.getPendingPlan();
+    if (!pending) return;
+    const r = fuel.planFuel(pending);
+    store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).then(() => {
+      store.clearPendingPlan();
+      this.setData(readState());
+      getApp().globalData.fuelRestore = true;
+      go('fuel');
+    }).catch(() => {
+      // 没存上：待保存的输入留着，计算页里还是那份输入，可以回去再点一次保存
+      wx.showToast({ title: PENDING.saveFailed, icon: 'none' });
+    });
   },
 
   /** 我的补给计划：有保存的计划时让计算页按它还原输入，没有时只是进入计算页 */
