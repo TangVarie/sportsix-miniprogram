@@ -10,6 +10,7 @@
  *   signups    报名      _id 用 openid_活动id
  *   reminders  提醒      _id 用 openid_活动id
  *   plans      补给计划  _id 用 openid，只保存最近一份
+ *   counters   计数      只有一条 _id 为 memberNo 的记录，存下一个会员编号；第一次用到时云函数自己建这个集合
  */
 const cloud = require('wx-server-sdk');
 
@@ -23,6 +24,49 @@ const ms = (d) => (d ? new Date(d).getTime() : null);
 async function findById(name, id) {
   const res = await db.collection(name).where({ _id: id }).limit(1).get();
   return res.data[0] || null;
+}
+
+const SEQ_ID = 'memberNo';
+const MEMBER_NO_START = 100001;
+
+/**
+ * 发一个会员编号：按注册先后递增的数字，从 100001 起。
+ * 下一个号存在 counters 集合里 _id 为 memberNo 的那条记录上。取号用「按旧值更新」：
+ * 只有记录上的号还是刚读到的那个时才更新成功，两个人同时注册不会拿到同一个号。
+ */
+async function nextMemberNo() {
+  for (let i = 0; i < 8; i++) {
+    let cur;
+    try {
+      cur = await findById('counters', SEQ_ID);
+    } catch (e) {
+      // 集合还没建：第一次用到时自己建（已经有了会报错，忽略），然后重读
+      try { await db.createCollection('counters'); } catch (e2) { /* 已存在 */ }
+      continue;
+    }
+    if (!cur) {
+      // 建计数记录。别人刚好先建了会报重复，忽略后重读
+      try { await db.collection('counters').add({ data: { _id: SEQ_ID, next: MEMBER_NO_START } }); } catch (e) { /* 已存在 */ }
+      continue;
+    }
+    const res = await db.collection('counters').where({ _id: SEQ_ID, next: cur.next }).update({ data: { next: cur.next + 1 } });
+    if (res.stats.updated) return String(cur.next);
+  }
+  return null;
+}
+
+/** 没有编号的会员（编号规则定下来之前注册的，或注册时取号失败的）补发一个 */
+async function ensureMemberNo(member) {
+  if (!member || member.memberNo) return member;
+  try {
+    const no = await nextMemberNo();
+    if (!no) return member;
+    await db.collection('members').doc(member._id).update({ data: { memberNo: no } });
+    return Object.assign({}, member, { memberNo: no });
+  } catch (e) {
+    console.error('ensureMemberNo', e);
+    return member;
+  }
 }
 
 /** 返回给小程序端的会员信息：手机号只给打码后的 */
@@ -65,7 +109,7 @@ const PLAN_KEYS = { sport: 'string', scene: 'string', start: 'string', minutes: 
 const actions = {
   /** 进入小程序时取一次：会员、补给计划、已设提醒和已报名的活动 id */
   async bootstrap(event, openid) {
-    const member = await findById('members', openid);
+    const member = await ensureMemberNo(await findById('members', openid));
     const plan = member ? await findById('plans', openid) : null;
     const reminders = await db.collection('reminders').where({ openid: openid, sent: false }).limit(100).get();
     const signups = await db.collection('signups').where({ openid: openid }).limit(100).get();
@@ -80,7 +124,7 @@ const actions = {
   /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。 */
   async register(event, openid) {
     const existing = await findById('members', openid);
-    if (existing) return { member: memberView(existing) };
+    if (existing) return { member: memberView(await ensureMemberNo(existing)) };
     if (!event.code) throw fail('missing_code');
     let info;
     try {
@@ -91,10 +135,10 @@ const actions = {
       throw fail('phone_failed');
     }
     if (!info || !info.purePhoneNumber) throw fail('phone_failed');
-    // 会员编号和积分的规则还没定（docs/04-open-items.md）：编号先留空，积分从 0 开始
+    // 积分从 0 开始（怎么得分还没定，见 docs/04-open-items.md）；编号在建好会员后发，取号失败不影响注册，下次进入时补发
     const doc = { openid: openid, phone: info.purePhoneNumber, countryCode: info.countryCode || '', memberNo: null, points: 0, createdAt: db.serverDate() };
     await db.collection('members').doc(openid).set({ data: doc });
-    return { member: memberView(await findById('members', openid)) };
+    return { member: memberView(await ensureMemberNo(await findById('members', openid))) };
   },
 
   /** 保存补给计划（只留最近一份）。input 是公式的输入，result 是支数等摘要。 */

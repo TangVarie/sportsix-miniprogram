@@ -100,16 +100,17 @@ function myEvents() {
 }
 
 /**
- * 头部和会员卡上的个人信息。云开发下手机号是打码后的；
- * 昵称不收集（注册只取微信身份和手机号），会员编号和积分的规则没定，没有数据的项保持 content 里的占位。
+ * 头部和会员卡上的个人信息。云开发下手机号是打码后的。
+ * 昵称不收集（注册只取微信身份和手机号），统一显示 content 里的「SPORTSIX 会员」；
+ * 会员编号由云函数按注册先后发；积分从 0 开始。编号还没拿到时显示「—」，不把方括号占位露给用户。
  */
 function profile() {
   const m = store.getMember() || {};
   return {
     nickname: member.me.profile.nickname,
-    phone: m.phoneMasked || member.me.profile.phone,
-    memberNo: m.memberNo ? member.me.card.memberNo.replace(/\[[^\]]+\]/, m.memberNo) : member.me.card.memberNo,
-    points: typeof m.points === 'number' ? String(m.points) : member.me.card.points
+    phone: m.phoneMasked || '',
+    memberNo: member.me.card.memberNo.replace(/\[[^\]]+\]/, m.memberNo || '—'),
+    points: String(typeof m.points === 'number' ? m.points : 0)
   };
 }
 

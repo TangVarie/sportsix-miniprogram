@@ -49,13 +49,25 @@ async function functionTests() {
 
   r = await call('register', { code: 'code-a' });
   eq(r.data.member.phoneMasked, '138****1234', '手机号打码');
-  eq(r.data.member.memberNo, null, '会员编号规则未定，留空');
+  eq(r.data.member.memberNo, '100001', '第一位会员的编号是 100001');
+  eq(cloud.col('members')[0].memberNo, '100001', '编号存进会员记录');
+  eq(cloud.col('counters')[0].next, 100002, '计数集合自动建好，记着下一个号');
   eq(r.data.member.points, 0, '积分从 0 开始');
   ok(!JSON.stringify(r.data).includes('13800001234'), '不把完整手机号返回给小程序端');
   eq(cloud.col('members')[0].phone, '13800001234', '库里存完整手机号');
   r = await call('register', { code: 'whatever' });
   eq(r.data.member.phoneMasked, '138****1234', '重复注册返回已有会员');
   eq(cloud.col('members').length, 1, '不重复建会员');
+  eq(r.data.member.memberNo, '100001', '重复注册不换编号');
+
+  // 编号规则定下来之前注册的会员没有编号：下次进入时补发，按取号先后往下排
+  cloud.col('members').push({ _id: 'user-old', openid: 'user-old', phone: '13900005678', memberNo: null, points: 0, createdAt: new Date(cloud.state.now) });
+  cloud.state.openid = 'user-old';
+  r = await call('bootstrap');
+  eq(r.data.member.memberNo, '100002', '老会员进入时补发编号');
+  eq((await call('bootstrap')).data.member.memberNo, '100002', '补发过的不再换号');
+  cloud.col('members').splice(cloud.col('members').findIndex((d) => d._id === 'user-old'), 1);
+  cloud.state.openid = 'user-a';
 
   eq((await call('savePlan', { input: { sport: 'road' } })).code, 'bad_input', '计划输入不完整');
   r = await call('savePlan', { input: Object.assign({ extra: 'x' }, input), result: { total: 9, gelCount: 4, proCount: 5 } });
@@ -214,7 +226,9 @@ async function clientTests() {
   ok(p.data.registered, '注册成功切到会员状态');
   eq(p.data.profile.phone, '138****1234', '显示打码手机号');
   eq(p.data.profile.points, '0', '显示积分');
-  ok(p.data.profile.memberNo.includes('['), '会员编号没有数据时保持占位');
+  ok(/^会员编号 \d{6}$/.test(p.data.profile.memberNo), '显示会员编号');
+  eq(p.data.profile.nickname, 'SPORTSIX 会员', '昵称统一显示');
+  ok(!JSON.stringify(p.data.profile).includes('['), '会员信息里没有方括号占位');
   eq(cloud.col('plans')[0].input.sport, 'trail', '注册后把待保存的计划存到云端');
   eq(lastCall('switchTab').args.url, '/pages/fuel/index', '回到计算页');
   ok(app.globalData.fuelRestore, '计算页按保存的输入还原');
