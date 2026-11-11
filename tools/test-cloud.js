@@ -359,15 +359,19 @@ async function fontTests() {
   const { createEnv, ROOT } = require('./preview/runtime.js');
   const CDN = 'https://636c-test-env-1500000000.tcb.qcloud.la';
   const tick = () => new Promise((r) => setTimeout(r, 20));
+  const FONT_FILES = ['barlow-condensed-latin-700-italic.woff2', 'barlow-condensed-latin-800-italic.woff2', 'barlow-condensed-latin-700-normal.woff2'];
 
   function launch(opts) {
     const files = opts.files;                 // 本机文件：路径 → base64
     const downloads = [];
+    const attempts = [];                      // dataUrlFails 时：每次 loadFontFace 的 source
+    const loaded = [];                        // dataUrlFails 时：加载成功的
     const wxExtra = {
       env: { USER_DATA_PATH: 'wxfile://usr' },
       getFileSystemManager: () => ({
         readFile(o) { if (o.filePath in files) o.success({ data: files[o.filePath] }); else o.fail({ errMsg: 'no such file' }); },
-        copyFile(o) { files[o.destPath] = files[o.srcPath]; }
+        copyFile(o) { files[o.destPath] = files[o.srcPath]; },
+        unlink(o) { delete files[o.filePath]; }
       }),
       cloud: {
         init() {},
@@ -381,10 +385,18 @@ async function fontTests() {
         }
       }
     };
+    if (opts.dataUrlFails) {
+      // 模拟「Data URL 的字体内容是坏的」：这种 source 一律加载失败
+      wxExtra.loadFontFace = (o) => {
+        attempts.push(o.source);
+        if (o.source.indexOf('data:') >= 0) { o.fail({ status: 'error' }); return; }
+        loaded.push(o);
+      };
+    }
     const env = createEnv({ wx: wxExtra, assetBase: opts.assetBase || CDN });
     Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', sampleEvents: false });
     env.launch();
-    return { env: env, downloads: downloads };
+    return { env: env, downloads: downloads, attempts: attempts, loaded: loaded };
   }
 
   const files = {};
@@ -402,6 +414,15 @@ async function fontTests() {
   r = launch({ files: {}, downloadFails: true });
   await tick();
   ok(r.env.wx.__fonts.length === 3 && r.env.wx.__fonts.every((f) => f.source.startsWith('url("' + CDN + '/assets/fonts/')), '下载失败时退回 https 地址');
+
+  // 本机缓存的内容坏了：Data URL 加载失败后删掉缓存，改用 https 地址再试一次
+  const broken = {};
+  FONT_FILES.forEach((name) => { broken['wxfile://usr/sx-' + name] = 'QlJPS0VO'; });
+  r = launch({ files: broken, dataUrlFails: true });
+  await tick();
+  eq(r.attempts.filter((s) => s.indexOf('data:') >= 0).length, 3, '先试本机缓存的 Data URL');
+  ok(r.loaded.length === 3 && r.loaded.every((f) => f.source.startsWith('url("' + CDN + '/assets/fonts/')), 'Data URL 加载失败后改用 https 地址');
+  eq(Object.keys(broken).filter((k) => k.indexOf('wxfile://usr/') === 0).length, 0, '坏掉的缓存被删掉，下次启动重新下载');
 
   r = launch({ files: {}, assetBase: 'http://127.0.0.1:8787' });
   await tick();

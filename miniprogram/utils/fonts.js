@@ -37,19 +37,28 @@ function readBase64(fs, filePath) {
   });
 }
 
-/** 这个字体交给 loadFontFace 的 source：优先本机缓存，其次从云存储下载，都不行就用 https 地址 */
+/** 这个字体在本机缓存的路径 */
+function savedPath(font) {
+  return wx.env.USER_DATA_PATH + '/sx-' + font.file.split('/').pop();
+}
+
+/**
+ * 这个字体交给 loadFontFace 的 source：优先本机缓存，其次从云存储下载，都不行就用 https 地址。
+ * 返回 { source, https }；source 是 Data URL 时和 https 不同，调用方据此知道还有 https 这条退路。
+ */
 function fontSource(font) {
   const https = 'url("' + assetUrl(font.file) + '")';
+  const fallback = { source: https, https: https };
   const fileID = cloudFileId(font.file);
-  if (!fileID) return Promise.resolve(https);
+  if (!fileID) return Promise.resolve(fallback);
   let fs;
   let saved;
   try {
     fs = wx.getFileSystemManager();
-    saved = wx.env.USER_DATA_PATH + '/sx-' + font.file.split('/').pop();
+    saved = savedPath(font);
     cloud.init();
   } catch (e) {
-    return Promise.resolve(https);
+    return Promise.resolve(fallback);
   }
   return readBase64(fs, saved)
     .catch(() => wx.cloud.downloadFile({ fileID: fileID }).then((res) => readBase64(fs, res.tempFilePath).then((base64) => {
@@ -57,20 +66,37 @@ function fontSource(font) {
       try { fs.copyFile({ srcPath: res.tempFilePath, destPath: saved, fail() {} }); } catch (e) { /* 忽略 */ }
       return base64;
     })))
-    .then(dataUrl)
-    .catch(() => https);
+    .then((base64) => {
+      if (!base64) throw new Error('empty font');
+      return { source: dataUrl(base64), https: https };
+    })
+    .catch(() => fallback);
+}
+
+/** 删掉这个字体的本机缓存（内容坏了的时候用），下次启动重新下载 */
+function dropSaved(font) {
+  try { wx.getFileSystemManager().unlink({ filePath: savedPath(font), fail() {} }); } catch (e) { /* 忽略 */ }
+}
+
+function load(font, source, onFail) {
+  wx.loadFontFace({
+    global: true,
+    family: FAMILY,
+    source: source,
+    desc: { style: font.style, weight: font.weight },
+    // 最后一条路也失败时回退到系统字体，不影响使用
+    fail: onFail || (() => {})
+  });
 }
 
 function loadFonts() {
   FONTS.forEach((font) => {
-    fontSource(font).then((source) => {
-      wx.loadFontFace({
-        global: true,
-        family: FAMILY,
-        source: source,
-        desc: { style: font.style, weight: font.weight },
-        // 加载失败时回退到系统字体，不影响使用
-        fail: () => {}
+    fontSource(font).then((src) => {
+      if (src.source === src.https) { load(font, src.https); return; }
+      // Data URL 加载失败（比如本机缓存的内容坏了）：删掉缓存，改用 https 地址再试一次
+      load(font, src.source, () => {
+        dropSaved(font);
+        load(font, src.https);
       });
     });
   });
