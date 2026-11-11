@@ -6,13 +6,9 @@ SPORTSIX 小程序做三件事：品牌和产品介绍、活动通知、会员�
 
 ## 运行
 
-1. 起本地资源服务。图片、视频、字体不打进包，开发时由它代替 CDN：
+1. 图片、视频、字体不打进包，放在云存储里，`miniprogram/config.js` 的 `assetBase` 已经指过去，不需要另外起服务。想用本地素材调试时，把 `assetBase` 临时改成 `http://127.0.0.1:8787` 并运行 `npm run assets`。
 
-```bash
-npm run assets
-```
-
-2. 用微信开发者工具导入仓库根目录（`project.config.json` 已把小程序目录指到 `miniprogram/`，AppID 已填好）。在「详情 → 本地设置」里勾选「不校验合法域名」，否则本地资源加载不出来。
+2. 用微信开发者工具导入仓库根目录（`project.config.json` 已把小程序目录指到 `miniprogram/`，AppID 已填好）。导入时选直接包含 `project.config.json` 的那一层文件夹，否则开发者工具认不出云函数目录。
 
 改了 `reference/content/*.json` 之后跑 `npm run content`，把文案同步到 `miniprogram/content/`。
 
@@ -31,7 +27,7 @@ npm run assets
 
 都在 `miniprogram/config.js` 和 `project.config.json`：
 
-- `assetBase`：运行 `npm run cdn` 挑出用到的资源，上传到云存储，换成 https 地址。步骤见 `cloudfunctions/README.md` 的「资源放到云存储」。
+- `assetBase`：已经是云存储的地址。换素材时运行 `npm run cdn` 挑出用到的文件再上传，步骤见 `cloudfunctions/README.md` 的「资源放到云存储」。
 - `cloudEnv`：微信云开发的环境 ID。留空时会员、提醒、补给计划只存在本机，用来看页面状态；填了以后走云开发。开通和部署步骤见 `cloudfunctions/README.md`。
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
 - `sampleEvents`：已经是 `false`，显示云数据库 `events` 集合里的活动，没有活动时显示「敬请期待」。改成 `true` 可以看三种活动卡片的占位示例，对照设计稿用。

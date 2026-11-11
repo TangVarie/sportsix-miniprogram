@@ -28,7 +28,7 @@ cloudfunctions/
 
 ## 资源放到云存储
 
-图片、视频、字体不打进小程序包，开发时由本地的 `npm run assets` 代替。上线前要放到线上，直接用同一个云环境的云存储即可（自带 CDN，基础套餐含 5GB CDN 流量）。
+图片、视频、字体不打进小程序包，放在同一个云环境的云存储里（自带 CDN，基础套餐含 5GB CDN 流量）。**现在已经传好**，`miniprogram/config.js` 的 `assetBase` 填的就是云存储的地址。下面的步骤是以后换素材或换环境时用的。
 
 1. 在仓库根目录运行 `npm run cdn`。它把小程序实际用到的 38 个文件（约 7MB）挑到 `out/cdn/assets/` 里，没用到的 720p 原片、多余的字体不带上。
 2. 打开云开发控制台的「存储」，把 `out/cdn/` 里的 `assets` 文件夹整个上传到根目录，保持 `assets/` 这一层目录不变。
@@ -36,7 +36,9 @@ cloudfunctions/
 4. 点开任意一个上传好的文件，复制它的下载地址，形如 `https://7370-xxxx-1300000000.tcb.qcloud.la/assets/logo/avatar.svg`。取 `/assets/` 前面的那一段，填到 `miniprogram/config.js` 的 `assetBase`，例如 `assetBase: 'https://7370-xxxx-1300000000.tcb.qcloud.la'`。地址后面如果带 `?sign=...` 之类的参数，不要带上。
 5. 重新编译，关掉「不校验合法域名」再看一遍：图片、视频、数字字体都应该正常。
 
-图片和视频用的是 `image`、`video` 组件，不需要把这个域名加进小程序后台的服务器域名（那里只管 `wx.request`、上传、下载、WebSocket）。数字字体是用 `wx.loadFontFace` 加载的，要求 https 且允许跨域；如果控制台报字体加载失败，页面会回退成系统字体，不影响使用，把报错发给开发处理。
+图片和视频用的是 `image`、`video` 组件，不需要把这个域名加进小程序后台的服务器域名（那里只管 `wx.request`、上传、下载、WebSocket）。
+
+数字字体的加载单独处理（`miniprogram/utils/fonts.js`）。`wx.loadFontFace` 用 https 地址时要求服务器允许跨域；云存储本身允许，但它前面的 CDN 会把不带跨域许可的响应缓存下来，所以直接用地址加载时好时坏。现在的做法是用 `wx.cloud.downloadFile` 把字体下到本机，读成 Data URL 再加载，不经过跨域检查，也不用配下载域名；下过一次就存在本机。这条路失败时退回用地址加载，再失败就是系统字体，不影响使用。
 
 以后换图：替换云存储里的同名文件即可；新增了资源就重新跑一次 `npm run cdn`，把新增的文件传上去。
 

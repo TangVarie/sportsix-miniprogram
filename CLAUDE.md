@@ -56,7 +56,7 @@ miniprogram/
   custom-tab-bar/                自定义底部导航
   pages/<页面>/index.*           home、fuel、events、event-detail、product、me、doc（用户协议和隐私政策）
   components/<组件>/index.*      member-cta、dual-carb 等
-  utils/                         assets.js、page.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
+  utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
   assets/icons/                  图标随包；另补了 chevron-*、back-* 两组箭头
 cloudfunctions/
