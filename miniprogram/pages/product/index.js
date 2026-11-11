@@ -1,5 +1,5 @@
 const products = require('../../content/products.js');
-const { baseData, watchReveal, navTone, measureDarkZones, go, imgLoaded } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, imgLoaded, shareCard } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 const PRODUCTS = { 'energy-gel': products.energyGel, 'energy-gel-pro': products.energyGelPro };
@@ -92,10 +92,22 @@ Page({
 
   onLoad(query) {
     this.setData(Object.assign(baseData(), build(query.id)));
+    // 页面是自定义导航，标题不显示在页面上，但会出现在任务切换、最近使用等地方
+    wx.setNavigationBarTitle({ title: this.data.p.name });
     // 首屏高度换成屏幕 px：深色分区的位置还没量到时，先按「滚过首屏换成深色字」处理
     let width = 390;
     try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 取不到就按设计宽度 */ }
     this.heroHeight = Math.round((HERO_H * width) / 390);
+  },
+
+  /** 转发出去的是这一款的详情页，标题用款名 */
+  onShareAppMessage() {
+    return shareCard('/pages/product/index?id=' + this.data.id, this.data.p ? this.data.p.name : '');
+  },
+
+  /** 分享到朋友圈：带上是哪一款，标题用款名 */
+  onShareTimeline() {
+    return { title: this.data.p ? this.data.p.name : '', query: 'id=' + this.data.id };
   },
 
   onReady() {

@@ -7,7 +7,7 @@ const messages = require('../../content/messages.js');
 const legal = require('../../content/legal.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
-const { baseData, selectTab, go, navTone, imgLoaded, tick } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /**
@@ -166,7 +166,7 @@ Page({
     this.setData(baseData());
     this.toneAt = toneThreshold();
     // 云端数据同步完成后重读（会员状态以云端为准）
-    this.offStore = store.onChange(() => this.setData(readState()));
+    this.offStore = store.onChange(() => { this.setData(readState()); this.syncShareMenu(); });
   },
 
   onUnload() {
@@ -177,7 +177,24 @@ Page({
     selectTab(this, 3);
     // 注册状态、补给计划、提醒、报名都可能在别的页面变了，每次显示都重读；活动列表再从云端取一次
     this.setData(readState());
+    this.syncShareMenu();
     events.refresh().then((changed) => { if (changed) this.setData(readState()); });
+  },
+
+  /** 只有注册页能转发，收到的人打开看到的也是注册页 */
+  onShareAppMessage() {
+    return shareCard(TABS.me);
+  },
+
+  /**
+   * 会员页上有昵称、手机号、会员编号，转发卡片的配图又是当前页面的截图，所以注册以后把「转发」收起来；
+   * 没注册时是注册页，可以转发。
+   */
+  syncShareMenu() {
+    try {
+      if (this.data.registered) wx.hideShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+      else wx.showShareMenu({ menus: ['shareAppMessage'] });
+    } catch (e) { /* 旧基础库没有 menus 参数时忽略 */ }
   },
 
   onPageScroll(e) {
@@ -198,11 +215,14 @@ Page({
   onAgreePrivacy() {},
 
   /**
-   * 注册（没配云环境时）。必须先勾选协议。不取手机号，只在本机记「已注册」，用来看页面状态。
+   * 没勾选协议时，注册按钮是普通按钮，点了走这里：提示先勾选。
+   * 没配云环境时，勾选后也走这里：不取手机号，只在本机记「已注册」，用来看页面状态。
    */
   onRegister() {
-    if (!this.data.agreed || this.data.cloudMode) return;
-    store.register().then(() => this.afterRegister());
+    // 没勾选协议就点按钮：提示一句，不然看起来像按钮坏了
+    if (!this.data.agreed) { wx.showToast({ title: messages.register.needAgree, icon: 'none' }); return; }
+    if (this.data.cloudMode) return;
+    store.register().then((r) => this.afterRegister(r));
   },
 
   /**
@@ -214,21 +234,22 @@ Page({
     if (!code || this.registering) return;
     this.registering = true;
     store.register(code)
-      .then(() => this.afterRegister())
+      .then((r) => this.afterRegister(r))
       .catch(() => wx.showToast({ title: messages.register.failed, icon: 'none' }))
       .then(() => { this.registering = false; });
   },
 
-  /** 注册完成 */
-  afterRegister() {
+  /** 注册完成。joined.isNew 为 false 时是老会员重新登录，不提「已送积分」 */
+  afterRegister(joined) {
     // 本页切到会员状态
     this.setData(readState());
+    this.syncShareMenu();
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     navTone(this, 0, this.toneAt);
 
     // 从计算页点「保存到我的」过来的：把那份输入存下，成功后回到计算页，由它按刚存下的输入还原
     const pending = store.getPendingPlan();
-    if (!pending) { wx.showToast({ title: messages.register.ok, icon: 'none' }); return; }
+    if (!pending) { wx.showToast({ title: joined && joined.isNew === false ? messages.register.back : messages.register.ok, icon: 'none' }); return; }
     const r = fuel.planFuel(pending);
     store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).then(() => {
       store.clearPendingPlan();
@@ -249,6 +270,10 @@ Page({
 
   onEvent(e) {
     go('event-detail', { id: e.currentTarget.dataset.id });
+  },
+
+  onPoints() {
+    go('points');
   },
 
   /**

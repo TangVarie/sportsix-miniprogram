@@ -19,6 +19,13 @@
       <view class="hm-hero__tag-wrap sx-rise" style="animation-delay: .45s">
         <text class="hm-hero__tag sx-slant">{{hero.tag}}</text>
       </view>
+      <!-- Informed Sport 认证标（白色版，随包）：点了滚到下面的认证说明 -->
+      <view class="sx-rise" style="animation-delay: .55s">
+        <view class="hm-hero__cert sx-pressable" hover-class="sx-press" bindtap="onCert">
+          <image class="hm-hero__cert-icon" src="/assets/icons/informed-sport-white.png" />
+          <text>{{cert.badge}}</text>
+        </view>
+      </view>
     </view>
   </view>
 
@@ -138,7 +145,7 @@
   <view id="rv-cert" class="{{seen.cert ? 'sx-in' : 'sx-wait'}}">
     <view class="hm-cert sx-rise">
       <view class="hm-cert__head">
-        <view class="hm-cert__badge"><image class="hm-cert__badge-icon" src="/assets/icons/shield-lime.svg" /></view>
+        <image class="hm-cert__logo" src="/assets/icons/informed-sport-color.png" />
         <view class="hm-cert__title">
           <view wx:for="{{cert.title}}" wx:key="*this">{{item}}</view>
         </view>
@@ -189,11 +196,23 @@
       <view wx:for="{{brand.title}}" wx:key="*this">{{item}}</view>
     </view>
     <view class="hm-brand__body">{{brand.body}}</view>
-    <view class="hm-brand__values">
-      <view wx:for="{{brand.values}}" wx:key="icon" class="hm-brand__value sx-rise" style="animation-delay: {{0.05 + index * 0.06}}s">
-        <image class="hm-brand__icon" src="/assets/icons/{{item.icon}}-lime.svg" mode="aspectFit" />
-        <view class="hm-brand__value-text">
-          <view wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+
+    <!-- 六大运动核心价值：单独一块，大数字 6 加标题，下面六张带编号的卡片（设计稿里是品牌介绍下面的六个小格，没有标题） -->
+    <view class="hm-six">
+      <view class="hm-six__head sx-rise">
+        <text class="hm-six__big sx-num">6</text>
+        <view class="hm-six__head-text">
+          <text class="sx-eyebrow hm-eyebrow--lime">{{brand.six.eyebrow}}</text>
+          <view class="hm-six__title">{{brand.six.title}}</view>
+        </view>
+      </view>
+      <view class="hm-six__grid">
+        <view wx:for="{{brand.values}}" wx:key="icon" class="hm-six__card sx-rise" style="animation-delay: {{0.1 + index * 0.06}}s">
+          <view class="hm-six__top">
+            <text class="hm-six__no sx-num">{{item.no}}</text>
+            <image class="hm-six__icon" src="/assets/icons/{{item.icon}}-lime.svg" mode="aspectFit" />
+          </view>
+          <view class="hm-six__text">{{item.text}}</view>
         </view>
       </view>
     </view>

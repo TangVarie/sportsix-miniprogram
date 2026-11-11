@@ -1,0 +1,28 @@
+/* 设计稿里没有这一页：头部沿用协议页的返回按钮，数字用会员卡上积分的样式放大，正文沿用现有页面的字号 */
+.pt-header { position: relative; height: calc(404rpx + var(--sx-safe-top)); color: #FFFFFF; }
+.pt-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; height: 85rpx; padding: 0 15rpx;
+}
+.pt-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.pt-header__text { position: absolute; left: 38rpx; right: 38rpx; bottom: 38rpx; }
+.pt-header__eyebrow { color: #C2E541; }
+.pt-header__title { margin-top: 8rpx; font-size: 31rpx; line-height: 46rpx; font-weight: 700; }
+.pt-header__num { margin-top: 4rpx; font-size: 123rpx; line-height: 131rpx; color: #C2E541; }
+
+.pt-body { padding: 46rpx 38rpx calc(77rpx + env(safe-area-inset-bottom)); }
+.pt-note { display: flex; align-items: flex-start; gap: 15rpx; padding: 27rpx 31rpx; border-radius: 23rpx; background: #F4F4F5; }
+.pt-note__icon { flex-shrink: 0; display: block; width: 38rpx; height: 38rpx; margin-top: 2rpx; }
+.pt-note__text { font-size: 25rpx; line-height: 42rpx; color: #14141E; }
+
+.pt-h2 { margin-top: 62rpx; font-size: 35rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.pt-list { margin-top: 15rpx; }
+.pt-row { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; padding: 31rpx 0; }
+.pt-row--next { border-top: 1px solid #E6E6E7; }
+.pt-row__text { min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.pt-row__reason { font-size: 29rpx; line-height: 42rpx; font-weight: 700; color: #010439; }
+.pt-row__date { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.pt-row__delta { flex-shrink: 0; font-size: 46rpx; line-height: 54rpx; color: #061A70; }
+.pt-row__delta--minus { color: #5E6170; }
+.pt-skel { height: 100rpx; margin-top: 23rpx; border-radius: 19rpx; }
+.pt-empty { margin-top: 31rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }

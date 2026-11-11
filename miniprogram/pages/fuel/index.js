@@ -1,7 +1,7 @@
-const { planFuel, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
+const { planFuel, isSteady, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
 const messages = require('../../content/messages.js');
-const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /*
@@ -46,11 +46,11 @@ function normalize(raw) {
 }
 
 /**
- * 传给公式的输入。徒步不分场景，页面上「场景」一行是隐藏的，这时按长距离训练算
- * （fuel-plan.test.js 里徒步的用例也是 scene: 'long'），不让看不见的选项影响结果。
+ * 传给公式、存进计划的输入。徒步、登山、滑雪不分强度，页面上「强度」一行是隐藏的，这时按轻松训练算
+ * （公式里也是这么处理的），不让看不见的选项影响结果。
  */
 function effective(input) {
-  return input.sport === 'hike' ? Object.assign({}, input, { scene: 'long' }) : input;
+  return isSteady(input.sport) ? Object.assign({}, input, { scene: 'long' }) : input;
 }
 
 /** 每个分段选择里，当前值是第几项 */
@@ -72,8 +72,10 @@ function view(input) {
     on: selectedIndexes(input),
     // 点了哪一格（时间轴上对应的点会高亮）。输入一变就取消
     active: -1,
-    // 徒步不分场景：隐藏这一行；input.scene 保持原值，切回其他项目时还是原来的选择
-    showScene: input.sport !== 'hike',
+    // 徒步、登山、滑雪不分强度：隐藏这一行；input.scene 保持原值，切回其他项目时还是原来的选择
+    showScene: !isSteady(input.sport),
+    // 选中的强度下面的一句说明
+    sceneHint: (SCENES.find((s) => s.key === input.scene) || {}).hint || '',
     plan: {
       total: r.total,
       gelCount: r.gelCount,
@@ -109,6 +111,10 @@ Page({
   /** 图片加载完（或加载失败）：让它淡入 */
   onImgLoad(e) {
     imgLoaded(this, e);
+  },
+
+  onShareAppMessage() {
+    return shareCard(TABS.fuel);
   },
 
   onLoad() {

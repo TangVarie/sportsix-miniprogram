@@ -43,6 +43,7 @@ async function functionTests() {
   eq(r.data, { member: null, plan: null, reminders: [], signups: [] }, '新用户');
 
   eq((await call('savePlan', { input: input })).code, 'not_member', '未注册不能保存计划');
+  eq((await call('points')).code, 'not_member', '未注册不能看积分');
   eq((await call('signup', { eventId: 'trial' })).code, 'not_member', '未注册不能报名');
   eq((await call('register', {})).code, 'missing_code', '注册缺 code');
   eq((await call('register', { code: 'bad' })).code, 'phone_failed', '换不到手机号');
@@ -53,6 +54,7 @@ async function functionTests() {
   eq(cloud.col('members')[0].memberNo, '100001', '编号存进会员记录');
   eq(cloud.col('counters')[0].next, 100002, '计数集合自动建好，记着下一个号');
   eq(r.data.member.points, 500, '注册送 500 积分');
+  eq(r.data.isNew, true, '第一次注册是新会员');
   eq(r.data.member.nickname, '', '昵称一开始是空的');
   ok(!JSON.stringify(r.data).includes('13800001234'), '不把完整手机号返回给小程序端');
   eq(cloud.col('members')[0].phone, '13800001234', '库里存完整手机号');
@@ -61,6 +63,19 @@ async function functionTests() {
   eq(cloud.col('members').length, 1, '不重复建会员');
   eq(r.data.member.memberNo, '100001', '重复注册不换编号');
   eq(r.data.member.points, 500, '重复注册不重复送积分');
+  eq(r.data.isNew, false, '已经是会员的再登录不算新会员');
+
+  // 积分页：当前积分和积分记录
+  r = await call('points');
+  eq(r.data.member.points, 500, '积分页返回当前积分');
+  eq(r.data.logs.map((l) => [l.delta, l.reason]), [[500, 'welcome']], '注册赠送记了一条积分记录');
+  eq(typeof r.data.logs[0].at, 'number', '记录的时间是时间戳');
+  eq(cloud.col('point_logs').length, 1, '积分记录的集合自动建好');
+  // 手动加的记录（运营在控制台里加的）排在前面，原因原样返回
+  cloud.col('point_logs').push({ _id: 'manual-1', openid: 'user-a', delta: -100, reason: '兑换试用装', createdAt: new Date(cloud.state.now + 1000) });
+  r = await call('points');
+  eq(r.data.logs.map((l) => l.reason), ['兑换试用装', 'welcome'], '新的记录在前');
+  cloud.col('point_logs').splice(cloud.col('point_logs').findIndex((d) => d._id === 'manual-1'), 1);
 
   // 编号规则定下来之前注册的会员没有编号：下次进入时补发，按取号先后往下排
   cloud.col('members').push({ _id: 'user-old', openid: 'user-old', phone: '13900005678', memberNo: null, points: 0, createdAt: new Date(cloud.state.now) });
@@ -68,6 +83,7 @@ async function functionTests() {
   r = await call('bootstrap');
   eq(r.data.member.memberNo, '100002', '老会员进入时补发编号');
   eq(r.data.member.points, 500, '老会员补送注册积分');
+  eq((await call('points')).data.logs.map((l) => l.reason), ['welcome'], '补送的也记了积分记录');
   r = await call('bootstrap');
   eq(r.data.member.memberNo, '100002', '补发过的不再换号');
 
@@ -238,6 +254,9 @@ async function clientTests() {
   ok(p.data.cloudMode && !p.data.registered, '云开发模式的注册页');
   let html = env.renderHtml();
   ok(!html.includes('<wx-button'), '未勾选协议时没有手机号按钮');
+  p.onRegister();
+  eq(lastCall('showToast').args.title, '请先阅读并同意用户协议和隐私政策', '未勾选就点注册：提示先勾选');
+  ok(!p.data.registered, '未勾选不注册');
   p.onAgree({});
   html = env.renderHtml();
   ok(html.includes('<wx-button'), '勾选后是手机号按钮');
@@ -252,6 +271,10 @@ async function clientTests() {
   ok(/^会员编号 \d{6}$/.test(p.data.profile.memberNo), '显示会员编号');
   eq(p.data.profile.nickname, 'SPORTSIX 会员', '没填昵称时的显示');
   ok(!JSON.stringify(p.data.profile).includes('['), '会员信息里没有方括号占位');
+
+  // 转发：会员页有个人信息，注册以后把「转发」收起来
+  eq(p.onShareAppMessage(), { path: '/pages/me/index' }, '注册页转发出去的是注册页');
+  ok(lastCall('hideShareMenu'), '注册以后会员页收起转发');
 
   // 改昵称：等微信的昵称检测结果，通过才保存
   p.onNameEdit();

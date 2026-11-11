@@ -1,6 +1,6 @@
 const events = require('../../utils/events.js');
 const store = require('../../utils/store.js');
-const { baseData, selectTab, go, navTone, headerTone, imgLoaded } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 Page({
@@ -18,6 +18,10 @@ Page({
   /** 图片加载完（或加载失败）：让它淡入 */
   onImgLoad(e) {
     imgLoaded(this, e);
+  },
+
+  onShareAppMessage() {
+    return shareCard(TABS.events);
   },
 
   onLoad() {

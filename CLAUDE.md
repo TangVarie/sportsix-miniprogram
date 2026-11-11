@@ -27,9 +27,14 @@ SPORTSIX 是韩国大象集团旗下的运动营养品牌，主推两款能量�
 ## 规则
 
 - 文案一律用 `reference/content/*.json` 里的原文，不要改写、补写或自己编文案。缺文案就留方括号占位并在回复里说明。
-- 不要自己造词。产品款名只有「能量胶」和「能量胶PRO」，不用颜色或其他说法指代。品牌卖点的说法是「缓释」，不是「持久」。
+- 不要自己造词。产品款名只有「能量胶BASIC」和「能量胶PRO」（地方小时简写 BASIC、PRO），不用颜色、「含咖款」这类说法指代。「能量胶」只作品类的统称（「其他能量胶」「新手吃胶」），不指其中某一款。别的品牌的胶写「其他胶」。品牌卖点的说法是「缓释」，不是「持久」。
 - `fuel-plan.js` 是公式的唯一实现，原样复制到小程序里使用，页面只负责输入和展示。要改公式，先改测试，并保持 `node fuel-plan.test.js` 通过。
 - 尺寸换算：`rpx = px × 750 ÷ 390`。设计稿里的所有数值都是 390px 宽度下的 px。
+- 写给用户看的字要互相对得上，也要像人说的话：
+  - 量词一律用「支」，不用条、包、袋；能量单位用「千卡」，不用大卡。
+  - 入口按钮叫「手机号快捷登录」，结果提示说「加入」「登录」，不说「注册」；积分说「新会员送 500 积分」。
+  - 产品页上的数字要和补给计算的结果对得上（全马带几支、能量胶PRO 食用指南的间隔）。改一处，查另一处；`fuel-plan.test.js` 里有对应的用例。
+  - 句子里不用冒号、破折号和「不仅…更是…」这类句式，数字范围写「到」；不用全链路、矩阵这类词。标签式的「规格：…」「单位：…」不算。
 - 设计稿里方括号括起来的内容是占位，保留为占位或接数据，不要替换成编造的内容。
 - JSON 里带 `confirm` 字段的条目是待品牌方确认的内容，照常实现，但不要删掉 `confirm` 标记。
 - 微信的接口和限制（包体积、自定义 tabBar、字体加载、手机号快速验证、订阅消息）以官方文档的现行说明为准，用之前先查，不要凭印象写。
@@ -54,7 +59,7 @@ miniprogram/
   app.js  app.json  app.wxss     全局样式：styles/tokens.wxss 加几个原子类和动效类
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
-  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、doc（用户协议和隐私政策）
+  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）
   components/<组件>/index.*      member-cta、dual-carb 等
   utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
@@ -94,7 +99,8 @@ tools/
 - 全局 `navigationStyle: custom`。每个页面的根节点写 `style="--sx-safe-top: {{safeTop}}px"`，`data` 用 `baseData()`（`utils/page.js`）初始化并在 `onLoad` 里再 `setData(baseData())`。
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
+- 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」只开了首页和产品页（`onShareTimeline` 加页面 json 里的 `singlePage`），其他页面依赖跳转或云开发，单页模式下用不了。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 
@@ -110,6 +116,17 @@ tools/
 - 小程序端只调一个云函数 `api`（`utils/cloud.js` 的 `call(action, data)`），数据库集合不对小程序端开放。加接口时在 `cloudfunctions/api/index.js` 的 `actions` 里加，并在 `tools/test-cloud.js` 里补用例。
 - 会员、报名、提醒、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
+
+### 只有真机和审核才会暴露的事
+
+本地预览看不到这些，写新页面、新按钮时逐条过一遍：
+
+- 页面要有 `onShareAppMessage` 和 `navigationBarTitleText`（`npm test` 会检查）。
+- 按钮在「现在不能用」的时候点了要有提示，不能没反应（没勾选协议点注册、订阅消息被拒绝后点提醒）。
+- 给用户看的地方不能露出方括号占位；没有数据就不显示或显示「—」。
+- 调用手机号验证的页面上不能出现「微信」字样和微信的图标。
+- 页面顶部右侧留给微信的胶囊按钮，内容不要伸到那里；有个人信息的页面不让转发。
+- 发新版本后靠 `app.js` 的 `watchUpdate` 提示重启；页面路径改了，旧的转发卡片由 `onPageNotFound` 兜到首页。
 
 ### 检查
 

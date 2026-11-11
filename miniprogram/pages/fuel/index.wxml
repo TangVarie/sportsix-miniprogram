@@ -1,11 +1,12 @@
 <!--
-  分段选择：选中为深蓝底白字。field 是 input 的字段名，value 是当前值，on 是当前值的序号。
-  三层叠在一起：最下面每个选项一块白底，中间一块深蓝底随选中项滑动，最上面是可点的文字。
+  分段选择：选中为深蓝底白字。field 是 input 的字段名，value 是当前值，on 是当前值的序号，cols 是一行几个。
+  选项比 cols 多时自动排成多行（项目是六个、一行三个）。
+  三层叠在一起：最下面每个选项一块白底，中间一块深蓝底随选中项滑动（横向按列、纵向按行），最上面是可点的文字。
 -->
 <template name="fuel-seg">
   <view class="fuel-seg">
     <view class="fuel-seg__track fuel-seg--{{cols}}"><view wx:for="{{options}}" wx:key="label" class="fuel-seg__slot"></view></view>
-    <view class="fuel-seg__ind fuel-seg__ind--{{cols}}" style="transform: translateX(calc({{on}} * (100% + 12rpx)))"></view>
+    <view class="fuel-seg__ind fuel-seg__ind--{{cols}}" style="transform: translate(calc({{on % cols}} * (100% + 12rpx)), {{(on - on % cols) / cols * 97}}rpx)"></view>
     <view class="fuel-seg__btns fuel-seg--{{cols}}">
       <view wx:for="{{options}}" wx:key="label" class="fuel-seg__btn sx-pressable {{item.value === value ? 'fuel-seg__btn--on' : ''}}" hover-class="sx-press" data-field="{{field}}" data-index="{{index}}" bindtap="onPick">{{item.label}}</view>
     </view>
@@ -26,13 +27,18 @@
   <!-- 01 这场运动 -->
   <view class="fuel-card">
     <view class="fuel-card__head"><text class="fuel-card__no sx-num">01</text><text class="fuel-card__title">这场运动</text></view>
-    <view class="fuel-row">
+    <!-- 六个项目排两行三列 -->
+    <view class="fuel-row fuel-row--tall">
       <text class="fuel-row__label">项目</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'sport', options: sports, value: input.sport, on: on.sport, cols: 4}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'sport', options: sports, value: input.sport, on: on.sport, cols: 3}}" /></view>
     </view>
-    <view wx:if="{{showScene}}" class="fuel-row">
-      <text class="fuel-row__label">场景</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'scene', options: scenes, value: input.scene, on: on.scene, cols: 3}}" /></view>
+    <!-- 强度：从轻到重三档，下面一句话说明选中的这一档。徒步、登山、滑雪不分强度，这一行不显示 -->
+    <view wx:if="{{showScene}}" class="fuel-row fuel-row--tall fuel-row--top">
+      <text class="fuel-row__label fuel-row__label--seg">强度</text>
+      <view class="fuel-row__main">
+        <template is="fuel-seg" data="{{field: 'scene', options: scenes, value: input.scene, on: on.scene, cols: 3}}" />
+        <view class="fuel-row__hint">{{sceneHint}}</view>
+      </view>
     </view>
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">预计时长</text>
@@ -99,7 +105,7 @@
           <text class="fuel-result__word">支</text>
         </view>
         <view class="fuel-legend">
-          <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--gel"></view><text>能量胶 × {{plan.gelCount}}</text></view>
+          <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--gel"></view><text>能量胶BASIC × {{plan.gelCount}}</text></view>
           <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--pro"></view><text>能量胶PRO × {{plan.proCount}}</text></view>
         </view>
       </view>

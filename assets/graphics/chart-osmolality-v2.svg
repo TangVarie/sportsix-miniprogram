@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="示意：渗透压由低到高，PRO 位于低的一端，普通胶位于高的一端" width="314" height="76" viewBox="0 0 314 76">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="示意：渗透压由低到高，PRO 位于低的一端，其他胶位于高的一端" width="314" height="76" viewBox="0 0 314 76">
 <path d="M8 40H306" stroke="#E6E6E7" stroke-width="6" stroke-linecap="round"></path>
 <path d="M8 40H70" stroke="#C2E541" stroke-width="6" stroke-linecap="round"></path>
 <circle cx="70" cy="40" r="11" fill="#C2E541" stroke="#010439" stroke-width="2.500"></circle>
 <circle cx="250" cy="40" r="9" fill="#FFFFFF" stroke="#9A9DAB" stroke-width="2.500"></circle>
 <g font-family="Noto Sans SC, sans-serif" font-size="11">
-<text x="70" y="18" text-anchor="middle" font-weight="700" fill="#010439">PRO</text><text x="250" y="18" text-anchor="middle" fill="#5E6170">普通胶</text>
+<text x="70" y="18" text-anchor="middle" font-weight="700" fill="#010439">PRO</text><text x="250" y="18" text-anchor="middle" fill="#5E6170">其他胶</text>
 <text x="8" y="70" fill="#5E6170">渗透压低</text><text x="306" y="70" text-anchor="end" fill="#5E6170">渗透压高</text></g>
 </svg>

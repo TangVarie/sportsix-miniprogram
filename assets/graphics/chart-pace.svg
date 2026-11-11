@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="配速对比示意图：普通胶的配速在 30 公里后明显下滑，SPORTSIX 复配的配速保持平稳" width="350" height="230" viewBox="0 0 350 230">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="配速对比示意图：其他胶的配速在 30 公里后明显下滑，SPORTSIX 复配的配速保持平稳" width="350" height="230" viewBox="0 0 350 230">
 <rect x="236" y="14" width="86" height="166" fill="#FFFFFF" fill-opacity="0.09"></rect>
 <text x="279" y="36" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif">撞墙期</text>
 <g stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="1"><path d="M30 60H330M30 100H330M30 140H330"></path></g>

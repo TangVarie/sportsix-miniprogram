@@ -68,16 +68,32 @@ function isMember() { return !!getMember(); }
 /**
  * 注册。云开发下 code 是手机号快速验证组件回调里的 e.detail.code，由云函数换取手机号并建会员；
  * 没配云环境时不需要 code，只在本机记一个「已注册」。
+ * resolve { member, isNew }：isNew 为 false 表示本来就是会员（比如换了手机），不是这次新加入的。
  */
 function register(code) {
   if (!cloud.enabled()) {
     const member = { createdAt: Date.now(), points: 500 };
     write(KEY.member, member);
-    return Promise.resolve(member);
+    return Promise.resolve({ member: member, isNew: true });
   }
   return tracked(cloud.call('register', { code: code }).then((d) => {
     write(KEY.member, d.member);
-    return d.member;
+    return { member: d.member, isNew: d.isNew !== false };
+  }));
+}
+
+/**
+ * 积分页的数据：{ points, logs: [{ id, delta, reason, at }] }。顺带把本机缓存的会员信息更新成云端最新的。
+ * 没配云环境时只有本机记的那 500。
+ */
+function fetchPoints() {
+  if (!cloud.enabled()) {
+    const m = getMember() || {};
+    return Promise.resolve({ points: typeof m.points === 'number' ? m.points : 0, logs: [{ id: 'welcome', delta: 500, reason: 'welcome', at: m.createdAt }] });
+  }
+  return tracked(cloud.call('points').then((d) => {
+    write(KEY.member, d.member);
+    return { points: typeof d.member.points === 'number' ? d.member.points : 0, logs: d.logs || [] };
   }));
 }
 
@@ -145,7 +161,7 @@ function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
   sync, onChange,
-  getMember, isMember, register, setNickname,
+  getMember, isMember, register, setNickname, fetchPoints,
   getReminders, hasReminder, addReminder,
   getSignups, hasSignup, signup,
   getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan

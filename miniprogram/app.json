@@ -6,12 +6,15 @@
     "pages/me/index",
     "pages/product/index",
     "pages/event-detail/index",
-    "pages/doc/index"
+    "pages/doc/index",
+    "pages/points/index"
   ],
   "window": {
     "navigationStyle": "custom",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#FFFFFF",
+    "backgroundColorTop": "#010439",
+    "backgroundColorBottom": "#FFFFFF",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {

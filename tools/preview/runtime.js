@@ -64,7 +64,7 @@ function createWx(opts) {
     getUpdateManager: () => ({ onCheckForUpdate() {}, onUpdateReady() {}, onUpdateFailed() {} })
   };
   ['navigateTo', 'redirectTo', 'switchTab', 'reLaunch', 'navigateBack', 'showToast', 'hideToast', 'showModal', 'showLoading', 'hideLoading',
-    'setNavigationBarColor', 'setNavigationBarTitle', 'pageScrollTo', 'previewImage', 'setClipboardData', 'showShareMenu', 'openPrivacyContract',
+    'setNavigationBarColor', 'setNavigationBarTitle', 'pageScrollTo', 'previewImage', 'setClipboardData', 'showShareMenu', 'hideShareMenu', 'openPrivacyContract',
     'vibrateShort', 'reportEvent'].forEach((n) => { wx[n] = rec(n); });
   // 测试时可以塞进额外的接口（比如 wx.cloud 的替身）
   Object.assign(wx, opts.wx);

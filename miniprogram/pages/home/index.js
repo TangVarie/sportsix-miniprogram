@@ -1,7 +1,7 @@
 const home = require('../../content/home.js');
 const products = require('../../content/products.js');
 const events = require('../../utils/events.js');
-const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, imgLoaded } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 /*
@@ -27,7 +27,8 @@ const DARK_TOP_PX = 650;
 const REVEAL_KEYS = ['kw0', 'kw1', 'kw2', 'fuel', 'stage0', 'stage1', 'stage2', 'dualCarb', 'specs', 'cert', 'races', 'brand'];
 
 const brand = withAssets(home.brand);
-brand.values = brand.values.map((v) => ({ icon: v.icon, lines: valueLines(v.text) }));
+// 六大运动核心价值：带上 01–06 的编号
+brand.values = brand.values.map((v, i) => ({ icon: v.icon, text: v.text, no: '0' + (i + 1) }));
 
 // 有详情页的产品（能量胶、能量胶PRO），名称和「咖啡因 · 千卡」那一行取自产品线
 const PICKS = [];
@@ -128,6 +129,20 @@ Page({
   },
 
   /** 产品线：只有 detail 为 true 的两款能量胶有详情页 */
+  onShareAppMessage() {
+    return shareCard(TABS.home);
+  },
+
+  /** 分享到朋友圈：标题用小程序名称，配图用小程序头像（微信的默认值） */
+  onShareTimeline() {
+    return {};
+  },
+
+  /** 首屏的认证小徽标：滚到下面的认证说明 */
+  onCert() {
+    wx.pageScrollTo({ selector: '#rv-cert', duration: 300 });
+  },
+
   onProduct(e) {
     const { id, detail } = e.currentTarget.dataset;
     if (detail) go(id);

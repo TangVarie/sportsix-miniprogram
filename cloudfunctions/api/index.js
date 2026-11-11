@@ -10,6 +10,7 @@
  *   signups    报名      _id 用 openid_活动id
  *   reminders  提醒      _id 用 openid_活动id
  *   plans      补给计划  _id 用 openid，只保存最近一份
+ *   point_logs 积分记录  每次加减积分记一条；第一次用到时云函数自己建这个集合
  *   counters   计数      只有一条 _id 为 memberNo 的记录，存下一个会员编号；第一次用到时云函数自己建这个集合
  */
 const cloud = require('wx-server-sdk');
@@ -69,6 +70,17 @@ async function nextMemberNo() {
 async function ensureMember(member) {
   if (!member) return member;
   let m = member;
+  // 两件事各管各的：发编号出了问题，不能连带着把积分也跳过
+  try {
+    if (!m.welcomeBonus) {
+      const res = await db.collection('members').where({ _id: m._id, welcomeBonus: _.exists(false) })
+        .update({ data: { points: _.inc(WELCOME_POINTS), welcomeBonus: true } });
+      if (res.stats.updated) await logPoints(m._id, WELCOME_POINTS, 'welcome');
+      m = await findById('members', m._id) || m;
+    }
+  } catch (e) {
+    console.error('ensureMember welcomeBonus', e);
+  }
   try {
     if (!m.memberNo) {
       const no = await nextMemberNo();
@@ -78,15 +90,28 @@ async function ensureMember(member) {
         m = await findById('members', m._id) || m;
       }
     }
-    if (!m.welcomeBonus) {
-      const res = await db.collection('members').where({ _id: m._id, welcomeBonus: _.exists(false) })
-        .update({ data: { points: _.inc(WELCOME_POINTS), welcomeBonus: true } });
-      if (res.stats.updated) m = await findById('members', m._id) || m;
-    }
   } catch (e) {
-    console.error('ensureMember', e);
+    console.error('ensureMember memberNo', e);
   }
   return m;
+}
+
+/**
+ * 记一条积分记录（积分页上列出来的那些）。reason 是原因：'welcome' 是注册赠送，其他的直接写给用户看的文字。
+ * 集合第一次用到时自己建。记不上不影响积分本身。
+ */
+async function logPoints(openid, delta, reason) {
+  const data = { openid: openid, delta: delta, reason: reason, createdAt: db.serverDate() };
+  try {
+    await db.collection('point_logs').add({ data: data });
+  } catch (e) {
+    try {
+      await db.createCollection('point_logs');
+      await db.collection('point_logs').add({ data: data });
+    } catch (e2) {
+      console.error('logPoints', e2);
+    }
+  }
 }
 
 /** 昵称：去掉换行等控制字符和首尾空格，最多 20 个字 */
@@ -148,10 +173,10 @@ const actions = {
     };
   },
 
-  /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。 */
+  /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。isNew 表示这次是不是新建的会员。 */
   async register(event, openid) {
     const existing = await findById('members', openid);
-    if (existing) return { member: memberView(await ensureMember(existing)) };
+    if (existing) return { member: memberView(await ensureMember(existing)), isNew: false };
     if (!event.code) throw fail('missing_code');
     let info;
     try {
@@ -168,12 +193,31 @@ const actions = {
       memberNo: null, points: WELCOME_POINTS, welcomeBonus: true, createdAt: db.serverDate()
     };
     // 用 add 而不是 set：同一个人的两个注册请求同时进来时，后到的那个写不进去，不会把先建好的记录（连同编号）盖掉
+    let created = true;
     try {
       await db.collection('members').add({ data: Object.assign({ _id: openid }, doc) });
     } catch (e) {
+      created = false;
       if (!(await findById('members', openid))) throw e;
     }
-    return { member: memberView(await ensureMember(await findById('members', openid))) };
+    if (created) await logPoints(openid, WELCOME_POINTS, 'welcome');
+    return { member: memberView(await ensureMember(await findById('members', openid))), isNew: created };
+  },
+
+  /** 积分页：当前积分和最近 50 条积分记录（新的在前） */
+  async points(event, openid) {
+    const member = await ensureMember(await findById('members', openid));
+    if (!member) throw fail('not_member');
+    let logs = [];
+    try {
+      const res = await db.collection('point_logs').where({ openid: openid }).orderBy('createdAt', 'desc').limit(50).get();
+      logs = res.data.map((l) => ({ id: l._id, delta: l.delta, reason: l.reason, at: ms(l.createdAt) }));
+    } catch (e) { /* 集合还没建：没有记录 */ }
+    // 送过注册积分但没记上（记录功能上线之前送的，或当时没记成）：补一条给页面看，不写库
+    if (member.welcomeBonus && !logs.some((l) => l.reason === 'welcome')) {
+      logs.push({ id: 'welcome', delta: WELCOME_POINTS, reason: 'welcome', at: ms(member.createdAt) });
+    }
+    return { member: memberView(member), logs: logs };
   },
 
   /** 改昵称。昵称是用户在昵称输入框里自己填的（可以一键选用微信昵称），内容安全由微信的输入框组件检测。 */

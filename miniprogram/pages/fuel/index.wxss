@@ -18,6 +18,12 @@
 
 .fuel-row { display: flex; align-items: center; gap: 23rpx; min-height: 115rpx; border-bottom: 1px solid #E6E6E7; }
 .fuel-row--last { border-bottom: 0; }
+/* 内容不止一行的（两行的项目、带说明的强度）：上下留出和单行一样的空 */
+.fuel-row--tall { padding: 15rpx 0; }
+/* 下面带说明的：标签对齐第一行的选项，不跟着说明往下偏 */
+.fuel-row--top { align-items: flex-start; }
+.fuel-row__label--seg { line-height: 85rpx; }
+.fuel-row__hint { margin-top: 12rpx; font-size: 21rpx; line-height: 31rpx; color: #5E6170; }
 .fuel-row__label { flex-shrink: 0; width: 123rpx; font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
 .fuel-row__main { flex: 1; min-width: 0; }
 
@@ -30,9 +36,9 @@
 .fuel-seg--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .fuel-seg__track { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .fuel-seg__slot { border-radius: 19rpx; background: #FFFFFF; }
-/* 深蓝底：宽度是一格，位置由行内的 translateX(序号 ×（一格 + 间距）) 决定，切换时滑过去 */
+/* 深蓝底：一格大小，位置由行内的 translate(列 ×（一格 + 间距）, 行 × 97rpx) 决定，切换时滑过去。97 = 一格高 85 + 间距 12 */
 .fuel-seg__ind {
-  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 19rpx; background: #010439;
+  position: absolute; left: 0; top: 0; height: 85rpx; border-radius: 19rpx; background: #010439;
   transition: transform .28s cubic-bezier(.2, .7, .2, 1);
 }
 .fuel-seg__ind--2 { width: calc((100% - 12rpx) / 2); }
