@@ -1,0 +1,89 @@
+<!-- 能量胶PRO：成分与原理五块（products.energyGelPro.sections 里 guide 之前的各块），由 index.wxml include -->
+
+<!-- HBCD：三个特点加四步流程 -->
+<view id="rv-hbcd" class="pd-sec pd-hbcd {{seen.hbcd ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.hbcd.eyebrow}}</text>
+  <view class="pd-h2">
+    <view wx:for="{{s.hbcd.titleLines}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view class="pd-hbcd__body">{{s.hbcd.body}}</view>
+  <view class="pd-trio">
+    <view wx:for="{{s.hbcd.trio}}" wx:key="title" class="pd-trio__col sx-rise" style="animation-delay: {{index * 0.1}}s">
+      <text class="pd-trio__title">{{item.title}}</text>
+      <text class="pd-trio__body">{{item.body}}</text>
+    </view>
+  </view>
+  <view class="pd-flow">
+    <view class="pd-flow__line sx-grow-y"></view>
+    <view wx:for="{{s.hbcd.flow}}" wx:key="n" class="pd-flow__step sx-rise {{index === s.hbcd.flow.length - 1 ? 'pd-flow__step--last' : ''}}" style="animation-delay: {{index * 0.12}}s">
+      <view class="pd-flow__n"><text class="pd-flow__n-text sx-num-700">{{item.n}}</text></view>
+      <view class="pd-flow__text">
+        <text wx:if="{{item.small}}" class="pd-flow__small">{{item.small}}</text>
+        <text class="pd-flow__title">{{item.title}}</text>
+      </view>
+    </view>
+  </view>
+  <view class="pd-foot pd-hbcd__foot">{{s.hbcd.footnote}}</view>
+</view>
+
+<!-- 吸收集中，还是持续释放：两条曲线 -->
+<view id="rv-release" class="pd-sec pd-release sx-grid-bg {{seen.release ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.release.eyebrow}}</text>
+  <view class="pd-h2 pd-h2--light">{{s.release.title}}</view>
+  <view class="pd-release__cols">
+    <view wx:for="{{s.release.columns}}" wx:key="title" class="pd-release__col {{item.highlight ? 'pd-release__col--on' : ''}}">
+      <image class="pd-release__chart {{item.highlight ? 'sx-draw' : ''}}" src="{{item.graphic}}" />
+      <text class="pd-release__label">{{item.label}}</text>
+      <text class="pd-release__title">{{item.title}}</text>
+      <view class="pd-release__body">
+        <view wx:for="{{item.body}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="pd-foot pd-foot--navy pd-release__foot">{{s.release.footnote}}</view>
+</view>
+
+<!-- 菠萝水感胶：两条卖点加甜度横条 -->
+<view id="rv-taste" class="pd-sec pd-taste {{seen.taste ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.taste.eyebrow}}</text>
+  <view class="pd-h2">
+    <view wx:for="{{s.taste.titleLines}}" wx:key="*this">{{item}}</view>
+  </view>
+  <block wx:for="{{s.taste.points}}" wx:key="title">
+    <view class="pd-taste__h3">{{item.title}}</view>
+    <view class="pd-taste__p">{{item.body}}</view>
+  </block>
+  <view class="pd-brix">
+    <view wx:for="{{s.taste.bars}}" wx:key="label" class="pd-brix__row {{item.highlight ? 'pd-brix__row--on' : ''}}">
+      <text class="pd-brix__label">{{item.label}}</text>
+      <view class="pd-brix__track">
+        <view class="pd-brix__fill sx-grow-x" style="width: {{item.pct}}%"></view>
+      </view>
+      <text class="pd-brix__value sx-num">{{item.value}} {{item.unit}}</text>
+    </view>
+  </view>
+</view>
+
+<!-- 85 大卡的精致补给：四格 -->
+<view id="rv-lean" class="pd-sec pd-lean {{seen.lean ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.lean.eyebrow}}</text>
+  <view class="pd-h2">{{s.lean.title}}</view>
+  <view class="pd-sub">{{s.lean.sub}}</view>
+  <view class="pd-lean__grid">
+    <view wx:for="{{s.lean.quad}}" wx:key="title" class="pd-quad sx-rise" style="animation-delay: {{index * 0.08}}s">
+      <text class="pd-quad__title">{{item.title}}</text>
+      <text class="pd-quad__body">{{item.body}}</text>
+    </view>
+  </view>
+</view>
+
+<!-- 6 种协同原料。六个名称画在雷达图文件里 -->
+<view id="rv-ingredients" class="pd-sec pd-ingredients {{seen.ingredients ? 'sx-in' : 'sx-wait'}}">
+  <text class="sx-eyebrow pd-eyebrow">{{s.ingredients.eyebrow}}</text>
+  <view class="pd-h2">{{s.ingredients.title}}</view>
+  <view class="pd-sub pd-sources__sub">{{s.ingredients.sub}}</view>
+  <view class="pd-radar pd-radar--6 sx-rise">
+    <image class="pd-radar__chart" src="{{s.ingredients.graphic}}" />
+    <image class="pd-radar__pack pd-radar__pack--6" src="{{packImage}}" mode="heightFix" />
+  </view>
+</view>

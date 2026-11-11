@@ -1,1 +1,200 @@
-<view class="page">home</view>
+<view class="page sx-tab-page" style="--sx-safe-top: {{safeTop}}px">
+
+  <!-- 1 首屏 -->
+  <view class="hm-hero sx-grid-bg">
+    <image class="hm-hero__bg" src="{{trackLines}}" />
+    <image class="hm-hero__bg" src="{{arc}}" />
+    <view wx:for="{{hero.packs}}" wx:key="*this" class="hm-hero__pack hm-hero__pack--{{index}} sx-float">
+      <image class="hm-hero__pack-img hm-hero__pack-img--{{index}}" src="{{item}}" mode="heightFix" />
+    </view>
+    <view class="hm-hero__text sx-in">
+      <image class="hm-hero__logo" src="{{hero.logo}}" />
+      <image class="hm-hero__slogan sx-rise" style="animation-delay: .1s" src="{{hero.slogan}}" />
+      <view class="hm-hero__headline sx-rise" style="animation-delay: .25s">
+        <view wx:for="{{hero.headline}}" wx:key="*this">{{item}}</view>
+      </view>
+      <view class="hm-hero__brand sx-rise" style="animation-delay: .35s">{{hero.brandLine}}</view>
+      <view class="hm-hero__tag-wrap sx-rise" style="animation-delay: .45s">
+        <text class="hm-hero__tag sx-slant">{{hero.tag}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 2 三个数字 -->
+  <view class="hm-stats sx-grid-bg">
+    <view wx:for="{{stats}}" wx:key="label" class="hm-stats__item {{index > 0 ? 'hm-stats__item--rule' : ''}}">
+      <text class="hm-stats__value sx-num">{{item.value}}</text>
+      <text class="hm-stats__label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 3 三个卖点卡片 -->
+  <view class="hm-kw">
+    <text class="sx-eyebrow hm-eyebrow">{{keywords.eyebrow}}</text>
+    <view class="hm-kw__title">{{keywords.title}}</view>
+    <view class="hm-kw__list">
+      <view wx:for="{{keywords.cards}}" wx:key="n" id="rv-kw{{index}}" class="{{seen['kw' + index] ? 'sx-in' : 'sx-wait'}}">
+        <view class="hm-kw__card sx-rise">
+          <text class="hm-kw__n sx-num">{{item.n}}</text>
+          <view class="hm-kw__word">{{item.word}}</view>
+          <view class="hm-kw__line">{{item.line}}</view>
+          <view class="hm-kw__graphic">
+            <!-- HBCD：分子图加三个词 -->
+            <view wx:if="{{item.trio}}" class="hm-kw__hbcd">
+              <image class="hm-kw__molecule" src="{{item.graphic}}" />
+              <view class="hm-kw__trio">
+                <view wx:for="{{item.trio}}" wx:for-item="t" wx:key="*this" class="hm-kw__trio-item">{{t}}</view>
+              </view>
+            </view>
+            <!-- 示意图：图上的文字标签已经画在 SVG 文件里 -->
+            <image wx:else class="hm-kw__chart hm-kw__chart--{{item.n}} sx-draw" src="{{item.graphic}}" />
+          </view>
+          <view class="hm-kw__body">{{item.body}}</view>
+          <view class="hm-kw__chips">
+            <text wx:for="{{item.chips}}" wx:for-item="chip" wx:key="*this" class="hm-kw__chip">{{chip}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 4 分段补给计算入口 -->
+  <view id="rv-fuel" class="hm-fuel {{seen.fuel ? 'sx-in' : 'sx-wait'}}">
+    <view class="hm-fuel__card sx-rise" bindtap="onFuel">
+      <view class="hm-fuel__photo sx-photo"><image class="sx-photo__img hm-fuel__photo-img" src="{{fuelEntry.image}}" mode="aspectFill" /></view>
+      <view class="hm-fuel__shade"></view>
+      <view class="hm-fuel__text">
+        <text class="sx-eyebrow hm-eyebrow--lime">{{fuelEntry.eyebrow}}</text>
+        <text class="hm-fuel__title">{{fuelEntry.title}}</text>
+        <text class="hm-fuel__body">{{fuelEntry.body}}</text>
+      </view>
+      <view class="hm-fuel__btn sx-pressable" hover-class="sx-press">
+        <text>{{fuelEntry.button}}</text>
+        <image class="hm-fuel__btn-icon" src="/assets/icons/chevron-navy.svg" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 5 全周期运动产品线 -->
+  <view class="hm-lineup">
+    <text class="sx-eyebrow hm-eyebrow">{{lineup.eyebrow}}</text>
+    <view class="hm-lineup__title">{{lineup.title}}</view>
+    <view class="hm-lineup__list">
+      <view class="hm-lineup__rail"></view>
+      <view wx:for="{{stages}}" wx:for-item="stage" wx:for-index="si" wx:key="stage" id="rv-stage{{si}}" class="hm-lineup__stage {{si > 0 ? 'hm-lineup__stage--next' : ''}} {{seen['stage' + si] ? 'sx-in' : 'sx-wait'}}">
+        <view class="hm-lineup__head">
+          <view class="hm-lineup__dot"></view>
+          <text class="hm-lineup__stage-name">{{stage.stage}}</text>
+          <text class="sx-eyebrow hm-lineup__stage-en">{{stage.stageEn}}</text>
+        </view>
+        <!-- 入场动效放在外层，按压放在里层：动效结束后会占住 transform，同一个节点上按压不生效 -->
+        <view wx:for="{{stage.products}}" wx:for-item="p" wx:key="id" class="hm-lineup__item sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
+          <view class="hm-lineup__card {{p.detail ? 'sx-pressable' : ''}}" hover-class="{{p.detail ? 'sx-press' : 'none'}}" data-id="{{p.id}}" data-detail="{{p.detail}}" bindtap="onProduct">
+            <view class="hm-lineup__pack"><image class="hm-lineup__img hm-lineup__img--{{p.id}}" src="{{p.image}}" mode="heightFix" /></view>
+            <view class="hm-lineup__text">
+              <text class="hm-lineup__name">{{p.name}}</text>
+              <text class="hm-lineup__role">{{p.role}}</text>
+              <text wx:if="{{p.fact}}" class="hm-lineup__fact">{{p.fact}}</text>
+            </view>
+            <image wx:if="{{p.detail}}" class="hm-lineup__arrow" src="/assets/icons/chevron-blue.svg" />
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 6 快慢双碳 -->
+  <dual-carb id="rv-dualCarb" short shown="{{seen.dualCarb}}" />
+
+  <!-- 7 三个规格 -->
+  <view id="rv-specs" class="hm-specs {{seen.specs ? 'sx-in' : 'sx-wait'}}">
+    <view wx:for="{{specs}}" wx:key="title" class="hm-specs__row {{index < specs.length - 1 ? 'hm-specs__row--rule' : ''}} sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
+      <view class="hm-specs__num">
+        <text class="hm-specs__value sx-num">{{item.value}}</text>
+        <text class="hm-specs__unit sx-num-700">{{item.unit}}</text>
+      </view>
+      <view class="hm-specs__text">
+        <text class="hm-specs__title">{{item.title}}</text>
+        <text class="hm-specs__body">{{item.body}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 8 Informed-Sport 认证 -->
+  <view id="rv-cert" class="{{seen.cert ? 'sx-in' : 'sx-wait'}}">
+    <view class="hm-cert sx-rise">
+      <view class="hm-cert__head">
+        <view class="hm-cert__badge"><image class="hm-cert__badge-icon" src="/assets/icons/shield-lime.svg" /></view>
+        <view class="hm-cert__title">
+          <view wx:for="{{cert.title}}" wx:key="*this">{{item}}</view>
+        </view>
+      </view>
+      <view class="hm-cert__body">{{cert.body}}</view>
+      <view wx:for="{{cert.checks}}" wx:key="*this" class="hm-cert__row">
+        <view class="sx-check hm-cert__check"></view>
+        <text class="hm-cert__check-text">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 9 合作伙伴和赛事 -->
+  <view id="rv-races" class="hm-races {{seen.races ? 'sx-in' : 'sx-wait'}}">
+    <text class="sx-eyebrow hm-eyebrow">{{races.eyebrow}}</text>
+    <view class="hm-races__title">
+      <view wx:for="{{races.title}}" wx:key="*this">{{item}}</view>
+    </view>
+    <view class="hm-races__partner">
+      <text class="hm-races__partner-label">{{races.partner.label}}</text>
+      <text class="hm-races__partner-name">{{races.partner.name}}</text>
+    </view>
+    <scroll-view class="hm-races__scroll" scroll-x>
+      <view class="hm-races__track">
+        <view wx:for="{{raceCards}}" wx:key="name" class="hm-races__card sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
+          <image class="hm-races__img" src="{{item.image}}" mode="aspectFill" />
+          <view class="hm-races__info">
+            <text class="hm-races__year sx-num-700">{{item.year}}</text>
+            <view class="hm-races__names">
+              <text class="hm-races__name">{{item.name}}</text>
+              <text class="hm-races__en">{{item.nameEn}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <text class="hm-races__hint">{{races.hint}}</text>
+  </view>
+
+  <!-- 10 厂房照片、品牌介绍、六大运动核心价值 -->
+  <view class="hm-factory">
+    <image class="hm-factory__img" src="{{brand.image}}" mode="aspectFill" />
+    <view class="hm-factory__shade"></view>
+  </view>
+  <view id="rv-brand" class="hm-brand sx-grid-bg {{seen.brand ? 'sx-in' : 'sx-wait'}}">
+    <text class="sx-eyebrow hm-eyebrow--lime">{{brand.eyebrow}}</text>
+    <view class="hm-brand__title">
+      <view wx:for="{{brand.title}}" wx:key="*this">{{item}}</view>
+    </view>
+    <view class="hm-brand__body">{{brand.body}}</view>
+    <view class="hm-brand__values">
+      <view wx:for="{{brand.values}}" wx:key="icon" class="hm-brand__value sx-rise" style="animation-delay: {{0.05 + index * 0.06}}s">
+        <image class="hm-brand__icon" src="/assets/icons/{{item.icon}}-lime.svg" />
+        <view class="hm-brand__value-text">
+          <view wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 11 品牌影片 -->
+  <view class="hm-film sx-grid-bg">
+    <text class="sx-eyebrow hm-eyebrow--lime">{{film.eyebrow}}</text>
+    <view class="hm-film__title">{{film.title}}</view>
+    <view class="hm-film__frame">
+      <video id="hm-film-video" class="hm-film__video" src="{{film.video}}" poster="{{film.poster}}" object-fit="cover" controls="{{true}}" autoplay="{{false}}" />
+    </view>
+    <view class="hm-film__caption">{{film.caption}}</view>
+  </view>
+
+  <!-- 12 成为会员 -->
+  <member-cta />
+</view>
