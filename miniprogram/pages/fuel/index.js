@@ -1,6 +1,7 @@
 const { planFuel, SPORTS, SCENES, STARTS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
-const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
+const messages = require('../../content/messages.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /*
@@ -48,12 +49,25 @@ function effective(input) {
   return input.sport === 'hike' ? Object.assign({}, input, { scene: 'long' }) : input;
 }
 
+/** 每个分段选择里，当前值是第几项 */
+function selectedIndexes(input) {
+  const on = {};
+  Object.keys(OPTIONS).forEach((field) => {
+    on[field] = Math.max(0, OPTIONS[field].findIndex((o) => o.value === input[field]));
+  });
+  return on;
+}
+
 /** 由 input 算出页面要显示的全部数据 */
 function view(input) {
   const r = planFuel(effective(input));
   return {
     input: input,
     durationLabel: formatTime(input.minutes),
+    // 各个分段选择当前选中的是第几项，深蓝底按它滑到位
+    on: selectedIndexes(input),
+    // 点了哪一格（时间轴上对应的点会高亮）。输入一变就取消
+    active: -1,
     // 徒步不分场景：隐藏这一行；input.scene 保持原值，切回其他项目时还是原来的选择
     showScene: input.sport !== 'hike',
     plan: {
@@ -87,6 +101,11 @@ Page({
     experiences: OPTIONS.firstTime,
     weathers: OPTIONS.hot
   }, view(normalize(DEFAULT_INPUT))),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad() {
     this.setData(baseData());
@@ -125,6 +144,7 @@ Page({
     const patch = { [field]: option.value };
     // 切换项目时，预计时长重置为该项目的默认值
     if (field === 'sport') patch.minutes = SPORTS.find((s) => s.key === option.value).defaultMinutes;
+    tick();
     this.update(patch);
   },
 
@@ -134,23 +154,30 @@ Page({
     const delta = Number(e.currentTarget.dataset.delta);
     if (!RANGE[field] || !delta) return;
     const next = clamp(this.data.input[field] + delta, RANGE[field]);
-    if (next !== this.data.input[field]) this.update({ [field]: next });
+    if (next === this.data.input[field]) return; // 到边界了
+    tick();
+    this.update({ [field]: next });
+  },
+
+  /** 点某一格：高亮它和时间轴上对应的点，再点一次取消 */
+  onFocus(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ active: this.data.active === index ? -1 : index });
   },
 
   onSave() {
     const input = effective(this.data.input);
     if (store.isMember()) {
       const plan = this.data.plan;
-      // 设计稿和原型里没有保存成功、失败的提示文案，先留占位
       store.savePlan(input, { total: plan.total, gelCount: plan.gelCount, proCount: plan.proCount })
         .then(() => {
           store.clearPendingPlan(); // 之前没存上的那份不再需要
-          wx.showToast({ title: '[已保存提示文案]', icon: 'none' });
+          wx.showToast({ title: messages.plan.saved, icon: 'success' });
         })
         .catch((e) => {
           // 云端说还不是会员（本机缓存是旧的）：按未注册处理
           if (e.code === 'not_member') { store.setPendingPlan(input); go('join'); return; }
-          wx.showToast({ title: '[保存失败提示文案]', icon: 'none' });
+          wx.showToast({ title: messages.plan.saveFailed, icon: 'none' });
         });
     } else {
       // 未注册：先记下输入，注册完成后再保存

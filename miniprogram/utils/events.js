@@ -60,6 +60,11 @@ function cached() {
   try { return wx.getStorageSync(CACHE_KEY) || []; } catch (e) { return []; }
 }
 
+/** 本机还没有缓存过活动、要等云端返回：这段时间列表显示占位块，不先闪一下「敬请期待」 */
+function isFirstLoad() {
+  return !config.sampleEvents && cloud.enabled() && cached().length === 0;
+}
+
 /** 即将开始的活动（同步，读缓存） */
 function listUpcoming() {
   if (config.sampleEvents) return content.upcoming.map(fromSample);
@@ -136,4 +141,4 @@ function remind(eventId) {
   });
 }
 
-module.exports = { listUpcoming, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup };
+module.exports = { listUpcoming, isFirstLoad, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup };

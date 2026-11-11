@@ -22,16 +22,34 @@
 .fuel-row__main { flex: 1; min-width: 0; }
 
 /* 分段选择 */
-.fuel-seg { display: grid; gap: 12rpx; }
+/* 三层：白底的格子、会滑动的深蓝底、可点的文字。三层用同一套列宽和间距，所以对得齐。 */
+.fuel-seg { position: relative; }
+.fuel-seg__track, .fuel-seg__btns { display: grid; gap: 12rpx; }
 .fuel-seg--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fuel-seg--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fuel-seg--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fuel-seg__track { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.fuel-seg__slot { border-radius: 19rpx; background: #FFFFFF; }
+/* 深蓝底：宽度是一格，位置由行内的 translateX(序号 ×（一格 + 间距）) 决定，切换时滑过去 */
+.fuel-seg__ind {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 19rpx; background: #010439;
+  transition: transform .28s cubic-bezier(.2, .7, .2, 1);
+}
+.fuel-seg__ind--2 { width: calc((100% - 12rpx) / 2); }
+.fuel-seg__ind--3 { width: calc((100% - 24rpx) / 3); }
+.fuel-seg__ind--4 { width: calc((100% - 36rpx) / 4); }
+.fuel-seg__btns { position: relative; }
 .fuel-seg__btn {
+  position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: center;
   height: 85rpx; padding: 0 8rpx; border-radius: 19rpx;
-  background: #FFFFFF; color: #14141E; font-size: 25rpx; font-weight: 700; white-space: nowrap;
+  color: #14141E; font-size: 25rpx; font-weight: 700; white-space: nowrap;
 }
-.fuel-seg__btn--on { background: #010439; color: #FFFFFF; }
+.fuel-seg__btn--on { color: #FFFFFF; }
+
+/* 结果里的数字变了：新数字从下面滑上来 */
+.fuel-roll { display: inline-block; animation: fuelRoll .28s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes fuelRoll { from { opacity: 0; transform: translateY(35%); } to { opacity: 1; transform: none; } }
 
 /* 步进：减号白底、加号深蓝底 */
 .fuel-step { display: flex; align-items: center; justify-content: space-between; }
@@ -76,6 +94,8 @@
   border: 4rpx solid #FFFFFF; background: transparent;
 }
 .fuel-line__dot--gel { border-color: #C2E541; background: #C2E541; }
+/* 点了下面某一格：时间轴上对应的点加一圈光环 */
+.fuel-line__dot--active { z-index: 1; box-shadow: 0 0 0 8rpx rgba(255, 255, 255, .35); }
 .fuel-line__start, .fuel-line__end { position: absolute; top: 46rpx; font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
 .fuel-line__start { left: 8%; margin-left: -15rpx; }
 .fuel-line__end { right: 0; }
@@ -87,6 +107,7 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx;
 }
 .fuel-cell--gel { border-color: #C2E541; background: #C2E541; color: #010439; }
+.fuel-cell--active { box-shadow: 0 0 0 4rpx #FFFFFF; }
 /* 时刻是正体的 Barlow Condensed 700（不是斜体）；「赛前」「开始前」回退到系统字体 */
 .fuel-cell__time { font-family: var(--sx-font-num); font-style: normal; font-weight: 700; font-size: 35rpx; line-height: 38rpx; }
 .fuel-cell__name { font-size: 19rpx; line-height: 27rpx; font-weight: 500; }

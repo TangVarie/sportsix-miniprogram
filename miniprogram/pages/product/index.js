@@ -1,5 +1,5 @@
 const products = require('../../content/products.js');
-const { baseData, watchReveal, navTone, measureDarkZones, go } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go, imgLoaded } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 const PRODUCTS = { 'energy-gel': products.energyGel, 'energy-gel-pro': products.energyGelPro };
@@ -84,6 +84,11 @@ Page({
     seen: {},
     qaOpen: 0
   }),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad(query) {
     this.setData(Object.assign(baseData(), build(query.id)));

@@ -238,11 +238,12 @@ async function clientTests() {
   ok(texts.length === 8 && !texts.join('|').includes('['), '详情页不带方括号占位');
   p.onSignup();
   await tick();
-  ok(!p.data.signed && lastCall('showToast').args.title.includes('未开放'), '没开放时报名失败并提示');
+  eq([p.data.signed, lastCall('showToast').args.title], [false, '报名还没有开放'], '没开放时报名失败并提示');
   cloud.state.now += DAY + HOUR;
   p.onSignup();
   await tick();
   ok(p.data.signed, '报名成功');
+  eq(lastCall('showToast').args.title, '报名成功', '报名成功有提示');
 
   // 我的：活动里先显示已报名
   p = env.openPage('pages/me/index', {});

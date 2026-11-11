@@ -5,7 +5,7 @@
     <image class="hm-hero__bg" src="{{trackLines}}" />
     <image class="hm-hero__bg" src="{{arc}}" />
     <view wx:for="{{hero.packs}}" wx:key="*this" class="hm-hero__pack hm-hero__pack--{{index}} sx-float">
-      <image class="hm-hero__pack-img hm-hero__pack-img--{{index}}" src="{{item}}" mode="heightFix" />
+      <image class="hm-hero__pack-img hm-hero__pack-img--{{index}} sx-img-fade {{loaded['pack' + index] ? '' : 'sx-img-wait'}}" data-img="pack{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item}}" mode="heightFix" />
     </view>
     <view class="hm-hero__text sx-in">
       <image class="hm-hero__logo" src="{{hero.logo}}" mode="aspectFit" />
@@ -23,7 +23,7 @@
   <!-- 2 三个数字 -->
   <view class="hm-stats sx-grid-bg js-dark">
     <view wx:for="{{stats}}" wx:key="label" class="hm-stats__item {{index > 0 ? 'hm-stats__item--rule' : ''}}">
-      <text class="hm-stats__value sx-num">{{item.value}}</text>
+      <text class="hm-stats__value sx-num">{{item.shown}}</text>
       <text class="hm-stats__label">{{item.label}}</text>
     </view>
   </view>
@@ -61,7 +61,7 @@
   <!-- 4 分段补给计算入口 -->
   <view id="rv-fuel" class="hm-fuel {{seen.fuel ? 'sx-in' : 'sx-wait'}}">
     <view class="hm-fuel__card sx-rise" bindtap="onFuel">
-      <view class="hm-fuel__photo sx-photo"><image class="sx-photo__img hm-fuel__photo-img" src="{{fuelEntry.image}}" mode="aspectFill" /></view>
+      <view class="hm-fuel__photo sx-photo"><image class="sx-photo__img hm-fuel__photo-img sx-img-fade {{loaded.fuel ? '' : 'sx-img-wait'}}" data-img="fuel" bindload="onImgLoad" binderror="onImgLoad" src="{{fuelEntry.image}}" mode="aspectFill" /></view>
       <view class="hm-fuel__shade"></view>
       <view class="hm-fuel__text">
         <text class="sx-eyebrow hm-eyebrow--lime">{{fuelEntry.eyebrow}}</text>
@@ -90,7 +90,7 @@
         <!-- 入场动效放在外层，按压放在里层：动效结束后会占住 transform，同一个节点上按压不生效 -->
         <view wx:for="{{stage.products}}" wx:for-item="p" wx:key="id" class="hm-lineup__item sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
           <view class="hm-lineup__card {{p.detail ? 'sx-pressable' : ''}}" hover-class="{{p.detail ? 'sx-press' : 'none'}}" data-id="{{p.id}}" data-detail="{{p.detail}}" bindtap="onProduct">
-            <view class="hm-lineup__pack"><image class="hm-lineup__img hm-lineup__img--{{p.id}}" src="{{p.image}}" mode="heightFix" /></view>
+            <view class="hm-lineup__pack"><image class="hm-lineup__img hm-lineup__img--{{p.id}} sx-img-fade {{loaded['lu-' + p.id] ? '' : 'sx-img-wait'}}" data-img="lu-{{p.id}}" bindload="onImgLoad" binderror="onImgLoad" src="{{p.image}}" mode="heightFix" /></view>
             <view class="hm-lineup__text">
               <text class="hm-lineup__name">{{p.name}}</text>
               <text class="hm-lineup__role">{{p.role}}</text>
@@ -150,7 +150,7 @@
     <scroll-view class="hm-races__scroll" scroll-x>
       <view class="hm-races__track">
         <view wx:for="{{raceCards}}" wx:key="name" class="hm-races__card sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
-          <image class="hm-races__img" src="{{item.image}}" mode="aspectFill" />
+          <image class="hm-races__img sx-img-fade {{loaded['race' + index] ? '' : 'sx-img-wait'}}" data-img="race{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
           <view class="hm-races__info">
             <text class="hm-races__year sx-num-700">{{item.year}}</text>
             <view class="hm-races__names">
@@ -166,7 +166,7 @@
 
   <!-- 10 厂房照片、品牌介绍、六大运动核心价值 -->
   <view class="hm-factory js-dark">
-    <image class="hm-factory__img" src="{{brand.image}}" mode="aspectFill" />
+    <image class="hm-factory__img sx-img-fade {{loaded.factory ? '' : 'sx-img-wait'}}" data-img="factory" bindload="onImgLoad" binderror="onImgLoad" src="{{brand.image}}" mode="aspectFill" />
     <view class="hm-factory__shade"></view>
   </view>
   <view id="rv-brand" class="hm-brand sx-grid-bg js-dark {{seen.brand ? 'sx-in' : 'sx-wait'}}">

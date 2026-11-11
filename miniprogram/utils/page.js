@@ -2,10 +2,13 @@
  * 页面公用的小工具。
  */
 
-/** 每个页面 data 里都要有的基础字段：safeTop 是状态栏高度（px），写到根节点的 --sx-safe-top 上。 */
+/**
+ * 每个页面 data 里都要有的基础字段：
+ * safeTop 是状态栏高度（px），写到根节点的 --sx-safe-top 上；loaded 记哪些图片已经加载完（见 imgLoaded）。
+ */
 function baseData() {
   const app = getApp();
-  return { safeTop: (app && app.globalData.safeTop) || 0 };
+  return { safeTop: (app && app.globalData.safeTop) || 0, loaded: {} };
 }
 
 /**
@@ -47,6 +50,22 @@ function navTone(page, scrollTop, threshold) {
   if (page.__navDark === dark) return;
   page.__navDark = dark;
   wx.setNavigationBarColor({ frontColor: dark ? '#ffffff' : '#000000', backgroundColor: dark ? '#010439' : '#ffffff' });
+}
+
+/**
+ * 图片加载完再淡入。页面 data 里放 loaded: {}，页面上写 onImgLoad(e) { imgLoaded(this, e); }；
+ * 图片节点写 class="... sx-img-fade {{loaded.key ? '' : 'sx-img-wait'}}" data-img="key" bindload="onImgLoad" binderror="onImgLoad"。
+ * 加载失败也算「已处理」，不让节点一直藏着；万一事件没来，sx-img-wait 自己会在几秒后显示出来（见 app.wxss）。
+ */
+function imgLoaded(page, e) {
+  const key = e && e.currentTarget && e.currentTarget.dataset.img;
+  if (key == null || (page.data.loaded && page.data.loaded[key])) return;
+  page.setData({ ['loaded.' + key]: true });
+}
+
+/** 轻震一下，给点选、加减这类操作一个反馈。不支持或被系统关掉时什么也不发生。 */
+function tick() {
+  try { wx.vibrateShort({ type: 'light', fail() {} }); } catch (e) { /* 忽略 */ }
 }
 
 /**
@@ -95,4 +114,4 @@ function selectTab(page, index) {
   if (typeof page.getTabBar === 'function' && page.getTabBar()) page.getTabBar().setData({ selected: index });
 }
 
-module.exports = { baseData, watchReveal, navTone, headerTone, measureDarkZones, go, selectTab, TABS };
+module.exports = { baseData, watchReveal, navTone, headerTone, measureDarkZones, imgLoaded, tick, go, selectTab, TABS };

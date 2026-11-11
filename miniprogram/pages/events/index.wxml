@@ -11,10 +11,16 @@
     </view>
   </view>
 
+  <!-- 即将开始，第一次取活动还没返回：占位块 -->
+  <view wx:if="{{tab === 'upcoming' && loading && !hasUpcoming}}" class="ev-list">
+    <view class="ev-skeleton ev-skeleton--tall sx-skeleton"></view>
+    <view class="ev-skeleton sx-skeleton"></view>
+  </view>
+
   <!-- 即将开始，还没有活动：敬请期待 -->
-  <view wx:if="{{tab === 'upcoming' && !hasUpcoming}}" class="ev-list sx-in">
+  <view wx:elif="{{tab === 'upcoming' && !hasUpcoming}}" class="ev-list sx-in">
     <view class="ev-empty sx-rise">
-      <view class="ev-empty__photo sx-photo"><image class="sx-photo__img" src="{{empty.image}}" mode="aspectFill" /></view>
+      <view class="ev-empty__photo sx-photo"><image class="sx-photo__img sx-img-fade {{loaded.empty ? '' : 'sx-img-wait'}}" data-img="empty" bindload="onImgLoad" binderror="onImgLoad" src="{{empty.image}}" mode="aspectFill" /></view>
       <image class="ev-empty__ridge sx-draw" src="{{empty.graphic}}" />
       <text class="ev-empty__title">{{empty.title}}</text>
     </view>
@@ -26,7 +32,7 @@
       <!-- 赛事：照片卡 -->
       <view wx:if="{{item.style === 'poster'}}" class="ev-poster sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
         <view class="ev-poster__top" data-id="{{item.id}}" bindtap="onOpen">
-          <view class="ev-poster__photo sx-photo"><image class="sx-photo__img" src="{{item.image}}" mode="aspectFill" /></view>
+          <view class="ev-poster__photo sx-photo"><image class="sx-photo__img sx-img-fade {{loaded['poster' + index] ? '' : 'sx-img-wait'}}" data-img="poster{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" /></view>
           <image class="ev-poster__ridge sx-draw" src="{{item.graphic}}" />
           <view class="ev-poster__tags">
             <text wx:if="{{item.tag}}" class="ev-tag ev-tag--lime sx-slant">{{item.tag}}</text>
@@ -48,7 +54,7 @@
 
       <!-- 试用装：黄绿卡 -->
       <view wx:elif="{{item.style === 'lime'}}" class="ev-lime sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
-        <view class="ev-lime__pack sx-float"><image class="ev-lime__img" src="{{item.image}}" mode="heightFix" /></view>
+        <view class="ev-lime__pack sx-float"><image class="ev-lime__img sx-img-fade {{loaded['lime' + index] ? '' : 'sx-img-wait'}}" data-img="lime{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="heightFix" /></view>
         <view class="ev-lime__text">
           <text class="ev-tag ev-tag--navy sx-slant">{{item.tag}}</text>
           <text class="ev-lime__name">{{item.title}}</text>
@@ -73,7 +79,7 @@
   <!-- 往期 -->
   <view wx:else class="ev-past sx-in">
     <view wx:for="{{past}}" wx:key="name" class="ev-past__card sx-rise" style="animation-delay: {{0.05 + index * 0.05}}s">
-      <image class="ev-past__img" src="{{item.image}}" mode="aspectFill" />
+      <image class="ev-past__img sx-img-fade {{loaded['past' + index] ? '' : 'sx-img-wait'}}" data-img="past{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
       <view class="ev-past__text">
         <text class="ev-past__year sx-num-700">{{item.year}}</text>
         <text class="ev-past__name">{{item.name}}</text>

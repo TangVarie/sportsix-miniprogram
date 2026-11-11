@@ -2,9 +2,12 @@ const member = require('../../content/member.js');
 const home = require('../../content/home.js');
 const store = require('../../utils/store.js');
 const cloud = require('../../utils/cloud.js');
+const config = require('../../config.js');
+const messages = require('../../content/messages.js');
+const legal = require('../../content/legal.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
-const { baseData, selectTab, go, navTone } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, imgLoaded } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /**
@@ -15,13 +18,8 @@ const { assetUrl } = require('../../utils/assets.js');
  * 会员状态、补给计划、提醒、报名都只经过 utils/store.js 读写：配了云环境时走云开发，没配时只存本机。
  */
 
-/** 去向还没定的入口：点击只给方括号占位提示 */
-const PENDING = {
-  group: '[加群方式待定]',
-  chat: '[联系方式待定]',
-  registerFailed: '[注册失败提示文案]',
-  saveFailed: '[保存失败提示文案]'
-};
+// 菜单。加群的方式还没定（docs/04-open-items.md），config.groupReady 为 false 时不显示「加入社群」
+const MENU = member.me.menu.filter((m) => config.groupReady || m.icon !== 'group');
 
 /** 协议那句话里的书名号 → 正文类型（pages/doc 的 type 参数） */
 const DOC_TYPE = { 用户协议: 'agreement', 隐私政策: 'privacy' };
@@ -140,6 +138,7 @@ Page({
   data: Object.assign(baseData(), {
     join: member.join,
     me: member.me,
+    menu: MENU,
     agreement: splitAgreement(member.join.agreement),
     perks: memberPerks(),
     wordmark: assetUrl('assets/logo/sportsix-wordmark-white.svg'),
@@ -152,6 +151,11 @@ Page({
     // 云开发下注册按钮是手机号快速验证组件；没配云环境时是普通按钮，只在本机记录
     cloudMode: cloud.enabled()
   }, readState()),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad() {
     this.setData(baseData());
@@ -206,7 +210,7 @@ Page({
     this.registering = true;
     store.register(code)
       .then(() => this.afterRegister())
-      .catch(() => wx.showToast({ title: PENDING.registerFailed, icon: 'none' }))
+      .catch(() => wx.showToast({ title: messages.register.failed, icon: 'none' }))
       .then(() => { this.registering = false; });
   },
 
@@ -228,7 +232,7 @@ Page({
       go('fuel');
     }).catch(() => {
       // 没存上：待保存的输入留着，计算页里还是那份输入，可以回去再点一次保存
-      wx.showToast({ title: PENDING.saveFailed, icon: 'none' });
+      wx.showToast({ title: messages.plan.saveFailed, icon: 'none' });
     });
   },
 
@@ -242,11 +246,13 @@ Page({
     go('event-detail', { id: e.currentTarget.dataset.id });
   },
 
-  /** 加入社群 / 隐私政策 / 联系我们：去向都没定（docs/04-open-items.md） */
+  /** 菜单：隐私政策打开正文；联系我们弹出联系方式（和协议里写的是同一份）；加入社群的去向还没定 */
   onMenu(e) {
     const key = e.currentTarget.dataset.key;
-    // 隐私政策有正文了；加入社群、联系我们的去向还没定（docs/04-open-items.md）
     if (key === 'doc') { go('doc', { type: 'privacy' }); return; }
-    wx.showToast({ title: PENDING[key] || '[待定]', icon: 'none' });
+    if (key === 'chat') {
+      const item = member.me.menu.find((m) => m.icon === 'chat');
+      wx.showModal({ title: item.text, content: legal.fill.contact, showCancel: false });
+    }
   }
 });

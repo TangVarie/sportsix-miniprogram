@@ -36,6 +36,7 @@ npm run assets
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
 - `sampleEvents`：已经是 `false`，显示云数据库 `events` 集合里的活动，没有活动时显示「敬请期待」。改成 `true` 可以看三种活动卡片的占位示例，对照设计稿用。
 - `reference/content/legal.json`：用户协议和隐私政策的正文，主体信息已填。上线前请法务审阅。
+- `groupReady`：加群的方式还没定，现在是 `false`，「加入社群」「加入活动群」两个入口不显示。
 
 工程约定（目录、样式、动效、状态栏等）写在 `CLAUDE.md` 末尾。
 

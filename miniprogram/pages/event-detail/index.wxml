@@ -1,6 +1,6 @@
 <view wx:if="{{event}}" class="page ed-page" style="--sx-safe-top: {{safeTop}}px">
   <view class="ed-header sx-in">
-    <view class="ed-header__photo sx-photo"><image class="sx-photo__img ed-header__img" src="{{event.image}}" mode="aspectFill" /></view>
+    <view class="ed-header__photo sx-photo"><image class="sx-photo__img ed-header__img sx-img-fade {{loaded.head ? '' : 'sx-img-wait'}}" data-img="head" bindload="onImgLoad" binderror="onImgLoad" src="{{event.image}}" mode="aspectFill" /></view>
     <image wx:if="{{event.graphic}}" class="ed-header__ridge sx-draw" src="{{event.graphic}}" />
     <view class="ed-back" bindtap="onBack">
       <image class="ed-back__icon" src="/assets/icons/back-white.svg" />
@@ -43,7 +43,7 @@
       <view class="ed-about__body">{{detail.about.body}}</view>
     </view>
 
-    <view class="ed-group">
+    <view wx:if="{{groupReady}}" class="ed-group">
       <view class="ed-group__icon"><image class="ed-group__icon-img" src="/assets/icons/group-lime.svg" /></view>
       <view class="ed-group__text">
         <text class="ed-group__title">{{detail.group.title}}</text>

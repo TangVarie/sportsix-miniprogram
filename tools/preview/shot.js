@@ -44,7 +44,7 @@ async function main() {
     const r = new Function('page', 'tap', 'wx', 'app', 'env', a.do)(page, env.tap, env.wx, app, env);
     if (r && typeof r.then === 'function') await r;
   }
-  await new Promise((r) => setTimeout(r, 30)); // 等页面里的 Promise 和定时器跑完
+  await new Promise((r) => setTimeout(r, 1200)); // 等页面里的 Promise 和定时器跑完（首页的数字要数 0.9 秒）
   const html = env.renderHtml();
   if (a.html) fs.writeFileSync(path.resolve(a.html), html);
 

@@ -1,6 +1,6 @@
 const events = require('../../utils/events.js');
 const store = require('../../utils/store.js');
-const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 Page({
@@ -8,10 +8,17 @@ Page({
     arc: assetUrl('assets/graphics/events-header-arc.svg'),
     tab: 'upcoming',
     hasUpcoming: false,
+    // 第一次从云端取活动、还没返回
+    loading: false,
     empty: events.getEmpty(),
     upcoming: [],
     past: []
   }),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad() {
     this.setData(baseData());
@@ -29,8 +36,12 @@ Page({
   onShow() {
     selectTab(this, 2);
     // 提醒状态可能在详情页里变了，每次显示都重读；再从云端取一次最新的活动
+    if (events.isFirstLoad()) this.setData({ loading: true });
     this.render();
-    events.refresh().then((changed) => { if (changed) this.render(); });
+    events.refresh().then((changed) => {
+      if (changed) this.render();
+      if (this.data.loading) this.setData({ loading: false });
+    });
   },
 
   onUnload() {

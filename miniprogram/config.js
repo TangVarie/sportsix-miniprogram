@@ -10,10 +10,13 @@
  * subscribeTemplateId  「活动开始提醒」一次性订阅消息的模板 ID，在公众平台申请后填入。为空时「提醒我」只记在本机。
  * sampleEvents    为 true 时「即将开始」显示 content/events 里三种卡片样式的占位示例，方便对照设计稿；
  *                 为 false 时显示云数据库 events 集合里的活动，没有活动时「即将开始」里显示「敬请期待」。正式环境用 false。
+ * groupReady      加群的方式（企业微信群、客服二维码）还没定。为 false 时「加入社群」「加入活动群」两个入口不显示；
+ *                 定了以后做好对应的页面或弹层，再改成 true。
  */
 module.exports = {
   assetBase: 'http://127.0.0.1:8787',
   cloudEnv: 'cloud1-d1g1u97accc6092f6',
   subscribeTemplateId: 'APVCkWz7HLHIurWipctjacSf6Ii9nKuLuNuv7JsqrmQ',
-  sampleEvents: false
+  sampleEvents: false,
+  groupReady: false
 };

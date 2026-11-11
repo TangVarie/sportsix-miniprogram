@@ -76,6 +76,7 @@ tools/
 - 图片、图形、字标、视频一律 `assetUrl('assets/...')`，不放进 `miniprogram/`。只有图标用本地路径 `/assets/icons/<名称>-<颜色>.svg`（navy、blue、lime、grey、white）。
 - 设计稿 HTML 里内联的 `<svg>`：先在 `assets/graphics/`、`assets/icons/`、`assets/logo/` 里找对应文件，用 `image` 显示；随数据变化的图形（时间轴、横条等）用 `view` 画。
 - content 里没有的文案（按钮名、表头等设计稿上有但 JSON 里没有的字）：以设计稿 HTML 里的原文为准写在 WXML 里。设计稿上也没有的，留方括号占位。
+- 操作结果的提示语（保存、注册、报名的成功和失败）在 `reference/content/messages.json`，协议正文在 `legal.json`，这两份不是交接包原有的，是开发时补的。
 
 ### 样式
 
@@ -99,6 +100,8 @@ tools/
 - 类在 `app.wxss`：容器是 `sx-in` 或 `sx-wait`，里面要动的元素加 `sx-rise`（入场）、`sx-draw`（从左到右展开）、`sx-grow-x` / `sx-grow-y`（生长）、`sx-pop`；延迟用 `style="animation-delay: .15s"`。持续动效：`sx-float`、`sx-glow`。
 - 首屏内容的容器直接写 `sx-in`。首屏以下的分区用 `id="rv-<key>" class="{{seen.key ? 'sx-in' : 'sx-wait'}}"`，在 `onReady` 里 `watchReveal(this, [keys])`，`onUnload` 里调用它返回的函数。
 - 弧线图形在 SVG 文件里是「光晕 + 实体」合在一起的，光晕的呼吸动效做不了，保持静止即可。
+- 照片和产品图加载完再淡入：节点写 `class="... sx-img-fade {{loaded.key ? '' : 'sx-img-wait'}}" data-img="key" bindload="onImgLoad" binderror="onImgLoad"`，页面上写 `onImgLoad(e) { imgLoaded(this, e); }`（`utils/page.js`）。已经带 `sx-draw` 等动效类的图形不要加。
+- 列表在等云端数据时用 `sx-skeleton` 占位块；点选、加减这类操作调 `tick()` 轻震一下。
 
 ### 后台相关
 
