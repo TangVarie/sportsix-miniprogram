@@ -12,17 +12,29 @@
 const GEL = { key: 'gel', name: '能量胶', carb: 30, caffeine: 45, kcal: 120 };
 const PRO = { key: 'pro', name: 'PRO', fullName: '能量胶PRO', carb: 21, caffeine: 0, kcal: 85 };
 
+/**
+ * 项目。页面上排成两行三列。
+ * steady: 不分强度的项目（徒步、登山、滑雪）。这类运动整体是中低强度、时间长，统一按「轻松训练」那一档算，
+ * 页面上不显示「强度」一行。
+ */
 const SPORTS = [
   { key: 'road', label: '路跑', defaultMinutes: 240 },
   { key: 'trail', label: '越野', defaultMinutes: 480 },
   { key: 'bike', label: '骑行', defaultMinutes: 180 },
-  { key: 'hike', label: '徒步', defaultMinutes: 300 }
+  { key: 'hike', label: '徒步', defaultMinutes: 300, steady: true },
+  { key: 'climb', label: '登山', defaultMinutes: 360, steady: true },
+  { key: 'ski', label: '滑雪', defaultMinutes: 240, steady: true }
 ];
+/**
+ * 强度，从轻到重。时长是单独的一项输入，所以这里只说强度，不再用「长距离」这种和时长重叠的说法。
+ * key 沿用原来的（long 原来叫「长距离训练」），已保存的计划照常能用。hint 是选中时显示在下面的一句说明。
+ */
 const SCENES = [
-  { key: 'race', label: '比赛' },
-  { key: 'long', label: '长距离训练' },
-  { key: 'hard', label: '高强度训练' }
+  { key: 'long', label: '轻松训练', hint: '能边练边说话的强度，比如有氧慢跑、耐力骑行' },
+  { key: 'hard', label: '高强度训练', hint: '说话费劲的强度，比如间歇、节奏、爬坡' },
+  { key: 'race', label: '比赛', hint: '正式比赛，或者按比赛强度做的测试' }
 ];
+const isSteady = (sport) => { const s = SPORTS.find((x) => x.key === sport); return !!(s && s.steady); };
 const STARTS = [
   { key: 'am', label: '上午' },
   { key: 'pm', label: '下午' },
@@ -58,7 +70,7 @@ function carbRate(input) {
   if (T < 60) return 0;
   const long = T >= 150;
   let rate;
-  if (input.sport === 'hike') rate = long ? 45 : 30;
+  if (isSteady(input.sport)) rate = long ? 45 : 30;
   else if (input.scene === 'race') rate = long && input.sport === 'bike' && T < 360 ? 75 : 60;
   else if (input.scene === 'hard') rate = long ? 60 : 45;
   else rate = long ? 45 : 30;
@@ -87,6 +99,8 @@ function caffeineCap(input) {
  */
 function planFuel(input) {
   input = Object.assign({}, DEFAULT_INPUT, input);
+  // 不分强度的项目统一按「轻松训练」算，不让页面上看不见的选项影响结果
+  if (isSteady(input.sport)) input.scene = 'long';
   const T = input.minutes;
   const rate = carbRate(input);
   const cap = caffeineCap(input);
@@ -126,7 +140,7 @@ function planFuel(input) {
 
   const gelCount = items.filter((i) => i.product === 'gel').length;
   const proCount = items.length - gelCount;
-  const preLabel = input.scene === 'race' && input.sport !== 'hike' ? '赛前' : '开始前';
+  const preLabel = input.scene === 'race' ? '赛前' : '开始前';
 
   const result = {
     input: input,
@@ -165,7 +179,7 @@ function explain(r) {
     return why;
   }
   if (r.carbRate > 0) {
-    why.push(r.durationLabel + ' 的' + (s.sport === 'hike' ? '徒步' : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排：1–2.5 小时 30–60g，更长的 60g 起。');
+    why.push(r.durationLabel + ' 的' + (isSteady(s.sport) ? sport : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排：1–2.5 小时 30–60g，更长的 60g 起。');
   } else {
     why.push('不足 1 小时，只在' + (s.scene === 'race' ? '赛前' : '中段') + '补 1 支。');
   }
@@ -201,4 +215,4 @@ function explain(r) {
  * total 为 0 时页面显示「这次不用带胶」。
  */
 
-module.exports = { planFuel, carbRate, caffeineCap, explain, formatTime, GEL, PRO, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT };
+module.exports = { planFuel, carbRate, caffeineCap, explain, formatTime, isSteady, GEL, PRO, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT };

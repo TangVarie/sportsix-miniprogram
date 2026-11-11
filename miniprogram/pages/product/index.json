@@ -5,5 +5,8 @@
     "product-key-points": "/components/product-key-points/index",
     "product-scenes": "/components/product-scenes/index",
     "product-compare": "/components/product-compare/index"
+  },
+  "singlePage": {
+    "navigationBarFit": "squeezed"
   }
 }

@@ -105,6 +105,11 @@ Page({
     return shareCard('/pages/product/index?id=' + this.data.id, this.data.p ? this.data.p.name : '');
   },
 
+  /** 分享到朋友圈：带上是哪一款，标题用款名 */
+  onShareTimeline() {
+    return { title: this.data.p ? this.data.p.name : '', query: 'id=' + this.data.id };
+  },
+
   onReady() {
     this.stopReveal = watchReveal(this, REVEAL[this.data.id] || []);
     // 深浅分区交替：量出各段深色区（class 带 js-dark）的位置，状态栏文字跟着换色

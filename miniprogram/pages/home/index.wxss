@@ -20,6 +20,8 @@
 .hm-hero__headline { margin-top: 35rpx; font-size: 42rpx; line-height: 62rpx; font-weight: 900; color: #FFFFFF; }
 .hm-hero__brand { margin-top: 19rpx; width: 288rpx; font-size: 23rpx; line-height: 37rpx; color: #C9CEE8; }
 .hm-hero__tag-wrap { margin-top: 27rpx; }
+.hm-hero__cert { display: flex; align-items: center; gap: 15rpx; margin-top: 27rpx; color: #FFFFFF; font-size: 21rpx; line-height: 31rpx; font-weight: 700; }
+.hm-hero__cert-icon { flex-shrink: 0; display: block; width: 88rpx; height: 88rpx; }
 .hm-hero__tag { display: inline-block; padding: 8rpx 31rpx; background: #C2E541; color: #010439; font-size: 23rpx; line-height: 35rpx; font-weight: 700; }
 
 /* 2 三个数字 */
@@ -118,8 +120,8 @@
 /* 8 Informed-Sport 认证 */
 .hm-cert { display: flex; flex-direction: column; gap: 23rpx; margin: 0 38rpx; padding: 46rpx 38rpx; border-radius: 31rpx; background: #F5F5F5; }
 .hm-cert__head { display: flex; align-items: center; gap: 23rpx; }
-.hm-cert__badge { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 85rpx; height: 85rpx; border-radius: 42rpx; background: #010439; }
-.hm-cert__badge-icon { display: block; width: 46rpx; height: 46rpx; }
+/* Informed Sport 认证标（彩色版，随包），原图 280 × 320 */
+.hm-cert__logo { flex-shrink: 0; display: block; width: 108rpx; height: 123rpx; }
 .hm-cert__title { font-size: 33rpx; line-height: 46rpx; font-weight: 700; color: #010439; }
 .hm-cert__body { font-size: 25rpx; line-height: 40rpx; color: #14141E; }
 .hm-cert__row { display: flex; align-items: flex-start; gap: 19rpx; }

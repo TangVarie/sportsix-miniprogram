@@ -8,15 +8,23 @@ App({
     config: config,
     /** 状态栏高度（px）。页面用的是自定义导航，首屏内容要让出这一段。 */
     safeTop: 0,
+    /** 是不是从朋友圈打开的单页模式：不能跳转、没有底部导航、云开发不能用 */
+    singlePage: false,
     /** 「我的」里点补给计划、或注册后回到计算页时置为 true，计算页 onShow 时按已保存的输入还原，然后清掉。 */
     fuelRestore: false
   },
 
-  onLaunch() {
+  onLaunch(options) {
     try {
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       this.globalData.safeTop = info.statusBarHeight || 0;
     } catch (e) {
+      this.globalData.safeTop = 0;
+    }
+    // 从朋友圈打开的是「单页模式」（场景值 1154）：微信在页面上方固定放一条导航栏，页面从它下面开始排
+    // （页面 json 里的 singlePage.navigationBarFit: squeezed），所以不用再让出状态栏
+    if (options && options.scene === 1154) {
+      this.globalData.singlePage = true;
       this.globalData.safeTop = 0;
     }
     // 数字和英文用的 Barlow Condensed（utils/fonts.js）

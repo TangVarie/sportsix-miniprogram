@@ -81,6 +81,21 @@ function register(code) {
   }));
 }
 
+/**
+ * 积分页的数据：{ points, logs: [{ id, delta, reason, at }] }。顺带把本机缓存的会员信息更新成云端最新的。
+ * 没配云环境时只有本机记的那 500。
+ */
+function fetchPoints() {
+  if (!cloud.enabled()) {
+    const m = getMember() || {};
+    return Promise.resolve({ points: typeof m.points === 'number' ? m.points : 0, logs: [{ id: 'welcome', delta: 500, reason: 'welcome', at: m.createdAt }] });
+  }
+  return tracked(cloud.call('points').then((d) => {
+    write(KEY.member, d.member);
+    return { points: typeof d.member.points === 'number' ? d.member.points : 0, logs: d.logs || [] };
+  }));
+}
+
 /** 改昵称。没配云环境时只改本机的。 */
 function setNickname(nickname) {
   if (!cloud.enabled()) {
@@ -145,7 +160,7 @@ function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
   sync, onChange,
-  getMember, isMember, register, setNickname,
+  getMember, isMember, register, setNickname, fetchPoints,
   getReminders, hasReminder, addReminder,
   getSignups, hasSignup, signup,
   getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan

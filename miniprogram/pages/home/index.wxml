@@ -19,6 +19,13 @@
       <view class="hm-hero__tag-wrap sx-rise" style="animation-delay: .45s">
         <text class="hm-hero__tag sx-slant">{{hero.tag}}</text>
       </view>
+      <!-- Informed Sport 认证标（白色版，随包）：点了滚到下面的认证说明 -->
+      <view class="sx-rise" style="animation-delay: .55s">
+        <view class="hm-hero__cert sx-pressable" hover-class="sx-press" bindtap="onCert">
+          <image class="hm-hero__cert-icon" src="/assets/icons/informed-sport-white.png" />
+          <text>{{cert.badge}}</text>
+        </view>
+      </view>
     </view>
   </view>
 
@@ -138,7 +145,7 @@
   <view id="rv-cert" class="{{seen.cert ? 'sx-in' : 'sx-wait'}}">
     <view class="hm-cert sx-rise">
       <view class="hm-cert__head">
-        <view class="hm-cert__badge"><image class="hm-cert__badge-icon" src="/assets/icons/shield-lime.svg" /></view>
+        <image class="hm-cert__logo" src="/assets/icons/informed-sport-color.png" />
         <view class="hm-cert__title">
           <view wx:for="{{cert.title}}" wx:key="*this">{{item}}</view>
         </view>

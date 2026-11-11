@@ -21,12 +21,16 @@
         <image class="me-card__wordmark" src="{{wordmark}}" />
         <text class="me-card__no">{{profile.memberNo}}</text>
       </view>
-      <view class="me-card__bottom">
+      <!-- 点积分进积分页 -->
+      <view class="me-card__bottom sx-pressable" hover-class="sx-press" bindtap="onPoints">
         <view class="me-card__label-row">
           <text class="me-card__label">{{me.card.pointsLabel}}</text>
           <text class="me-card__note">{{me.card.pointsNote}}</text>
         </view>
-        <text class="me-card__points">{{profile.points}}</text>
+        <view class="me-card__points-row">
+          <text class="me-card__points">{{profile.points}}</text>
+          <image class="me-card__points-go" src="/assets/icons/chevron-white.svg" />
+        </view>
       </view>
       <image class="me-card__slogan" src="{{slogan}}" />
     </view>

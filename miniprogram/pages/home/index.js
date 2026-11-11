@@ -132,6 +132,16 @@ Page({
     return shareCard(TABS.home);
   },
 
+  /** 分享到朋友圈：标题用小程序名称，配图用小程序头像（微信的默认值） */
+  onShareTimeline() {
+    return {};
+  },
+
+  /** 首屏的认证小徽标：滚到下面的认证说明 */
+  onCert() {
+    wx.pageScrollTo({ selector: '#rv-cert', duration: 300 });
+  },
+
   onProduct(e) {
     const { id, detail } = e.currentTarget.dataset;
     if (detail) go(id);

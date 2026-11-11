@@ -83,7 +83,7 @@
         "key": "dualCarb", "eyebrow": "DUAL CARB", "title": ["快慢双碳", "告别能量过山车"],
         "body": "即时补能 + 长效续航双向兼顾，长距离耐力运动不掉速、不撞墙。",
         "graphic": "assets/graphics/chart-pace.svg",
-        "legend": ["SPORTSIX 复配：麦芽糊精 + 帕拉金糖，更稳定", "普通胶：只有单糖，波动大"],
+        "legend": ["SPORTSIX 复配：麦芽糊精 + 帕拉金糖，更稳定", "其他胶：只有单糖，波动大"],
         "footnote": "马拉松 30KM 前后配速稳定性对比，曲线为示意。食用 2 袋 SPORTSIX 能量胶（含咖啡因版）。数据参考自《International Journal of Sport Nutrition and Exercise Metabolism》发表的《Improved Marathon Performance by In-Race Nutritional Strategy Intervention》研究论文。",
         "confirm": "是否在小程序引用这项研究"
       },
@@ -93,9 +93,9 @@
         "bars": [
           { "label": "常规补水型水胶", "value": 481 },
           { "label": "传统基础能量胶", "value": 1004 },
-          { "label": "SPORTSIX 能量胶", "value": 1115, "highlight": true }
+          { "label": "SPORTSIX BASIC", "value": 1115, "highlight": true }
         ],
-        "footnote": "单位：KJ/100g。水胶、市面上普通能量胶数据来源市场某品牌，增长幅度来源于 SPORTSIX。"
+        "footnote": "单位：KJ/100g。水胶、市面上其他能量胶数据来源市场某品牌，增长幅度来源于 SPORTSIX。"
       },
       {
         "key": "caffeine", "eyebrow": "CAFFEINE", "title": ["45mg 轻咖啡因", "稳状态冲 PB"],
@@ -112,7 +112,7 @@
       {
         "key": "electrolytes", "eyebrow": "ELECTROLYTES", "title": "全链路电解质补给", "sub": "缓解高温肌肉不适",
         "compare": {
-          "columns": ["普通胶", "SPORTSIX 能量胶"],
+          "columns": ["其他胶", "SPORTSIX BASIC"],
           "rows": [
             { "item": "电解质构成", "other": "单一钠元素", "ours": "钠 + 钾 + 柠檬酸钠复配，添加 VB3" },
             { "item": "补给方式", "other": "只补细胞外盐分，钾持续缺失", "ours": "细胞内 + 细胞外，双向全链路补充" },
@@ -211,7 +211,7 @@
       {
         "key": "release", "eyebrow": "RELEASE", "title": "吸收集中，还是持续释放",
         "columns": [
-          { "label": "普通胶", "title": "吸收集中", "body": ["血糖波动大", "肠胃易不适"], "graphic": "assets/graphics/chart-absorb-spike.svg" },
+          { "label": "其他胶", "title": "吸收集中", "body": ["血糖波动大", "肠胃易不适"], "graphic": "assets/graphics/chart-absorb-spike.svg" },
           { "label": "SPORTSIX PRO 能量胶", "title": "持续释放", "body": ["供能更稳定", "降低疲劳感"], "graphic": "assets/graphics/chart-absorb-steady.svg", "highlight": true }
         ],
         "footnote": "曲线为示意。来源于《高支链环状糊精（HBCD）及其对运动员运动表现的增效作用简要综述》。"

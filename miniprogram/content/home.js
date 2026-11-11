@@ -28,7 +28,7 @@ module.exports = {
       {
         "n": "02", "word": "超低渗", "line": "快排空，不坠胃",
         "body": "通过低渗透压快速清空胃部，缓解饱胀感，长距离无“坠重感”。位置为示意。",
-        "graphic": "assets/graphics/chart-osmolality.svg",
+        "graphic": "assets/graphics/chart-osmolality-v2.svg",
         "chips": ["能量胶PRO"],
         "confirm": "电商页只写了「低渗透压」，没有实测数；图上的位置是示意"
       },
@@ -53,9 +53,10 @@ module.exports = {
   ],
   "certification": {
     "title": ["Informed-Sport", "权威认证产品"],
+    "badge": "Informed-Sport 认证",
     "body": "Informed Sport 是由全球体育反兴奋剂研究所对产品进行检测，确认其不含运动员禁用物质的认证项目。",
     "checks": ["SPORTSIX 约对 250 种体育禁用成分进行彻底管理", "生产的所有批次均经过严格分析和管理"],
-    "confirm": "认证标本身未使用，只写了文字；用标需要确认授权范围"
+    "confirm": "认证标已使用（文件取自 Informed Sport 官网）；用标的授权范围需要品牌方确认"
   },
   "races": {
     "eyebrow": "RACES", "title": ["众多专业机构", "选择 SPORTSIX 产品"],

@@ -27,7 +27,7 @@ SPORTSIX 是韩国大象集团旗下的运动营养品牌，主推两款能量�
 ## 规则
 
 - 文案一律用 `reference/content/*.json` 里的原文，不要改写、补写或自己编文案。缺文案就留方括号占位并在回复里说明。
-- 不要自己造词。产品款名只有「能量胶」和「能量胶PRO」，不用颜色或其他说法指代。品牌卖点的说法是「缓释」，不是「持久」。
+- 不要自己造词。产品款名只有「能量胶」和「能量胶PRO」，不用颜色或其他说法指代。例外：和其他品牌的胶对比时，对方写「其他胶」，自家普通版写「SPORTSIX BASIC」。品牌卖点的说法是「缓释」，不是「持久」。
 - `fuel-plan.js` 是公式的唯一实现，原样复制到小程序里使用，页面只负责输入和展示。要改公式，先改测试，并保持 `node fuel-plan.test.js` 通过。
 - 尺寸换算：`rpx = px × 750 ÷ 390`。设计稿里的所有数值都是 390px 宽度下的 px。
 - 设计稿里方括号括起来的内容是占位，保留为占位或接数据，不要替换成编造的内容。
@@ -54,7 +54,7 @@ miniprogram/
   app.js  app.json  app.wxss     全局样式：styles/tokens.wxss 加几个原子类和动效类
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
-  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、doc（用户协议和隐私政策）
+  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）
   components/<组件>/index.*      member-cta、dual-carb 等
   utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
@@ -94,8 +94,8 @@ tools/
 - 全局 `navigationStyle: custom`。每个页面的根节点写 `style="--sx-safe-top: {{safeTop}}px"`，`data` 用 `baseData()`（`utils/page.js`）初始化并在 `onLoad` 里再 `setData(baseData())`。
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
-- 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」没有开（要另外适配单页模式）。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
+- 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」只开了首页和产品页（`onShareTimeline` 加页面 json 里的 `singlePage`），其他页面依赖跳转或云开发，单页模式下用不了。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 

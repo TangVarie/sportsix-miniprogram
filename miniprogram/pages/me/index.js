@@ -272,6 +272,10 @@ Page({
     go('event-detail', { id: e.currentTarget.dataset.id });
   },
 
+  onPoints() {
+    go('points');
+  },
+
   /**
    * 改昵称。输入框是昵称键盘（type="nickname"），键盘上方可以一键选用微信昵称。
    * 微信会在输入框失焦时异步检测内容，通过 bindnicknamereview 告知结果（基础库 2.29.1 起）；没通过的会被微信清空。

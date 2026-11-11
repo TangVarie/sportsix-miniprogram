@@ -92,6 +92,8 @@
 .me-card__label-row { display: flex; align-items: center; gap: 15rpx; }
 .me-card__label { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
 .me-card__note { font-size: 21rpx; line-height: 35rpx; color: #C9CEE8; opacity: .7; }
+.me-card__points-row { display: flex; align-items: center; gap: 8rpx; }
+.me-card__points-go { display: block; width: 35rpx; height: 35rpx; opacity: .7; }
 .me-card__points { font-size: 65rpx; line-height: 85rpx; font-weight: 900; color: #FFFFFF; }
 .me-card__slogan { position: absolute; right: 38rpx; top: 46rpx; display: block; width: 177rpx; height: 17rpx; }
 

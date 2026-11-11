@@ -14,7 +14,7 @@ function createCloud() {
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
-    absent: { counters: true }   // 还没建的集合：读写会报错，createCollection 之后才能用
+    absent: { counters: true, point_logs: true }   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
   const col = (name) => {

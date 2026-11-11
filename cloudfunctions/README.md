@@ -58,11 +58,12 @@ cloudfunctions/
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
+| `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
 | `counters` 计数 | `memberNo` | `next`（下一个会员编号）。云函数自动建，不要手动改 |
 
 会员编号按注册先后发，6 位数字，从 100001 起（`api` 里的 `nextMemberNo`）。没有编号的会员（规则定下来之前注册的，或注册时取号失败的）下次进入小程序时补发，页面上暂时显示「—」。
 
-注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要手动给某个会员加减积分，在控制台里改他那条记录的 `points`。
+注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要手动给某个会员加减积分：在控制台里改他那条 `members` 记录的 `points`，再在 `point_logs` 里加一条（`openid`、`delta`、`reason`、`createdAt`），积分页的记录里才会有这一笔。
 
 昵称由用户在会员页自己填（`setNickname` 接口），最多 20 个字。输入框用的是微信的昵称键盘，内容安全由微信的组件检测。
 
