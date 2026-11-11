@@ -1,10 +1,11 @@
 const config = require('./config.js');
 const { assetUrl } = require('./utils/assets.js');
 
-// 数字和英文用 Barlow Condensed，只加载设计里用到的两个字重。中文用系统字体。
+// 数字和英文用 Barlow Condensed，只加载设计里用到的字重：斜体 700 / 800，以及补给时刻格子里的正体 700。中文用系统字体。
 const FONTS = [
-  { weight: '700', file: 'assets/fonts/barlow-condensed-latin-700-italic.woff2' },
-  { weight: '800', file: 'assets/fonts/barlow-condensed-latin-800-italic.woff2' }
+  { style: 'italic', weight: '700', file: 'assets/fonts/barlow-condensed-latin-700-italic.woff2' },
+  { style: 'italic', weight: '800', file: 'assets/fonts/barlow-condensed-latin-800-italic.woff2' },
+  { style: 'normal', weight: '700', file: 'assets/fonts/barlow-condensed-latin-700-normal.woff2' }
 ];
 
 App({
@@ -32,7 +33,7 @@ App({
         global: true,
         family: 'Barlow Condensed',
         source: 'url("' + assetUrl(f.file) + '")',
-        desc: { style: 'italic', weight: f.weight },
+        desc: { style: f.style, weight: f.weight },
         // 加载失败时回退到系统字体，不影响使用
         fail: () => {}
       });

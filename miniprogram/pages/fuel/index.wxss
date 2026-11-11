@@ -1,0 +1,112 @@
+/* 数值取自 design/html/02-fuel-*.html，px × 750 ÷ 390 */
+
+/* 头图：设计高 212px，上方让出状态栏。照片压成深蓝单色，左侧再压一层深蓝渐变保证文字可读 */
+.fuel-header { position: relative; height: calc(408rpx + var(--sx-safe-top)); overflow: hidden; background: #010439; color: #FFFFFF; }
+.fuel-header__photo { position: absolute; left: 0; top: 0; width: 750rpx; height: 100%; }
+.fuel-header__img { opacity: .6; }
+.fuel-header__shade { position: absolute; left: 0; top: 0; width: 750rpx; height: 100%; background: linear-gradient(90deg, #010439 18%, rgba(1, 4, 57, 0.2) 100%); }
+.fuel-header__text { position: absolute; left: 38rpx; top: calc(77rpx + var(--sx-safe-top)); width: 500rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.fuel-header__eyebrow { color: #C2E541; }
+.fuel-header__h1 { font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+.fuel-header__desc { margin-top: 8rpx; font-size: 27rpx; line-height: 42rpx; color: #E4E7F5; }
+
+/* 输入分组卡片 */
+.fuel-card { margin: 23rpx 38rpx 0; padding: 31rpx 31rpx 12rpx; border-radius: 31rpx; background: #F5F5F5; display: flex; flex-direction: column; }
+.fuel-card__head { display: flex; align-items: baseline; gap: 15rpx; padding-bottom: 19rpx; }
+.fuel-card__no { font-size: 38rpx; line-height: 40rpx; color: #061A70; }
+.fuel-card__title { font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+
+.fuel-row { display: flex; align-items: center; gap: 23rpx; min-height: 115rpx; border-bottom: 1px solid #E6E6E7; }
+.fuel-row--last { border-bottom: 0; }
+.fuel-row__label { flex-shrink: 0; width: 123rpx; font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+.fuel-row__main { flex: 1; min-width: 0; }
+
+/* 分段选择 */
+.fuel-seg { display: grid; gap: 12rpx; }
+.fuel-seg--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fuel-seg--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fuel-seg--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fuel-seg__btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 85rpx; padding: 0 8rpx; border-radius: 19rpx;
+  background: #FFFFFF; color: #14141E; font-size: 25rpx; font-weight: 700; white-space: nowrap;
+}
+.fuel-seg__btn--on { background: #010439; color: #FFFFFF; }
+
+/* 步进：减号白底、加号深蓝底 */
+.fuel-step { display: flex; align-items: center; justify-content: space-between; }
+.fuel-step--time { gap: 8rpx; }
+.fuel-step__btn {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 85rpx; height: 85rpx; border-radius: 42rpx;
+  background: #FFFFFF; color: #010439; font-size: 31rpx; line-height: 38rpx;
+}
+.fuel-step__btn--wide { width: 88rpx; }
+.fuel-step__btn--plus { background: #010439; color: #FFFFFF; }
+.fuel-step__time { flex: 1; text-align: center; font-size: 65rpx; line-height: 77rpx; color: #061A70; }
+.fuel-step__kg { display: flex; align-items: baseline; gap: 8rpx; }
+.fuel-step__value { font-size: 65rpx; line-height: 77rpx; color: #061A70; }
+.fuel-step__unit { font-size: 25rpx; line-height: 37rpx; color: #5E6170; }
+
+/* 结果卡 */
+.fuel-result { margin: 38rpx 38rpx 0; padding: 38rpx 35rpx; border-radius: 35rpx; color: #FFFFFF; display: flex; flex-direction: column; gap: 31rpx; }
+.fuel-result__top { display: flex; align-items: flex-end; justify-content: space-between; }
+.fuel-result__count { display: flex; align-items: baseline; gap: 15rpx; }
+.fuel-result__word { font-size: 27rpx; line-height: 38rpx; font-weight: 700; }
+.fuel-result__total { font-size: 146rpx; line-height: 135rpx; color: #C2E541; }
+.fuel-legend { display: flex; flex-direction: column; gap: 8rpx; padding-bottom: 12rpx; font-size: 25rpx; line-height: 38rpx; }
+.fuel-legend__item { display: flex; align-items: center; gap: 15rpx; }
+.fuel-legend__mark { flex-shrink: 0; box-sizing: border-box; width: 23rpx; height: 23rpx; }
+.fuel-legend__mark--gel { background: #C2E541; }
+.fuel-legend__mark--pro { border: 3rpx solid #FFFFFF; }
+
+.fuel-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 23rpx 0; border-top: 1px solid #2A3373; border-bottom: 1px solid #2A3373; }
+.fuel-stat { display: flex; flex-direction: column; gap: 4rpx; }
+.fuel-stat--next { padding-left: 23rpx; border-left: 1px solid #2A3373; }
+.fuel-stat__label { font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
+.fuel-stat__value { display: flex; align-items: baseline; gap: 6rpx; }
+.fuel-stat__num { font-size: 50rpx; line-height: 54rpx; color: #FFFFFF; }
+.fuel-stat__unit { font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
+
+/* 时间轴：能量胶黄绿实心点，PRO 白色空心点 */
+.fuel-line { position: relative; height: 77rpx; }
+.fuel-line__track { position: absolute; left: 8%; right: 0; top: 19rpx; height: 8rpx; background: #2A3373; }
+.fuel-line__dot {
+  position: absolute; top: 10rpx; box-sizing: border-box; width: 27rpx; height: 27rpx; margin-left: -13rpx; border-radius: 14rpx;
+  border: 4rpx solid #FFFFFF; background: transparent;
+}
+.fuel-line__dot--gel { border-color: #C2E541; background: #C2E541; }
+.fuel-line__start, .fuel-line__end { position: absolute; top: 46rpx; font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
+.fuel-line__start { left: 8%; margin-left: -15rpx; }
+.fuel-line__end { right: 0; }
+
+/* 五列格子：能量胶黄绿底，PRO 深色描边 */
+.fuel-cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12rpx; }
+.fuel-cell {
+  box-sizing: border-box; height: 108rpx; border-radius: 19rpx; border: 3rpx solid #4A5390; color: #FFFFFF;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx;
+}
+.fuel-cell--gel { border-color: #C2E541; background: #C2E541; color: #010439; }
+/* 时刻是正体的 Barlow Condensed 700（不是斜体）；「赛前」「开始前」回退到系统字体 */
+.fuel-cell__time { font-family: var(--sx-font-num); font-style: normal; font-weight: 700; font-size: 35rpx; line-height: 38rpx; }
+.fuel-cell__name { font-size: 19rpx; line-height: 27rpx; font-weight: 500; }
+.fuel-result__note { font-size: 21rpx; line-height: 33rpx; color: #C9CEE8; }
+
+/* 0 支 */
+.fuel-none { display: flex; flex-direction: column; gap: 12rpx; padding: 15rpx 0; }
+.fuel-none__zero { font-size: 146rpx; line-height: 135rpx; color: #C2E541; }
+.fuel-none__title { font-size: 35rpx; line-height: 50rpx; font-weight: 900; }
+
+/* 为什么这样排 */
+.fuel-why { margin: 23rpx 38rpx 0; padding: 35rpx 31rpx; border-radius: 31rpx; border: 1px solid #E6E6E7; display: flex; flex-direction: column; gap: 19rpx; }
+.fuel-why__title { margin-bottom: 4rpx; font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.fuel-why__item { display: flex; align-items: flex-start; gap: 19rpx; }
+.fuel-why__check { margin-top: 6rpx; }
+.fuel-why__text { flex: 1; min-width: 0; font-size: 25rpx; line-height: 40rpx; }
+
+/* 底部按钮和参考说明 */
+.fuel-actions { display: flex; gap: 23rpx; padding: 31rpx 38rpx 0; }
+.fuel-actions__save, .fuel-actions__more { display: flex; align-items: center; justify-content: center; height: 100rpx; border-radius: 50rpx; color: #010439; }
+.fuel-actions__save { flex: 1.4; background: #C2E541; font-size: 31rpx; font-weight: 900; }
+.fuel-actions__more { flex: 1; box-sizing: border-box; border: 3rpx solid #010439; font-size: 29rpx; font-weight: 700; }
+.fuel-foot { margin: 27rpx 38rpx 38rpx; font-size: 21rpx; line-height: 33rpx; color: #5E6170; }
