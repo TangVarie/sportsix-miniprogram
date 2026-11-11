@@ -53,7 +53,13 @@
 
 /* 步进：减号白底、加号深蓝底 */
 .fuel-step { display: flex; align-items: center; justify-content: space-between; }
+/*
+ * 时长一行有五样东西，按设计稿的尺寸加起来比这一行略宽（设计稿里「+1h」会顶出去一点）。
+ * 这里让四个按钮在放不下时一起收窄一点，中间的时间按自己的宽度占位，整行不再溢出；字体没加载出来、时间变宽时也一样。
+ */
 .fuel-step--time { gap: 8rpx; }
+.fuel-step--time .fuel-step__btn { flex: 0 1 85rpx; width: auto; min-width: 62rpx; }
+.fuel-step--time .fuel-step__btn--wide { flex-basis: 88rpx; }
 .fuel-step__btn {
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   width: 85rpx; height: 85rpx; border-radius: 42rpx;
@@ -61,7 +67,7 @@
 }
 .fuel-step__btn--wide { width: 88rpx; }
 .fuel-step__btn--plus { background: #010439; color: #FFFFFF; }
-.fuel-step__time { flex: 1; text-align: center; font-size: 65rpx; line-height: 77rpx; color: #061A70; }
+.fuel-step__time { flex: 1 0 auto; text-align: center; white-space: nowrap; font-size: 65rpx; line-height: 77rpx; color: #061A70; }
 .fuel-step__kg { display: flex; align-items: baseline; gap: 8rpx; }
 .fuel-step__value { font-size: 65rpx; line-height: 77rpx; color: #061A70; }
 .fuel-step__unit { font-size: 25rpx; line-height: 37rpx; color: #5E6170; }
