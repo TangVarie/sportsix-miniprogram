@@ -28,6 +28,16 @@
     </view>
   </view>
 
+  <!-- 两款能量胶的入口：紧跟首屏，一眼能看到、能点进详情 -->
+  <view class="hm-picks sx-grid-bg js-dark sx-in">
+    <view wx:for="{{picks}}" wx:key="id" class="hm-pick sx-rise sx-pressable" hover-class="sx-press" style="animation-delay: {{0.5 + index * 0.1}}s" data-id="{{item.id}}" data-detail="{{true}}" bindtap="onProduct">
+      <view class="hm-pick__pack"><image class="hm-pick__img sx-img-fade {{loaded['pick' + index] ? '' : 'sx-img-wait'}}" data-img="pick{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="heightFix" /></view>
+      <text class="hm-pick__name">{{item.name}}</text>
+      <view class="hm-pick__facts"><text wx:for="{{item.facts}}" wx:for-item="f" wx:key="*this" class="hm-pick__fact">{{f}}</text></view>
+      <view class="hm-pick__go"><image class="hm-pick__arrow" src="/assets/icons/chevron-navy.svg" /></view>
+    </view>
+  </view>
+
   <!-- 3 三个卖点卡片 -->
   <view class="hm-kw">
     <text class="sx-eyebrow hm-eyebrow">{{keywords.eyebrow}}</text>

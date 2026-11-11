@@ -29,6 +29,10 @@ const REVEAL_KEYS = ['kw0', 'kw1', 'kw2', 'fuel', 'stage0', 'stage1', 'stage2', 
 const brand = withAssets(home.brand);
 brand.values = brand.values.map((v) => ({ icon: v.icon, lines: valueLines(v.text) }));
 
+// 有详情页的产品（能量胶、能量胶PRO），名称和「咖啡因 · 千卡」那一行取自产品线
+const PICKS = [];
+products.lineup.forEach((stage) => stage.products.forEach((p) => { if (p.detail) PICKS.push({ id: p.id, name: p.name, facts: String(p.fact).split(/\s*·\s*/), image: p.image }); }));
+
 /** '60+' → 数字部分 60 和后缀 '+' */
 function splitValue(value) {
   const m = /^(\d+)(.*)$/.exec(String(value));
@@ -48,6 +52,8 @@ Page({
     hero: withAssets(home.hero),
     // shown 是页面上显示的值：进入页面时从 0 数到 value
     stats: home.stats.map((s) => ({ label: s.label, value: s.value, shown: startValue(s.value) })),
+    // 首屏下面两张入口卡：产品线里有详情页的那两款
+    picks: withAssets(PICKS),
     keywords: withAssets(home.keywords),
     fuelEntry: withAssets(home.fuelEntry),
     lineup: home.lineup,

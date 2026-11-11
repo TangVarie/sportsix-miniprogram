@@ -54,11 +54,17 @@
 /* 步进：减号白底、加号深蓝底 */
 .fuel-step { display: flex; align-items: center; justify-content: space-between; }
 /*
- * 时长一行有五样东西，按设计稿的尺寸加起来比这一行略宽（设计稿里「+1h」会顶出去一点）。
- * 这里让四个按钮在放不下时一起收窄一点，中间的时间按自己的宽度占位，整行不再溢出；字体没加载出来、时间变宽时也一样。
+ * 时长一行：左边一个白色胶囊（-1h、-15），右边一个深蓝胶囊（+15、+1h），时间在中间。
+ * 设计稿是五样东西排成一排，加起来比这一行还宽，挤而且会顶出卡片；并成两个胶囊后两边各留出一段空。
+ * 字体没加载出来、时间变宽时，胶囊会跟着收窄，整行不溢出。
  */
-.fuel-step--time { gap: 8rpx; }
-.fuel-step--time .fuel-step__btn { flex: 0 1 85rpx; width: auto; min-width: 62rpx; }
+.fuel-step--time { gap: 15rpx; }
+.fuel-pill { flex: 0 1 auto; min-width: 0; display: flex; height: 85rpx; border-radius: 42rpx; overflow: hidden; background: #FFFFFF; color: #010439; }
+.fuel-pill--plus { background: #010439; color: #FFFFFF; }
+.fuel-pill__btn { flex: 1 1 73rpx; min-width: 54rpx; display: flex; align-items: center; justify-content: center; height: 85rpx; font-size: 31rpx; line-height: 38rpx; }
+.fuel-pill__btn--next { border-left: 1px solid #E6E6E7; }
+.fuel-pill--plus .fuel-pill__btn--next { border-left-color: rgba(255, 255, 255, .25); }
+.fuel-step__btn { flex: 0 1 85rpx; width: auto; min-width: 62rpx; }
 .fuel-step--time .fuel-step__btn--wide { flex-basis: 88rpx; }
 .fuel-step__btn {
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;

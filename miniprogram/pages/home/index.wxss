@@ -23,7 +23,25 @@
 .hm-hero__tag { display: inline-block; padding: 8rpx 31rpx; background: #C2E541; color: #010439; font-size: 23rpx; line-height: 35rpx; font-weight: 700; }
 
 /* 2 三个数字 */
-.hm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 8rpx 38rpx 58rpx; }
+.hm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 8rpx 38rpx 46rpx; }
+
+/* 两款能量胶的入口卡（设计稿里没有，后加的）：接在三个数字下面，仍在深色首屏里 */
+.hm-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 23rpx; padding: 0 38rpx 58rpx; }
+.hm-pick {
+  position: relative; box-sizing: border-box; height: 285rpx; padding: 31rpx 27rpx; border-radius: 31rpx; overflow: hidden;
+  border: 1px solid #2A3373; background: rgba(255, 255, 255, .06); color: #FFFFFF;
+  display: flex; flex-direction: column; gap: 6rpx;
+}
+.hm-pick__pack { position: absolute; right: -6rpx; top: 23rpx; }
+.hm-pick__img { display: block; height: 277rpx; transform: rotate(14deg); }
+.hm-pick__name { position: relative; font-size: 35rpx; line-height: 46rpx; font-weight: 900; }
+.hm-pick__facts { position: relative; }
+.hm-pick__fact { display: block; font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.hm-pick__go {
+  position: absolute; left: 27rpx; bottom: 27rpx; display: flex; align-items: center; justify-content: center;
+  width: 73rpx; height: 73rpx; border-radius: 37rpx; background: #C2E541;
+}
+.hm-pick__arrow { display: block; width: 35rpx; height: 35rpx; }
 .hm-stats__item { display: flex; flex-direction: column; gap: 8rpx; }
 .hm-stats__item--rule { padding-left: 31rpx; border-left: 1px solid #2A3373; }
 .hm-stats__value { font-size: 85rpx; line-height: 88rpx; color: #C2E541; }

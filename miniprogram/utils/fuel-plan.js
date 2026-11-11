@@ -29,9 +29,16 @@ const STARTS = [
   { key: 'night', label: '晚上' }
 ];
 
+const WEATHERS = [
+  { key: 'normal', label: '常温' },
+  { key: 'hot', label: '高温' },
+  { key: 'cold', label: '低温' },
+  { key: 'rain', label: '雨天' }
+];
+
 /** 输入范围与默认值 */
 const LIMITS = { minMinutes: 30, maxMinutes: 600, minutesStep: 15, minKg: 40, maxKg: 110, kgStep: 5 };
-const DEFAULT_INPUT = { sport: 'road', scene: 'race', minutes: 240, kg: 65, start: 'am', caffeineSensitive: false, hot: false, firstTime: false };
+const DEFAULT_INPUT = { sport: 'road', scene: 'race', minutes: 240, kg: 65, start: 'am', caffeineSensitive: false, hot: false, weather: 'normal', firstTime: false };
 
 function formatTime(m) {
   return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
@@ -74,7 +81,8 @@ function caffeineCap(input) {
 
 /**
  * 主函数
- * @param {object} input  { sport, scene, minutes, kg, start, caffeineSensitive, hot, firstTime }
+ * @param {object} input  { sport, scene, minutes, kg, start, caffeineSensitive, weather, firstTime }
+ *                        weather: 'normal' | 'hot' | 'cold' | 'rain'，只影响说明，不改支数。hot: true 是旧的写法，等同于 weather: 'hot'
  * @returns {object} 见文件末尾的返回值说明
  */
 function planFuel(input) {
@@ -171,7 +179,10 @@ function explain(r) {
   if (s.start === 'night') why.push('晚上出发，全程用 0 咖啡因的 PRO。');
   if (s.caffeineSensitive) why.push('咖啡因敏感，全程用 0 咖啡因的 PRO。');
   if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的能量胶排在前 60% 的时段，后程换 PRO：甜度低 26%，肠胃负担更轻。');
-  if (s.hot) why.push('高温天出汗多，每支胶的钠只有 20–25mg，电解质要另外补。');
+  const weather = s.hot ? 'hot' : s.weather;
+  if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20–25mg，电解质要另外补。');
+  if (weather === 'cold') why.push('低温天口渴感弱，容易漏掉补给，按时间表吃。');
+  if (weather === 'rain') why.push('雨天体感凉、口渴感弱，容易漏掉补给，按时间表吃。');
   if (s.firstTime) why.push('第一次用胶：先在训练里试，从半条开始；比赛日不换没练过的补给。');
   return why.slice(0, 6);
 }
@@ -190,4 +201,4 @@ function explain(r) {
  * total 为 0 时页面显示「这次不用带胶」。
  */
 
-module.exports = { planFuel, carbRate, caffeineCap, explain, formatTime, GEL, PRO, SPORTS, SCENES, STARTS, LIMITS, DEFAULT_INPUT };
+module.exports = { planFuel, carbRate, caffeineCap, explain, formatTime, GEL, PRO, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT };

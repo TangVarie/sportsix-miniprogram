@@ -63,6 +63,8 @@ async function functionTests() {
   await call('savePlan', { input: Object.assign({}, input, { kg: 70 }), result: { total: 9, gelCount: 4, proCount: 5 } });
   eq(cloud.col('plans').length, 1, '只保留最近一份计划');
   eq(cloud.col('plans')[0].input.kg, 70, '后一次覆盖前一次');
+  r = await call('savePlan', { input: Object.assign({}, input, { weather: 'rain' }), result: { total: 9, gelCount: 4, proCount: 5 } });
+  eq(r.data.plan.input.weather, 'rain', '计划里带上天气');
 
   r = await call('events');
   eq(r.data.events.map((e) => e.id), ['trial', 'race'], '只返回已发布、未过期的活动，按日期排序');

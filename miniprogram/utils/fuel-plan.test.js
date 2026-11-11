@@ -37,6 +37,19 @@ check('全马 4:00，下午、高温、第一次', { start: 'pm', hot: true, fir
 check('全马 4:00，晚上，50kg', { start: 'night', kg: 50 }, { total: 12, gelCount: 0 });
 check('徒步 5:00', { sport: 'hike', minutes: 300, scene: 'long' }, { carbRate: 45, total: 8, gelCount: 4, seq: '开始前P 0:40G 1:20G 2:00G 2:40G 3:20P 3:50P 4:20P' });
 
+// 天气：高温、低温、雨天只多一条说明，不改支数。hot: true 是旧的写法，等同于 weather: 'hot'
+const says = (input, text) => planFuel(input).reasons.some((x) => x.indexOf(text) >= 0);
+check('全马 4:00，雨天', { weather: 'rain' }, { total: 9, gelCount: 4, proCount: 5, caffeineMg: 180 });
+check('全马 4:00，低温', { weather: 'cold' }, { total: 9, gelCount: 4, proCount: 5, caffeineMg: 180 });
+check('全马 4:00，高温', { weather: 'hot' }, { total: 9, gelCount: 4, proCount: 5, caffeineMg: 180 });
+assert.ok(says({ weather: 'rain' }, '雨天'), '雨天要有一条说明');
+assert.ok(says({ weather: 'cold' }, '低温'), '低温要有一条说明');
+assert.ok(says({ weather: 'hot' }, '高温天出汗多'), '高温要有一条说明');
+assert.ok(says({ hot: true }, '高温天出汗多'), '旧的 hot: true 仍然有效');
+assert.ok(!says({}, '雨天') && !says({}, '低温') && !says({}, '高温'), '常温没有天气说明');
+assert.ok(!says({ weather: 'rain' }, '高温') && !says({ weather: 'cold' }, '雨天'), '只出现所选天气的说明');
+n += 6;
+
 // 全组合检查：咖啡因不超过每公斤 3mg，相邻两支含咖啡因的间隔不小于 30 分钟，最多 20 支
 let combos = 0;
 for (const sport of ['road', 'trail', 'bike', 'hike']) {

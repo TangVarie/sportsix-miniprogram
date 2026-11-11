@@ -37,12 +37,17 @@
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">预计时长</text>
       <view class="fuel-row__main">
+        <!-- 减的两个按钮并成一个白色胶囊，加的两个并成一个深蓝胶囊，时间在中间：比五样东西排一排松快 -->
         <view class="fuel-step fuel-step--time">
-          <view class="fuel-step__btn fuel-step__btn--wide sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-60" bindtap="onStep">-1h</view>
-          <view class="fuel-step__btn sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-15" bindtap="onStep">-15</view>
+          <view class="fuel-pill">
+            <view class="fuel-pill__btn sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-60" bindtap="onStep">-1h</view>
+            <view class="fuel-pill__btn fuel-pill__btn--next sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-15" bindtap="onStep">-15</view>
+          </view>
           <text class="fuel-step__time sx-num">{{durationLabel}}</text>
-          <view class="fuel-step__btn fuel-step__btn--plus sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="15" bindtap="onStep">+15</view>
-          <view class="fuel-step__btn fuel-step__btn--wide fuel-step__btn--plus sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="60" bindtap="onStep">+1h</view>
+          <view class="fuel-pill fuel-pill--plus">
+            <view class="fuel-pill__btn sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="15" bindtap="onStep">+15</view>
+            <view class="fuel-pill__btn fuel-pill__btn--next sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="60" bindtap="onStep">+1h</view>
+          </view>
         </view>
       </view>
     </view>
@@ -80,7 +85,7 @@
     </view>
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">天气</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'hot', options: weathers, value: input.hot, on: on.hot, cols: 2}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'weather', options: weathers, value: input.weather, on: on.weather, cols: 4}}" /></view>
     </view>
   </view>
 
