@@ -40,7 +40,7 @@ async function functionTests() {
   eq(await call('nope'), { ok: false, code: 'unknown_action' }, '未知接口');
 
   let r = await call('bootstrap');
-  eq(r.data, { member: null, plan: null, reminders: [], signups: [] }, '新用户');
+  eq(r.data, { member: null, notice: null, plan: null, reminders: [], signups: [] }, '新用户');
 
   eq((await call('savePlan', { input: input })).code, 'not_member', '未注册不能保存计划');
   eq((await call('points')).code, 'not_member', '未注册不能看积分');
@@ -173,6 +173,111 @@ async function functionTests() {
 }
 
 /** 报名写入的两种异常：没写进去，和写进去了但响应丢了 */
+/** 运营后台：只有管理员能用；活动的新建、编辑、上下架；公告；积分调整 */
+async function adminTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const now = cloud.state.now;
+  const DAY = 24 * 3600 * 1000;
+
+  // 不是会员、是会员但不是管理员：都不能用
+  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints']) {
+    eq((await call(action, {})).code, 'forbidden', '没注册不能用 ' + action);
+  }
+  await call('register', { code: 'code-a' });
+  eq((await call('bootstrap')).data.member.admin, false, '普通会员没有管理员标记');
+  eq((await call('adminEvents')).code, 'forbidden', '普通会员不能用运营后台');
+  eq((await call('adminAdjustPoints', { memberNo: '100001', delta: 100, reason: '自己给自己加' })).code, 'forbidden', '普通会员不能改积分');
+
+  // 在控制台里给会员记录加上 admin: true 之后才是管理员
+  cloud.col('members').find((d) => d._id === 'user-a').admin = true;
+  eq((await call('bootstrap')).data.member.admin, true, '管理员有标记，小程序据此显示入口');
+
+  // 活动：全部列出来，含草稿和过期的
+  let r = await call('adminEvents');
+  eq(r.data.events.map((e) => e.id).sort(), ['draft', 'old', 'race', 'trial'], '后台能看到草稿和过期的活动');
+  eq(r.data.events.find((e) => e.id === 'draft').status, 'draft', '带上状态');
+
+  // 新建：必填项
+  eq((await call('adminSaveEvent', { event: { title: '没有类型', date: now + DAY } })).code, 'bad_type', '类型必须是三种之一');
+  eq((await call('adminSaveEvent', { event: { type: '赛事', date: now + DAY } })).code, 'missing_title', '要有名称');
+  eq((await call('adminSaveEvent', { event: { type: '赛事', title: '没有日期' } })).code, 'missing_date', '要有日期');
+  eq((await call('adminSaveEvent', { event: { type: '赛事', title: 'x', date: now + DAY, signupStart: now + DAY, signupEnd: now } })).code, 'bad_signup_time', '报名结束不能早于开始');
+
+  r = await call('adminSaveEvent', { event: {
+    type: '赛事', title: '  上海半程马拉松\n ', date: now + 20 * DAY, city: '上海', venue: '徐汇滨江', quota: 200, quotaText: '',
+    signupStart: now + DAY, signupEnd: now + 10 * DAY, memberSignupStart: now, intro: '第一行\n第二行', status: 'draft', hacked: 'x', signupCount: 999
+  } });
+  const id = r.data.event.id;
+  eq(r.data.event.title, '上海半程马拉松', '名称去掉换行和首尾空格');
+  eq(r.data.event.intro, '第一行\n第二行', '介绍保留换行');
+  eq([r.data.event.status, r.data.event.signupCount, r.data.event.quota], ['draft', 0, 200], '新建的是草稿，报名人数从 0 开始，不认表单里带来的数');
+  ok(!('hacked' in cloud.col('events').find((e) => e._id === id)), '只存认识的字段');
+  ok(cloud.col('events').find((e) => e._id === id).date instanceof Date, '时间存成日期类型');
+  eq((await call('events')).data.events.some((e) => e.id === id), false, '草稿在小程序里不显示');
+
+  // 上架、编辑、下架
+  r = await call('adminSetEventStatus', { id: id, status: 'published' });
+  eq(r.data.event.status, 'published', '上架');
+  eq((await call('events')).data.events.some((e) => e.id === id), true, '上架后小程序里能看到');
+  cloud.col('events').find((e) => e._id === id).signupCount = 3;
+  r = await call('adminSaveEvent', { id: id, event: { type: '赛事', title: '上海半马', date: now + 21 * DAY, status: 'published', quota: null, venue: '' } });
+  eq([r.data.event.title, r.data.event.quota, r.data.event.venue, r.data.event.signupCount], ['上海半马', null, '', 3], '编辑：清掉的项变空，已报名人数不动');
+  eq((await call('adminSaveEvent', { id: 'nope', event: { type: '赛事', title: 'x', date: now + DAY } })).code, 'not_found', '改不存在的活动');
+  r = await call('adminSetEventStatus', { id: id, status: 'draft' });
+  eq((await call('events')).data.events.some((e) => e.id === id), false, '下架后小程序里不显示');
+
+  // 公告：没设过时是空的；保存后所有人打开小程序都能拿到；关掉就没有
+  eq((await call('adminNotice')).data.notice, { title: '', content: '', enabled: false }, '没设过公告');
+  eq((await call('adminSaveNotice', { notice: { enabled: true } })).code, 'missing_content', '开着的公告要有内容');
+  r = await call('adminSaveNotice', { notice: { title: '双十一活动', content: '11 月 11 日起，\n会员下单有礼。', enabled: true } });
+  eq(r.data.notice.enabled, true, '保存公告');
+  cloud.state.openid = 'user-b';
+  r = await call('bootstrap');
+  eq([r.data.notice.title, r.data.notice.content], ['双十一活动', '11 月 11 日起，\n会员下单有礼。'], '没注册的人打开小程序也能拿到公告');
+  const v1 = r.data.notice.version;
+  cloud.state.openid = 'user-a';
+  cloud.state.now += 1000;
+  await call('adminSaveNotice', { notice: { title: '双十一活动', content: '改了一个字', enabled: true } });
+  ok((await call('bootstrap')).data.notice.version > v1, '再保存一次算新版本，会再弹一次');
+  await call('adminSaveNotice', { notice: { title: '双十一活动', content: '改了一个字', enabled: false } });
+  eq((await call('bootstrap')).data.notice, null, '关掉以后不再下发');
+  eq((await call('adminNotice')).data.notice.content, '改了一个字', '关掉以后内容还在，下次可以接着改');
+
+  // 积分调整：按会员编号或手机号找人，加减都记一笔
+  cloud.state.openid = 'user-b';
+  await call('register', { code: 'code-b' });
+  const noB = cloud.col('members').find((d) => d._id === 'user-b').memberNo;
+  cloud.state.openid = 'user-a';
+  eq((await call('adminFindMember', { query: '' })).code, 'missing_query', '要填查找的内容');
+  eq((await call('adminFindMember', { query: '19900000000' })).code, 'not_found', '查无此人');
+  r = await call('adminFindMember', { query: ' ' + cloud.col('members').find((d) => d._id === 'user-b').phone + ' ' });
+  eq([r.data.member.memberNo, r.data.member.points], [noB, 500], '按手机号找到');
+  ok(!JSON.stringify(r.data).includes('user-b') && !JSON.stringify(r.data).includes(cloud.col('members').find((d) => d._id === 'user-b').phone), '不返回 openid 和完整手机号');
+  eq((await call('adminFindMember', { query: noB })).data.member.memberNo, noB, '按会员编号找到');
+
+  eq((await call('adminAdjustPoints', { memberNo: noB, delta: 0, reason: 'x' })).code, 'bad_delta', '加减的数不能是 0');
+  eq((await call('adminAdjustPoints', { memberNo: noB, delta: 1.5, reason: 'x' })).code, 'bad_delta', '要是整数');
+  eq((await call('adminAdjustPoints', { memberNo: noB, delta: 100, reason: '  ' })).code, 'missing_reason', '要写原因');
+  eq((await call('adminAdjustPoints', { memberNo: '999999', delta: 100, reason: 'x' })).code, 'not_found', '会员编号不存在');
+  r = await call('adminAdjustPoints', { memberNo: noB, delta: 200, reason: '线下活动签到' });
+  eq(r.data.member.points, 700, '加积分');
+  eq((await call('adminAdjustPoints', { memberNo: noB, delta: -800, reason: '兑换' })).code, 'insufficient', '不够减，不会减成负数');
+  r = await call('adminAdjustPoints', { memberNo: noB, delta: -300, reason: '兑换试用装' });
+  eq(r.data.member.points, 400, '减积分');
+  const logs = cloud.col('point_logs').filter((l) => l.openid === 'user-b');
+  eq(logs.map((l) => [l.delta, l.reason]), [[500, 'welcome'], [200, '线下活动签到'], [-300, '兑换试用装']], '每次调整都记一条');
+  eq(logs[1].by, 'user-a', '记下是哪位管理员操作的');
+  // 会员自己在积分页能看到这些记录
+  cloud.state.openid = 'user-b';
+  r = await call('points');
+  eq(r.data.member.points, 400, '会员看到调整后的积分');
+  eq(r.data.logs.map((l) => l.reason).sort(), ['welcome', '兑换试用装', '线下活动签到'].sort(), '会员在积分页看到调整记录');
+  ok(!JSON.stringify(r.data.logs).includes('user-a'), '记录里不带操作人');
+}
+
 async function signupFailureTests() {
   const cloud = createCloud();
   seed(cloud);
@@ -429,6 +534,110 @@ async function clientTests() {
   ok(!p.data.registered, '同步完成前按本机缓存显示');
   await tick();
   ok(p.data.registered && p.data.plan.saved, '同步完成后页面自动刷新成会员状态');
+
+  // ---------- 运营后台 ----------
+  const fresh = () => {
+    const e = createEnv({ wx: { cloud: wxCloud } });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
+    return e;
+  };
+  const me = cloud.col('members').find((d) => d._id === cloud.state.openid);
+  const callsOf = (e, api) => e.wx.__calls.filter((c) => c.api === api);
+
+  // 普通会员：菜单里没有「运营后台」，硬进后台页面会被请出去
+  let e3 = fresh();
+  e3.launch();
+  await tick();
+  p = e3.openPage('pages/me/index', {});
+  ok(!p.data.menu.some((m) => m.text === '运营后台'), '普通会员看不到运营后台的入口');
+  p = e3.openPage('pages/admin/index', {});
+  await tick();
+  eq(callsOf(e3, 'switchTab').slice(-1)[0].args.url, '/pages/me/index', '普通会员进后台页面被送回「我的」');
+  eq(p.data.events, [], '普通会员拿不到后台的活动列表');
+
+  // 管理员：有入口；公告保存后，别的用户打开小程序弹一次，同一条不弹第二次
+  me.admin = true;
+  e3 = fresh();
+  e3.launch();
+  await tick();
+  p = e3.openPage('pages/me/index', {});
+  ok(p.data.menu.some((m) => m.text === '运营后台'), '管理员看到运营后台的入口');
+  e3.tap('onMenu', { key: 'shield' });
+  eq(callsOf(e3, 'navigateTo').slice(-1)[0].args.url, '/pages/admin/index', '点入口进后台');
+
+  p = e3.openPage('pages/admin/index', {});
+  await tick();
+  ok(p.data.events.length >= 4 && !p.data.loading, '后台列出全部活动');
+  const draftRow = p.data.events.find((x) => x.id === 'draft');
+  eq([draftRow.state, draftRow.stateText], ['draft', '未上架'], '草稿显示未上架');
+  e3.tap('onStatus', { id: 'draft', status: 'published' });
+  await tick();
+  eq(p.data.events.find((x) => x.id === 'draft').state, 'published', '点上架后列表更新');
+  eq(cloud.col('events').find((x) => x._id === 'draft').status, 'published', '上架写到云端');
+
+  e3.tap('onTab', { key: 'notice' });
+  await tick();
+  p.onNoticeInput({ currentTarget: { dataset: { field: 'title' } }, detail: { value: '停机维护' } });
+  p.onNoticeInput({ currentTarget: { dataset: { field: 'content' } }, detail: { value: '今晚 23 点到 24 点暂停报名。' } });
+  p.onNoticeToggle();
+  p.onNoticeSave();
+  await tick();
+  eq(callsOf(e3, 'showToast').slice(-1)[0].args.title, '公告已保存', '保存公告');
+
+  // 积分：找到会员，确认后加积分
+  e3.tap('onTab', { key: 'points' });
+  cloud.col('members').push({ _id: 'user-z', openid: 'user-z', phone: '13700001111', nickname: '老李', memberNo: '100777', numbered: true, points: 500, welcomeBonus: true, createdAt: new Date(cloud.state.now) });
+  const other = cloud.col('members').find((d) => d._id === 'user-z');
+  const beforePoints = other.points;
+  p.onQueryInput({ detail: { value: other.memberNo } });
+  p.onFind();
+  await tick();
+  eq(p.data.member.memberNo, other.memberNo, '按会员编号找到会员');
+  p.onPointsInput({ currentTarget: { dataset: { field: 'amount' } }, detail: { value: '150' } });
+  p.onAdjust();
+  eq(callsOf(e3, 'showToast').slice(-1)[0].args.title, '请填写原因', '没写原因不能提交');
+  p.onPointsInput({ currentTarget: { dataset: { field: 'reason' } }, detail: { value: '线下活动签到' } });
+  // 预览环境的 showModal 不会点「确定」，这里换成会点的
+  e3.wx.showModal = (o) => { e3.wx.__calls.push({ api: 'showModal', args: o }); o.success({ confirm: true }); };
+  p.onAdjust();
+  await tick();
+  ok(callsOf(e3, 'showModal').slice(-1)[0].args.content.indexOf('加 150 积分') > 0, '确认框里写清楚加多少');
+  eq(other.points, beforePoints + 150, '积分加到云端');
+  eq(p.data.member.points, String(beforePoints + 150), '页面上的积分跟着更新');
+
+  // 新建活动：必填项没填有提示；填好保存后写到云端
+  p = e3.openPage('pages/admin-event/index', {});
+  p.onSave();
+  eq(callsOf(e3, 'showToast').slice(-1)[0].args.title, '请填写名称', '没填名称不能保存');
+  p.onInput({ currentTarget: { dataset: { field: 'title' } }, detail: { value: '杭州越野赛' } });
+  p.onSave();
+  eq(callsOf(e3, 'showToast').slice(-1)[0].args.title, '请选择活动时间', '没选时间不能保存');
+  p.onTime({ currentTarget: { dataset: { field: 'date', part: 'date' } }, detail: { value: '2027-03-20' } });
+  p.onTime({ currentTarget: { dataset: { field: 'date', part: 'time' } }, detail: { value: '07:30' } });
+  p.onTime({ currentTarget: { dataset: { field: 'signupEnd', part: 'date' } }, detail: { value: '2027-03-10' } });
+  p.onInput({ currentTarget: { dataset: { field: 'quota' } }, detail: { value: '300' } });
+  p.onPublishToggle();
+  p.onSave();
+  await tick();
+  const made = cloud.col('events').find((x) => x.title === '杭州越野赛');
+  ok(made && made.status === 'published' && made.quota === 300, '新建的活动写到云端');
+  eq([made.date.getHours(), made.date.getMinutes(), made.signupEnd.getHours(), made.signupEnd.getMinutes()], [7, 30, 23, 59], '活动时间按选的存；报名结束只选了日期，按当天最后一分钟');
+
+  // 编辑：表单里是这场活动现在的内容
+  p = e3.openPage('pages/admin-event/index', { id: made._id });
+  await tick();
+  eq([p.data.form.title, p.data.form.quota, p.data.form.published, p.data.times.date.date, p.data.times.date.time], ['杭州越野赛', '300', true, '2027-03-20', '07:30'], '编辑时填好原来的内容');
+
+  // 换一位用户打开小程序（新开一个运行环境要放在最后：它会换掉全局的 wx）
+  const e4 = fresh();
+  e4.launch();
+  await tick();
+  let modal = callsOf(e4, 'showModal').slice(-1)[0];
+  eq([modal.args.title, modal.args.content, modal.args.showCancel], ['停机维护', '今晚 23 点到 24 点暂停报名。', false], '打开小程序时弹出公告');
+  const seenBefore = callsOf(e4, 'showModal').length;
+  e4.app.showNotice();
+  eq(callsOf(e4, 'showModal').length, seenBefore, '同一条公告不弹第二次');
+  me.admin = false;
 }
 
 /** 字体：资源在云存储时走「下载到本机 → Data URL」，不依赖跨域许可；任何一步失败都退回 https 地址 */
@@ -510,6 +719,7 @@ async function fontTests() {
 (async () => {
   await fontTests();
   await functionTests();
+  await adminTests();
   await signupFailureTests();
   await remindTests();
   await clientTests();

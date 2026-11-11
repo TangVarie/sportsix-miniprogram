@@ -5,6 +5,7 @@ const cloud = require('../../utils/cloud.js');
 const config = require('../../config.js');
 const messages = require('../../content/messages.js');
 const legal = require('../../content/legal.js');
+const adminCopy = require('../../content/admin.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
 const { baseData, selectTab, go, navTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
@@ -20,6 +21,8 @@ const { assetUrl } = require('../../utils/assets.js');
 
 // 菜单。加群的方式还没定（docs/04-open-items.md），config.groupReady 为 false 时不显示「加入社群」
 const MENU = member.me.menu.filter((m) => config.groupReady || m.icon !== 'group');
+// 管理员（会员记录上有 admin: true）多一行「运营后台」
+const ADMIN_ROW = { icon: 'shield', text: adminCopy.entry };
 
 /** 协议那句话里的书名号 → 正文类型（pages/doc 的 type 参数） */
 const DOC_TYPE = { 用户协议: 'agreement', 隐私政策: 'privacy' };
@@ -119,6 +122,7 @@ function readState() {
   const registered = store.isMember();
   return {
     registered: registered,
+    menu: (store.getMember() || {}).admin ? MENU.concat([ADMIN_ROW]) : MENU,
     profile: profile(),
     plan: registered ? planCard() : null,
     myEvents: registered ? myEvents() : []
@@ -139,7 +143,6 @@ Page({
   data: Object.assign(baseData(), {
     join: member.join,
     me: member.me,
-    menu: MENU,
     agreement: splitAgreement(member.join.agreement),
     perks: memberPerks(),
     wordmark: assetUrl('assets/logo/sportsix-wordmark-white.svg'),
@@ -339,6 +342,7 @@ Page({
   onMenu(e) {
     const key = e.currentTarget.dataset.key;
     if (key === 'doc') { go('doc', { type: 'privacy' }); return; }
+    if (key === 'shield') { go('admin'); return; }
     if (key === 'chat') {
       const item = member.me.menu.find((m) => m.icon === 'chat');
       wx.showModal({ title: item.text, content: legal.fill.contact, showCancel: false });

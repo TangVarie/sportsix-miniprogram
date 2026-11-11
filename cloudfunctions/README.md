@@ -53,25 +53,47 @@ cloudfunctions/
 
 | 集合 | `_id` | 字段 |
 |---|---|---|
-| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
+| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`admin`（管理员，手动加）、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
 | `events` 活动 | 自动 | 见下 |
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 | `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
+| `settings` 设置 | `notice` | 公告：`title`、`content`、`enabled`、`updatedAt`、`updatedBy`。云函数自动建 |
 | `counters` 计数 | `memberNo` | `next`（下一个会员编号）。云函数自动建，不要手动改 |
 
 会员编号按注册先后发，6 位数字，从 100001 起（`api` 里的 `nextMemberNo`）。没有编号的会员（规则定下来之前注册的，或注册时取号失败的）下次进入小程序时补发，页面上暂时显示「—」。
 
-注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要手动给某个会员加减积分：在控制台里改他那条 `members` 记录的 `points`，再在 `point_logs` 里加一条（`openid`、`delta`、`reason`、`createdAt`），积分页的记录里才会有这一笔。
+注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要给某个会员加减积分，用运营后台的「积分」，它会同时改积分和记一条记录（记录里的 `by` 是操作的管理员）。不要直接在控制台改 `points`，那样积分页的记录里没有这一笔。
 
 昵称由用户在会员页自己填（`setNickname` 接口），最多 20 个字。输入框用的是微信的昵称键盘，内容安全由微信的组件检测。
 
 小程序端拿到的手机号是打码后的（`138****1234`），完整手机号只存在 `members` 里。
 
+## 运营后台
+
+小程序里有一个只有管理员能看到的「运营后台」（「我的」页最下面一行），能做三件事：
+
+- **活动**：新建、编辑、上架、下架。表单里的字段就是下面「活动怎么填」那张表。头图在表单里选图片，会传到云存储的 `events/` 目录。
+- **公告**：填标题和内容，打开开关后保存。每位用户下次打开小程序时弹一次；改了再保存算新的一条，会再弹一次；关掉开关保存就不再弹。
+- **积分**：按手机号或会员编号找到会员，加或减积分，写上原因。会员在自己的积分页能看到这一笔。减的时候积分不够会失败，不会减成负数。
+
+**怎么把某个人设成管理员**：
+
+1. 让他先在小程序里登录成为会员。
+2. 打开云开发控制台的数据库，进 `members` 集合，找到他那条记录（可以按 `phone` 手机号找）。
+3. 点「添加字段」，字段名 `admin`，类型选 boolean，值选 `true`，保存。
+4. 让他完全关掉小程序再打开，「我的」页最下面会多出「运营后台」。
+
+取消管理员：把 `admin` 改成 `false` 或删掉这个字段。
+
+权限是在云函数里检查的（`api` 里 `admin` 开头的接口都先过 `requireAdmin`），不是管理员的人就算拿到页面地址也调不通。表单里的时间按操作人手机所在的时区理解，运营在国内操作就是北京时间。
+
+公告存在 `settings` 集合里 `_id` 为 `notice` 的那条记录上，集合第一次保存公告时由云函数自己建。
+
 ## 活动怎么填
 
-第一版直接在云开发控制台改 `events` 集合。时间字段的类型选「date」。
+平时在运营后台里填。下面是 `events` 集合的字段，也可以直接在云开发控制台改，时间字段的类型选「date」。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|

@@ -11,6 +11,9 @@
  *   reminders  提醒      _id 用 openid_活动id
  *   plans      补给计划  _id 用 openid，只保存最近一份
  *   point_logs 积分记录  每次加减积分记一条；第一次用到时云函数自己建这个集合
+ *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
+ *
+ * 运营后台的接口（admin 开头）只给管理员用：会员记录上有 admin: true，在云开发控制台里手动加。
  *   counters   计数      只有一条 _id 为 memberNo 的记录，存下一个会员编号；第一次用到时云函数自己建这个集合
  */
 const cloud = require('wx-server-sdk');
@@ -100,8 +103,10 @@ async function ensureMember(member) {
  * 记一条积分记录（积分页上列出来的那些）。reason 是原因：'welcome' 是注册赠送，其他的直接写给用户看的文字。
  * 集合第一次用到时自己建。记不上不影响积分本身。
  */
-async function logPoints(openid, delta, reason) {
+async function logPoints(openid, delta, reason, by) {
   const data = { openid: openid, delta: delta, reason: reason, createdAt: db.serverDate() };
+  // 运营手动调整的，记下是哪位管理员操作的
+  if (by) data.by = by;
   try {
     await db.collection('point_logs').add({ data: data });
   } catch (e) {
@@ -114,10 +119,73 @@ async function logPoints(openid, delta, reason) {
   }
 }
 
+/** 整理一段用户或运营填的文字：去掉控制字符和首尾空格，截到 max 个字。multiline 为真时保留换行 */
+function cleanText(v, max, multiline) {
+  const s = String(v == null ? '' : v)
+    .replace(multiline ? /[\u0000-\u0009\u000b-\u001f\u007f\u2028\u2029]/g : /[\u0000-\u001f\u007f\u2028\u2029]/g, '').trim();
+  return Array.from(s).slice(0, max).join('');
+}
+
 /** 昵称：去掉换行等控制字符和首尾空格，最多 20 个字 */
-function cleanNickname(v) {
-  const s = String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, '').trim();
-  return Array.from(s).slice(0, NICKNAME_MAX).join('');
+const cleanNickname = (v) => cleanText(v, NICKNAME_MAX);
+
+/* ---------- 运营后台 ---------- */
+
+/** 只有管理员能调 admin 开头的接口 */
+async function requireAdmin(openid) {
+  const m = await findById('members', openid);
+  if (!m || m.admin !== true) throw fail('forbidden');
+  return m;
+}
+
+const EVENT_TYPES = ['赛事', '试用装', '抽奖'];
+
+/** 运营后台看到的活动：比小程序里多了状态和已报名人数 */
+function adminEventView(e) {
+  return Object.assign(eventView(e), { status: e.status === 'published' ? 'published' : 'draft', signupCount: e.signupCount || 0 });
+}
+
+/** 把后台表单交上来的活动整理成要存的数据。时间是毫秒时间戳，没填的存 null（页面上不显示那一项） */
+function eventData(input) {
+  const e = input || {};
+  const time = (v) => (typeof v === 'number' && isFinite(v) && v > 0 ? new Date(v) : null);
+  const data = {
+    type: EVENT_TYPES.indexOf(e.type) >= 0 ? e.type : '',
+    title: cleanText(e.title, 40),
+    status: e.status === 'published' ? 'published' : 'draft',
+    date: time(e.date),
+    city: cleanText(e.city, 20),
+    venue: cleanText(e.venue, 40),
+    quota: Number.isInteger(e.quota) && e.quota > 0 ? e.quota : null,
+    quotaText: cleanText(e.quotaText, 20),
+    signupStart: time(e.signupStart),
+    signupEnd: time(e.signupEnd),
+    memberSignupStart: time(e.memberSignupStart),
+    drawAt: time(e.drawAt),
+    cover: cleanText(e.cover, 500),
+    intro: cleanText(e.intro, 1000, true)
+  };
+  if (!data.type) throw fail('bad_type');
+  if (!data.title) throw fail('missing_title');
+  if (!data.date) throw fail('missing_date');
+  if (data.signupStart && data.signupEnd && data.signupEnd <= data.signupStart) throw fail('bad_signup_time');
+  return data;
+}
+
+/** 公告。集合还没建时当作没有 */
+async function readNotice() {
+  try { return await findById('settings', 'notice'); } catch (e) { return null; }
+}
+/** 给小程序的公告：开着并且有内容才给。version 是最后一次保存的时间，小程序每个版本只弹一次 */
+function noticeView(n) {
+  if (!n || !n.enabled || !(n.title || n.content)) return null;
+  return { version: ms(n.updatedAt) || 0, title: n.title || '', content: n.content || '' };
+}
+
+/** 运营后台查到的会员：手机号打码，不带 openid（之后用会员编号指人） */
+function adminMemberView(m) {
+  const v = memberView(m);
+  return { memberNo: v.memberNo, nickname: v.nickname, phoneMasked: v.phoneMasked, points: v.points || 0 };
 }
 
 /** 返回给小程序端的会员信息：手机号只给打码后的 */
@@ -126,6 +194,8 @@ function memberView(m) {
   const phone = String(m.phone || '');
   return {
     nickname: m.nickname || '',
+    // 管理员才有这一项：小程序据此显示「运营后台」的入口。真正的权限检查在各个 admin 接口里
+    admin: m.admin === true,
     phoneMasked: phone.length >= 7 ? phone.slice(0, 3) + '****' + phone.slice(-4) : '',
     memberNo: m.memberNo || null,
     points: typeof m.points === 'number' ? m.points : null,
@@ -167,6 +237,8 @@ const actions = {
     const signups = await db.collection('signups').where({ openid: openid }).limit(100).get();
     return {
       member: memberView(member),
+      // 运营在后台设的公告，打开小程序时弹一次
+      notice: noticeView(await readNotice()),
       plan: plan ? { input: plan.input, savedAt: ms(plan.savedAt) } : null,
       reminders: reminders.data.map((r) => r.eventId),
       signups: signups.data.map((s) => s.eventId)
@@ -251,6 +323,92 @@ const actions = {
       .where({ status: 'published', date: _.gte(new Date(Date.now() - 24 * 3600 * 1000)) })
       .orderBy('date', 'asc').limit(50).get();
     return { events: res.data.map(eventView) };
+  },
+
+  /* ---------- 运营后台（只给管理员） ---------- */
+
+  /** 全部活动，含没上架的和已经过期的，新的在前 */
+  async adminEvents(event, openid) {
+    await requireAdmin(openid);
+    const res = await db.collection('events').orderBy('date', 'desc').limit(100).get();
+    return { events: res.data.map(adminEventView) };
+  },
+
+  /** 新建或修改活动。带 id 是修改，不带是新建 */
+  async adminSaveEvent(event, openid) {
+    await requireAdmin(openid);
+    const data = eventData(event.event);
+    let id = event.id ? String(event.id) : '';
+    if (id) {
+      if (!(await findById('events', id))) throw fail('not_found');
+      await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+    } else {
+      const res = await db.collection('events').add({ data: Object.assign(data, { signupCount: 0, createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
+      id = res._id;
+    }
+    return { event: adminEventView(await findById('events', id)) };
+  },
+
+  /** 上架、下架。下架后小程序里不再显示，报名和提醒的记录保留 */
+  async adminSetEventStatus(event, openid) {
+    await requireAdmin(openid);
+    const id = String(event.id || '');
+    if (!(await findById('events', id))) throw fail('not_found');
+    const status = event.status === 'published' ? 'published' : 'draft';
+    await db.collection('events').doc(id).update({ data: { status: status, updatedAt: db.serverDate() } });
+    return { event: adminEventView(await findById('events', id)) };
+  },
+
+  /** 读公告（后台编辑用，不管开没开都返回） */
+  async adminNotice(event, openid) {
+    await requireAdmin(openid);
+    const n = await readNotice();
+    return { notice: { title: (n && n.title) || '', content: (n && n.content) || '', enabled: !!(n && n.enabled) } };
+  },
+
+  /** 保存公告。每次保存都算一个新版本，开着的话每位用户下次打开小程序时再弹一次 */
+  async adminSaveNotice(event, openid) {
+    await requireAdmin(openid);
+    const n = event.notice || {};
+    const data = { title: cleanText(n.title, 20), content: cleanText(n.content, 200, true), enabled: !!n.enabled, updatedAt: db.serverDate(), updatedBy: openid };
+    if (data.enabled && !data.title && !data.content) throw fail('missing_content');
+    try {
+      await db.collection('settings').doc('notice').set({ data: data });
+    } catch (e) {
+      // 集合还没建：建好再写
+      await db.createCollection('settings');
+      await db.collection('settings').doc('notice').set({ data: data });
+    }
+    return { notice: { title: data.title, content: data.content, enabled: data.enabled } };
+  },
+
+  /** 按手机号或会员编号找会员 */
+  async adminFindMember(event, openid) {
+    await requireAdmin(openid);
+    const q = String(event.query || '').replace(/\s/g, '');
+    if (!q) throw fail('missing_query');
+    let res = await db.collection('members').where({ memberNo: q }).limit(1).get();
+    if (!res.data.length) res = await db.collection('members').where({ phone: q }).limit(1).get();
+    if (!res.data.length) throw fail('not_found');
+    return { member: adminMemberView(await ensureMember(res.data[0])) };
+  },
+
+  /** 给某位会员加减积分，并记一条积分记录。减的时候积分不够会失败，不会减成负数 */
+  async adminAdjustPoints(event, openid) {
+    await requireAdmin(openid);
+    const res = await db.collection('members').where({ memberNo: String(event.memberNo || '') }).limit(1).get();
+    const target = res.data[0];
+    if (!event.memberNo || !target) throw fail('not_found');
+    const delta = Number(event.delta);
+    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100000) throw fail('bad_delta');
+    const reason = cleanText(event.reason, 30);
+    if (!reason) throw fail('missing_reason');
+    const cond = { _id: target._id };
+    if (delta < 0) cond.points = _.gte(-delta);
+    const done = await db.collection('members').where(cond).update({ data: { points: _.inc(delta) } });
+    if (!done.stats.updated) throw fail('insufficient');
+    await logPoints(target._id, delta, reason, openid);
+    return { member: adminMemberView(await findById('members', target._id)) };
   },
 
   /** 「提醒我」：用户授权了一次性订阅消息之后登记，报名开放时由 remind 云函数发送 */

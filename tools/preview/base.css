@@ -19,3 +19,9 @@ wx-button::after {
 }
 /* 预览环境没有 PingFang，用设计稿绘制时的 Noto Sans SC 代替系统中文字体，便于和截图对照 */
 body { font-family: 'Noto Sans SC', system-ui, sans-serif !important; }
+/* 输入框：预览里用伪元素把值（或占位字）画出来 */
+wx-input, wx-textarea { display: block; overflow: hidden; }
+wx-input { display: flex; align-items: center; }
+wx-input::before, wx-textarea::before { content: attr(data-pv); white-space: pre-wrap; }
+wx-input[data-pv-empty]::before, wx-textarea[data-pv-empty]::before { color: #9A9CA8; }
+wx-picker { display: block; }

@@ -213,6 +213,11 @@ function renderEl(node, scope, ctx) {
     const st = [style, extraStyle].filter(Boolean).join(';');
     if (st) s += ' style="' + escAttr(st) + '"';
     for (const k of Object.keys(attrs)) if (k.startsWith('data-')) s += ' ' + k + '="' + escAttr(attrs[k]) + '"';
+    // 输入框是原生组件，预览里画不出来：把值和占位字带到属性上，base.css 用伪元素显示
+    if (tag === 'input' || tag === 'textarea') {
+      const text = props.value == null || props.value === '' ? '' : String(props.value);
+      s += ' data-pv="' + escAttr(text || String(props.placeholder || '')) + '"' + (text ? '' : ' data-pv-empty="1"');
+    }
     return s;
   };
 
