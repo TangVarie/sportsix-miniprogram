@@ -75,6 +75,11 @@ function refresh() {
   }).catch(() => false);
 }
 
+/** 「即将开始」里没有活动时的空状态 */
+function getEmpty() {
+  return withAssets({ title: content.empty.title, image: content.empty.image, graphic: content.empty.graphic });
+}
+
 function listPast() {
   return withAssets(content.past);
 }
@@ -131,4 +136,4 @@ function remind(eventId) {
   });
 }
 
-module.exports = { listUpcoming, refresh, listPast, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup };
+module.exports = { listUpcoming, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup };

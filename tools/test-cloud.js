@@ -82,6 +82,9 @@ async function functionTests() {
   eq(cloud.state.sent[0].touser, 'user-a', '发给设了提醒的人');
   eq(cloud.state.sent[0].templateId, 'tmpl', '用登记时的模板');
   eq(cloud.state.sent[0].page, 'pages/event-detail/index?id=race', '点消息进活动详情');
+  eq(Object.keys(cloud.state.sent[0].data).length, 3, '消息有三个字段：活动名称、开始时间、温馨提示');
+  eq(cloud.state.sent[0].data.thing1.value, '春季路跑', '活动名称');
+  ok(/^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/.test(cloud.state.sent[0].data.time2.value), '开始时间的格式');
   eq(await cloud.run(() => remind.main()), { sent: 0, failed: 0 }, '不重复发');
   eq((await call('bootstrap')).data.reminders, [], '发过的提醒不再算「已设提醒」');
 

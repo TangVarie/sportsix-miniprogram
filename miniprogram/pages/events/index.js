@@ -8,6 +8,7 @@ Page({
     arc: assetUrl('assets/graphics/events-header-arc.svg'),
     tab: 'upcoming',
     hasUpcoming: false,
+    empty: events.getEmpty(),
     upcoming: [],
     past: []
   }),
@@ -39,10 +40,8 @@ Page({
   /** 按缓存里的活动和提醒状态重画列表 */
   render() {
     const upcoming = events.listUpcoming().map((e) => Object.assign({}, e, { reminded: events.hasReminder(e.id) }));
-    const hasUpcoming = upcoming.length > 0;
-    // 没有活动时「即将开始」分页隐藏，只看往期；有了活动再回到默认分页
-    const tab = hasUpcoming ? (this.data.hasUpcoming ? this.data.tab : 'upcoming') : 'past';
-    this.setData({ upcoming: upcoming, hasUpcoming: hasUpcoming, tab: tab });
+    // 没有活动时「即将开始」里显示「敬请期待」
+    this.setData({ upcoming: upcoming, hasUpcoming: upcoming.length > 0 });
   },
 
   onTab(e) {

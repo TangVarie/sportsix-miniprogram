@@ -5,14 +5,23 @@
       <text class="sx-eyebrow ev-header__eyebrow">EVENTS</text>
       <view class="ev-header__h1">活动</view>
     </view>
-    <view wx:if="{{hasUpcoming}}" class="ev-tabs">
+    <view class="ev-tabs">
       <view class="ev-tab sx-pressable {{tab === 'upcoming' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="upcoming" bindtap="onTab">即将开始</view>
       <view class="ev-tab sx-pressable {{tab === 'past' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="past" bindtap="onTab">往期</view>
     </view>
   </view>
 
+  <!-- 即将开始，还没有活动：敬请期待 -->
+  <view wx:if="{{tab === 'upcoming' && !hasUpcoming}}" class="ev-list sx-in">
+    <view class="ev-empty sx-rise">
+      <view class="ev-empty__photo sx-photo"><image class="sx-photo__img" src="{{empty.image}}" mode="aspectFill" /></view>
+      <image class="ev-empty__ridge sx-draw" src="{{empty.graphic}}" />
+      <text class="ev-empty__title">{{empty.title}}</text>
+    </view>
+  </view>
+
   <!-- 即将开始：三种卡片样式 -->
-  <view wx:if="{{tab === 'upcoming'}}" class="ev-list sx-in">
+  <view wx:elif="{{tab === 'upcoming'}}" class="ev-list sx-in">
     <block wx:for="{{upcoming}}" wx:key="id">
       <!-- 赛事：照片卡 -->
       <view wx:if="{{item.style === 'poster'}}" class="ev-poster sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
