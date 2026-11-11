@@ -33,7 +33,7 @@ SPORTSIX 是韩国大象集团旗下的运动营养品牌，主推两款能量�
 - 设计稿里方括号括起来的内容是占位，保留为占位或接数据，不要替换成编造的内容。
 - JSON 里带 `confirm` 字段的条目是待品牌方确认的内容，照常实现，但不要删掉 `confirm` 标记。
 - 微信的接口和限制（包体积、自定义 tabBar、字体加载、手机号快速验证、订阅消息）以官方文档的现行说明为准，用之前先查，不要凭印象写。
-- 后台方案、AppID、主体还没定。做到需要后台的地方（第四阶段的订阅消息、第五阶段的会员）先停下来问，不要自行选型。
+- 后台已定为微信云开发（见「工程约定」）。AppID、主体还没定；会员权益规则、会员编号和积分规则、加群方式等见 `docs/04-open-items.md`，仍然不要自己决定。
 - 图片、视频、字体不要打进主包，按 `05-dev-plan.md` 走统一的资源前缀；图标可以随包。
 - 中文字体用系统字体，不加载中文字库。只有数字和英文加载 Barlow Condensed。
 
@@ -56,13 +56,17 @@ miniprogram/
   custom-tab-bar/                自定义底部导航
   pages/<页面>/index.*           home、fuel、events、event-detail、product、me
   components/<组件>/index.*      member-cta、dual-carb 等
-  utils/                         assets.js、page.js、store.js、events.js、fuel-plan.js（原样复制，不改）
+  utils/                         assets.js、page.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
   assets/icons/                  图标随包；另补了 chevron-*、back-* 两组箭头
+cloudfunctions/
+  api/                           云函数：会员、活动、报名、提醒、补给计划的接口
+  remind/                        定时云函数：报名开放后发订阅消息
 tools/
   sync-content.js                改了 reference/content/*.json 之后跑 npm run content
   serve-assets.js                npm run assets：把根目录 assets/ 当 CDN，默认 http://127.0.0.1:8787
   preview/                       本地预览和设计稿对照，见 tools/preview/README.md
+  cloud-mock.js  test-cloud.js   wx-server-sdk 的内存替身和云开发测试
 ```
 
 ### 文案和资源
@@ -97,10 +101,13 @@ tools/
 
 ### 后台相关
 
-- 后台没定。会员、提醒、补给计划统一走 `utils/store.js`（目前只存本机），活动数据走 `utils/events.js`。页面不要直接读写存储，也不要自己加接口。
+- 后台用微信云开发，说明和部署步骤见 `cloudfunctions/README.md`。`config.js` 的 `cloudEnv` 留空时不走云开发，只存本机。
+- 小程序端只调一个云函数 `api`（`utils/cloud.js` 的 `call(action, data)`），数据库集合不对小程序端开放。加接口时在 `cloudfunctions/api/index.js` 的 `actions` 里加，并在 `tools/test-cloud.js` 里补用例。
+- 会员、报名、提醒、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
+- 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 
 ### 检查
 
-- `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）。
+- `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）、云开发测试（`tools/test-cloud.js`）。
 - `node tools/preview/shot.js --route pages/<页面>/index --compare design/screens/<截图>.png --out out/<名字>.png`：渲染并和设计稿并排对照，逐张看 `out/*-cmp-N.png`。`--do` 可以先调页面方法走到某个状态。
 - 预览只是近似，最终以微信开发者工具和真机为准。

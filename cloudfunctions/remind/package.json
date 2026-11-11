@@ -1,0 +1,9 @@
+{
+  "name": "remind",
+  "version": "1.0.0",
+  "description": "定时发送「活动开始提醒」订阅消息",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

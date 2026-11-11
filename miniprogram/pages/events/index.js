@@ -1,4 +1,5 @@
 const events = require('../../utils/events.js');
+const store = require('../../utils/store.js');
 const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
@@ -16,6 +17,8 @@ Page({
     this.setData({ past: events.listPast() });
     // 头部设计高 176px，状态栏滚出它之后文字换成黑色
     this.toneAt = headerTone(176);
+    // 云端数据同步完成后重画（提醒状态以云端为准）
+    this.offStore = store.onChange(() => this.render());
   },
 
   onPageScroll(e) {
@@ -24,10 +27,22 @@ Page({
 
   onShow() {
     selectTab(this, 2);
-    // 提醒状态可能在详情页里变了，每次显示都重读
+    // 提醒状态可能在详情页里变了，每次显示都重读；再从云端取一次最新的活动
+    this.render();
+    events.refresh().then((changed) => { if (changed) this.render(); });
+  },
+
+  onUnload() {
+    if (this.offStore) this.offStore();
+  },
+
+  /** 按缓存里的活动和提醒状态重画列表 */
+  render() {
     const upcoming = events.listUpcoming().map((e) => Object.assign({}, e, { reminded: events.hasReminder(e.id) }));
     const hasUpcoming = upcoming.length > 0;
-    this.setData({ upcoming: upcoming, hasUpcoming: hasUpcoming, tab: hasUpcoming ? this.data.tab : 'past' });
+    // 没有活动时「即将开始」分页隐藏，只看往期；有了活动再回到默认分页
+    const tab = hasUpcoming ? (this.data.hasUpcoming ? this.data.tab : 'upcoming') : 'past';
+    this.setData({ upcoming: upcoming, hasUpcoming: hasUpcoming, tab: tab });
   },
 
   onTab(e) {

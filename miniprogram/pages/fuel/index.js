@@ -137,9 +137,15 @@ Page({
   onSave() {
     const input = effective(this.data.input);
     if (store.isMember()) {
-      store.savePlan(input);
-      // 设计稿和原型里没有保存成功的提示文案，先留占位
-      wx.showToast({ title: '[已保存提示文案]', icon: 'none' });
+      const plan = this.data.plan;
+      // 设计稿和原型里没有保存成功、失败的提示文案，先留占位
+      store.savePlan(input, { total: plan.total, gelCount: plan.gelCount, proCount: plan.proCount })
+        .then(() => wx.showToast({ title: '[已保存提示文案]', icon: 'none' }))
+        .catch((e) => {
+          // 云端说还不是会员（本机缓存是旧的）：按未注册处理
+          if (e.code === 'not_member') { store.setPendingPlan(input); go('join'); return; }
+          wx.showToast({ title: '[保存失败提示文案]', icon: 'none' });
+        });
     } else {
       // 未注册：先记下输入，注册完成后再保存
       store.setPendingPlan(input);

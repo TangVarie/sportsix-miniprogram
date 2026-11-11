@@ -1,5 +1,6 @@
 const config = require('./config.js');
 const { assetUrl } = require('./utils/assets.js');
+const store = require('./utils/store.js');
 
 // 数字和英文用 Barlow Condensed，只加载设计里用到的字重：斜体 700 / 800，以及补给时刻格子里的正体 700。中文用系统字体。
 const FONTS = [
@@ -25,6 +26,8 @@ App({
       this.globalData.safeTop = 0;
     }
     this.loadFonts();
+    // 配了云环境时，用云端的会员、计划、提醒、报名覆盖本机缓存；完成后页面会收到通知重读
+    store.sync();
   },
 
   loadFonts() {
