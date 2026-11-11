@@ -19,7 +19,7 @@ module.exports = {
     "points": { "eyebrow": "POINTS", "title": "我的积分", "note": "积分后续可用于兑换和参与活动。", "logTitle": "积分记录", "empty": "还没有积分记录", "reasons": { "welcome": "新会员赠送" } },
     "perksTitle": "会员权益",
     "perks": ["优先报名", "试用装", "积分", "抽奖"],
-    "plan": { "title": "我的补给计划", "line1": "[项目] · [预计时长]", "line2": "能量胶 [支数] 支 · 能量胶PRO [支数] 支", "to": "fuel" },
+    "plan": { "title": "我的补给计划", "line1": "[项目] · [预计时长]", "line2": "BASIC [支数] 支 · PRO [支数] 支", "to": "fuel" },
     "events": { "title": "我的活动", "states": ["已报名", "已设提醒"] },
     "menu": [
       { "icon": "group", "text": "加入社群" },

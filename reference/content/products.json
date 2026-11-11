@@ -11,7 +11,7 @@
     {
       "stage": "运动中", "stageEn": "DURING",
       "products": [
-        { "id": "energy-gel", "name": "能量胶", "role": "赛中补给 · 青葡萄味 / 桃子味", "fact": "45mg 咖啡因 · 120 千卡", "image": "assets/product/energy-gel-grape.png", "detail": true },
+        { "id": "energy-gel", "name": "能量胶BASIC", "role": "赛中补给 · 青葡萄味 / 桃子味", "fact": "45mg 咖啡因 · 120 千卡", "image": "assets/product/energy-gel-grape.png", "detail": true },
         { "id": "energy-gel-pro", "name": "能量胶PRO", "role": "赛中补给 · 菠萝味", "fact": "0 咖啡因 · 85 千卡", "image": "assets/product/energy-gel-pro-pineapple.png", "detail": true }
       ]
     },
@@ -26,7 +26,7 @@
     "_note": "产品速选对比，两款详情页底部共用，当前产品一列加粗。",
     "eyebrow": "QUICK PICK", "title": "产品速选对比",
     "columns": [
-      { "id": "energy-gel", "name": "能量胶", "image": "assets/product/energy-gel-grape.png" },
+      { "id": "energy-gel", "name": "能量胶BASIC", "image": "assets/product/energy-gel-grape.png" },
       { "id": "energy-gel-pro", "name": "能量胶PRO", "image": "assets/product/energy-gel-pro-pineapple.png" }
     ],
     "rows": [
@@ -42,7 +42,7 @@
   },
   "energyGel": {
     "id": "energy-gel",
-    "name": "能量胶",
+    "name": "能量胶BASIC",
     "tag": "运动中 · 赛中补给",
     "headline": ["长距离不撞墙", "SPORTSIX 双碳能量胶"],
     "flavors": [
@@ -84,7 +84,7 @@
         "body": "即时补能 + 长效续航双向兼顾，长距离耐力运动不掉速、不撞墙。",
         "graphic": "assets/graphics/chart-pace.svg",
         "legend": ["SPORTSIX 复配：麦芽糊精 + 帕拉金糖，更稳定", "其他胶：只有单糖，波动大"],
-        "footnote": "马拉松 30KM 前后配速稳定性对比，曲线为示意。食用 2 支 SPORTSIX 能量胶。数据参考自《International Journal of Sport Nutrition and Exercise Metabolism》发表的《Improved Marathon Performance by In-Race Nutritional Strategy Intervention》研究论文。",
+        "footnote": "马拉松 30KM 前后配速稳定性对比，曲线为示意。食用 2 支 SPORTSIX 能量胶BASIC。数据参考自《International Journal of Sport Nutrition and Exercise Metabolism》发表的《Improved Marathon Performance by In-Race Nutritional Strategy Intervention》研究论文。",
         "confirm": "是否在小程序引用这项研究"
       },
       {
@@ -103,8 +103,8 @@
         "bars": [
           { "label": "美式咖啡", "sub": "（规格不一）", "value": 125, "unit": "mg" },
           { "label": "罐装咖啡", "sub": "（200ml）", "value": 118, "unit": "mg" },
-          { "label": "能量胶", "sub": "（2 支）", "value": 90, "unit": "mg", "highlight": true },
-          { "label": "能量胶", "sub": "（1 支）", "value": 45, "unit": "mg", "highlight": true }
+          { "label": "BASIC", "sub": "（2 支）", "value": 90, "unit": "mg", "highlight": true },
+          { "label": "BASIC", "sub": "（1 支）", "value": 45, "unit": "mg", "highlight": true }
         ],
         "note": "每运动 30 分钟补充 1 支，1 小时最多 2 支，避免咖啡因叠加心慌。",
         "footnote": "按食品分类的咖啡因平均含量。出处：食品药品安全部。"
@@ -186,7 +186,7 @@
     },
     "facts": [
       { "value": "0", "unit": "", "label": "咖啡因" },
-      { "value": "-26", "unit": "%", "label": "甜度，相比能量胶" },
+      { "value": "-26", "unit": "%", "label": "甜度，相比 BASIC" },
       { "value": "85", "unit": "kcal", "label": "每支能量" },
       { "value": "21", "unit": "g", "label": "优质碳水" }
     ],
@@ -224,7 +224,7 @@
         ],
         "bars": [
           { "label": "能量胶PRO", "value": 44, "unit": "Brix", "highlight": true },
-          { "label": "能量胶", "value": 60, "unit": "Brix" }
+          { "label": "能量胶BASIC", "value": 60, "unit": "Brix" }
         ]
       },
       {
@@ -232,7 +232,7 @@
         "quad": [
           { "title": "21g 优质碳水", "body": "持久续航" },
           { "title": "8g 轻糖", "body": "减少身体负担" },
-          { "title": "BCAA / 精氨酸 / 肌酸", "body": "补糖、抗疲劳、肌肉保护" },
+          { "title": "BCAA / 精氨酸", "body": "补糖、抗疲劳、肌肉保护" },
           { "title": "电解质钠", "body": "预防长距离抽筋" }
         ],
         "confirm": "「抗疲劳」「肌肉保护」「预防长距离抽筋」属于功效说法"
@@ -246,21 +246,22 @@
         "key": "guide", "eyebrow": "RACE DAY", "title": "食用指南",
         "banner": { "image": "assets/photos/web/marathon-aerial.jpg" },
         "steps": [
-          { "when": "赛前 30min", "what": "打底储备", "qty": "1 支" },
-          { "when": "开赛", "what": "缓释续航", "qty": "1 支" },
-          { "when": "40~60min", "what": "HBCD 稳血糖", "qty": "1 支" },
-          { "when": "60~90min", "what": "回血恢复", "qty": "1 支（可选）" },
-          { "when": "完赛后" }
+          { "when": "赛前 30 分钟", "what": "打底储备", "qty": "1 支" },
+          { "when": "第 20 分钟", "what": "缓释续航", "qty": "1 支" },
+          { "when": "每 20 分钟", "what": "HBCD 稳血糖", "qty": "1 支" },
+          { "when": "最后 15 分钟", "what": "不用再补", "qty": "" },
+          { "when": "完赛" }
         ],
-        "note": "三句口诀：提前打底 1 支，赛中 45 分钟 1 支，能量胶PRO 不含咖啡因，全天都能补。"
+        "note": "按比赛每小时约 60g 碳水排，一支能量胶PRO 含 21g。训练强度低，可以隔 30 到 40 分钟 1 支。能量胶PRO 不含咖啡因，全天都能补。",
+        "_noteGuide": "节奏和分段补给计算一致（reference/fuel-plan.js）：赛前 30 分钟 1 支，赛中按每小时 60g 碳水，21g 一支就是每 20 分钟 1 支，结束前 15 分钟不再安排。原来写的是「开赛 1 支、40~60min、60~90min，赛中 45 分钟 1 支」，和计算结果对不上。"
       },
       {
         "key": "qa", "eyebrow": "Q&A", "title": "新手吃胶 Q&A",
         "items": [
           { "n": "01", "q": "第一次吃，肠胃会不会抗议？", "a": "HBCD 本身比葡萄糖 / 麦芽糊精温和，建议首次长距离前用一次 LSD（长距离慢跑）试胶。" },
           { "n": "02", "q": "要不要配水？", "a": "PRO 是 44Brix 水感凝胶，不需要配水。" },
-          { "n": "03", "q": "和能量胶怎么搭？", "a": "白天比赛用含咖啡因的能量胶提神。夜跑、咖啡因敏感、下午比赛怕失眠，用 0 咖啡因的能量胶PRO。也可以前半程用能量胶，后半程换能量胶PRO。" },
-          { "n": "04", "q": "一场全马带几支够？", "a": "看完赛时间。4 小时左右完赛，赛前 1 支加赛中每 30 分钟 1 支，一共 9 支上下，跑得快就少带。几点吃哪一支，用分段补给计算按自己的情况排一遍。" },
+          { "n": "03", "q": "和 BASIC 怎么搭？", "a": "白天比赛用含咖啡因的 BASIC 提神。夜跑、咖啡因敏感、下午比赛怕失眠，用 0 咖啡因的 PRO。也可以前半程用 BASIC，后半程换 PRO。" },
+          { "n": "04", "q": "一场全马带几支够？", "a": "看完赛时间。4 小时左右完赛，按补给计算是 9 支上下，赛前 1 支，前半程每 30 分钟 1 支 BASIC，后半程每 20 分钟 1 支 PRO。跑得快就少带。自己的情况用分段补给计算排一遍。" },
           {"n": "05", "q": "运动时容易反酸、拉肚子，能吃能量胶吗？", "a": "可以选能量胶PRO。它用的是极低渗透压的 HBCD，还加了谷氨酰胺，喝进胃里负担小。"}
         ]
       }
@@ -270,6 +271,6 @@
       "rows": [["能量", "85 千卡"], ["碳水化合物", "21 g"], ["糖类", "8 g"], ["钠", "25 mg"], ["脂肪", "0 g"], ["蛋白质", "0 g"]],
       "footnote": "规格：总重 270g（45g × 6 支）。食品类型：混合饮料。"
     },
-    "crossLink": { "to": "energy-gel", "title": "能量胶", "sub": "45mg 咖啡因 · 青葡萄味 / 桃子味" }
+    "crossLink": { "to": "energy-gel", "title": "能量胶BASIC", "sub": "45mg 咖啡因 · 青葡萄味 / 桃子味" }
   }
 }

@@ -154,12 +154,20 @@
 .hm-factory__shade { position: absolute; left: 0; right: 0; bottom: 0; height: 173rpx; background: linear-gradient(rgba(1, 4, 57, 0), #010439); }
 .hm-brand { display: flex; flex-direction: column; gap: 12rpx; padding: 23rpx 38rpx 85rpx; color: #FFFFFF; }
 .hm-brand__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
-.hm-brand__body { margin: 8rpx 0 31rpx; font-size: 27rpx; line-height: 42rpx; color: #C9CEE8; }
-.hm-brand__values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 19rpx; }
-.hm-brand__value { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 15rpx; height: 177rpx; padding: 27rpx 19rpx; border: 1px solid #2A3373; border-radius: 23rpx; text-align: center; font-size: 23rpx; line-height: 33rpx; }
-/* 和设计稿一致：文字占两行时格子里放不下 26px 的图标，图标让出高度、等比缩小（配合 mode="aspectFit"） */
-.hm-brand__icon { display: block; width: 50rpx; height: 50rpx; min-height: 0; }
-.hm-brand__value-text { flex-shrink: 0; }
+.hm-brand__body { margin: 8rpx 0 0; font-size: 27rpx; line-height: 42rpx; color: #C9CEE8; }
+
+/* 六大运动核心价值 */
+.hm-six { margin-top: 54rpx; padding-top: 46rpx; border-top: 1px solid #2A3373; }
+.hm-six__head { display: flex; align-items: center; gap: 23rpx; }
+.hm-six__big { font-size: 154rpx; line-height: 131rpx; color: #C2E541; }
+.hm-six__head-text { display: flex; flex-direction: column; gap: 4rpx; }
+.hm-six__title { font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
+.hm-six__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19rpx; margin-top: 38rpx; }
+.hm-six__card { box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; height: 177rpx; padding: 27rpx; border: 1px solid #2A3373; border-radius: 23rpx; background: rgba(255, 255, 255, .04); }
+.hm-six__top { display: flex; align-items: center; justify-content: space-between; }
+.hm-six__no { font-size: 38rpx; line-height: 46rpx; color: #C2E541; }
+.hm-six__icon { display: block; width: 46rpx; height: 46rpx; opacity: .9; }
+.hm-six__text { font-size: 25rpx; line-height: 38rpx; font-weight: 700; white-space: nowrap; }
 
 /* 11 品牌影片 */
 .hm-film { display: flex; flex-direction: column; gap: 12rpx; padding: 8rpx 38rpx 85rpx; color: #FFFFFF; }

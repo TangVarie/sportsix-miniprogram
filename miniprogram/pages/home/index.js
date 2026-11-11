@@ -27,7 +27,8 @@ const DARK_TOP_PX = 650;
 const REVEAL_KEYS = ['kw0', 'kw1', 'kw2', 'fuel', 'stage0', 'stage1', 'stage2', 'dualCarb', 'specs', 'cert', 'races', 'brand'];
 
 const brand = withAssets(home.brand);
-brand.values = brand.values.map((v) => ({ icon: v.icon, lines: valueLines(v.text) }));
+// 六大运动核心价值：带上 01–06 的编号
+brand.values = brand.values.map((v, i) => ({ icon: v.icon, text: v.text, no: '0' + (i + 1) }));
 
 // 有详情页的产品（能量胶、能量胶PRO），名称和「咖啡因 · 千卡」那一行取自产品线
 const PICKS = [];

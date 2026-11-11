@@ -105,7 +105,7 @@
           <text class="fuel-result__word">支</text>
         </view>
         <view class="fuel-legend">
-          <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--gel"></view><text>能量胶 × {{plan.gelCount}}</text></view>
+          <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--gel"></view><text>能量胶BASIC × {{plan.gelCount}}</text></view>
           <view class="fuel-legend__item"><view class="fuel-legend__mark fuel-legend__mark--pro"></view><text>能量胶PRO × {{plan.proCount}}</text></view>
         </view>
       </view>

@@ -5,11 +5,12 @@
  * 公式说明见 docs/03-fuel-formula.md；本文件是公式的唯一实现，页面只负责收集输入和展示结果。
  *
  * 产品数据（每支 45g）：
- *   能量胶      碳水 30g，咖啡因 45mg，能量 120 千卡
- *   能量胶PRO   碳水 21g，咖啡因 0，  能量 85 千卡
+ *   能量胶BASIC 碳水 30g，咖啡因 45mg，能量 120 千卡（时间表里简写 BASIC）
+ *   能量胶PRO   碳水 21g，咖啡因 0，  能量 85 千卡（时间表里简写 PRO）
+ * 「能量胶」只作品类的统称，不指其中某一款。
  */
 
-const GEL = { key: 'gel', name: '能量胶', carb: 30, caffeine: 45, kcal: 120 };
+const GEL = { key: 'gel', name: 'BASIC', fullName: '能量胶BASIC', carb: 30, caffeine: 45, kcal: 120 };
 const PRO = { key: 'pro', name: 'PRO', fullName: '能量胶PRO', carb: 21, caffeine: 0, kcal: 85 };
 
 /**
@@ -88,7 +89,7 @@ function carbRate(input) {
 }
 
 /**
- * 第二步：含咖啡因的能量胶最多几支
+ * 第二步：含咖啡因的 BASIC 最多几支
  * 每公斤体重 3mg 封顶，总量不超过 400mg；下午出发或第一次用胶最多 90mg；
  * 晚上出发或咖啡因敏感为 0。
  */
@@ -121,7 +122,7 @@ function planFuel(input) {
 
   let used = 0;
   let lastCaf = -999;
-  const early = 0.6 * T; // 含咖啡因的能量胶只排在前 60% 的时段
+  const early = 0.6 * T; // 含咖啡因的 BASIC 只排在前 60% 的时段
   const takeGel = (t) => {
     if (used >= capN || t > early || t - lastCaf < 30) return false;
     if (t + 0.001 < used * (early / capN)) return false; // 支数少于可排位置时，在前 60% 里均匀分开
@@ -199,13 +200,13 @@ function explain(r) {
   if (s.minutes >= 360) why.push('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
   if (r.items[0].minute < 0) why.push('开始前 30 分钟先吃 1 支 PRO 打底，它不含咖啡因，HBCD 排空快，不坠胃。');
   if (r.gelCount > 0) {
-    why.push('体重 ' + s.kg + 'kg，含咖啡因的能量胶不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
+    why.push('体重 ' + s.kg + 'kg，含咖啡因的 BASIC 不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
       (r.caffeineCapCount * 45 / s.kg).toFixed(1) + 'mg），间隔至少 30 分钟。');
   }
   if (s.start === 'pm' && !s.caffeineSensitive) why.push('下午出发，含咖啡因的最多 2 支，避免影响晚上睡眠。');
   if (s.start === 'night') why.push('晚上出发，全程用 0 咖啡因的 PRO。');
   if (s.caffeineSensitive) why.push('咖啡因敏感，全程用 0 咖啡因的 PRO。');
-  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的能量胶排在前 60% 的时段，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
+  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的 BASIC 排在前 60% 的时段，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
   const weather = s.hot ? 'hot' : s.weather;
   if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20 到 25mg，电解质要另外补。');
   if (weather === 'cold') why.push('低温天口渴感弱，容易漏掉补给，按时间表吃。');

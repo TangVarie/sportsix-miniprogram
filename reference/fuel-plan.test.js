@@ -35,6 +35,9 @@ check('越野 10:00，咖啡因敏感', { sport: 'trail', minutes: 600, caffeine
 check('骑行比赛 3:00，80kg', { sport: 'bike', minutes: 180, kg: 80 }, { carbRate: 75, total: 8, gelCount: 2, seq: '赛前P 0:30G 0:55P 1:15G 1:40P 2:00P 2:20P 2:40P' });
 check('全马 4:00，下午、高温、第一次', { start: 'pm', hot: true, firstTime: true }, { carbRate: 45, total: 7, gelCount: 2, caffeineMg: 90, seq: '赛前P 0:40G 1:20G 2:00P 2:30P 3:00P 3:30P' });
 check('全马 4:00，晚上，50kg', { start: 'night', kg: 50 }, { total: 12, gelCount: 0 });
+// 全程只用能量胶PRO 的比赛：赛前 30 分钟 1 支，之后每 20 分钟 1 支，结束前 15 分钟不再安排。
+// 能量胶PRO 详情页的「食用指南」和问答是照这个节奏写的，改这里要一起改 reference/content/products.json
+check('全马 4:00，只用 PRO', { caffeineSensitive: true }, { total: 12, seq: '赛前P 0:20P 0:40P 1:00P 1:20P 1:40P 2:00P 2:20P 2:40P 3:00P 3:20P 3:40P' });
 check('徒步 5:00', { sport: 'hike', minutes: 300, scene: 'long' }, { carbRate: 45, total: 8, gelCount: 4, seq: '开始前P 0:40G 1:20G 2:00G 2:40G 3:20P 3:50P 4:20P' });
 
 // 下面两组时间表是按上面的每小时碳水、用和其他项目同一套排法排出来的
@@ -72,6 +75,12 @@ assert.ok(planFuel({ sport: 'ski', minutes: 420 }).reasons.indexOf('超过 6 小
 assert.ok(planFuel({ sport: 'trail', minutes: 480 }).reasons.indexOf('超过 6 小时，胶按每小时约 45g 排，其余靠补给站和固体食物。') > 0, '其他项目超过 6 小时的那句不变');
 assert.ok(planFuel({ sport: 'ski', minutes: 45, scene: 'race' }).total === 0, '不足 1 小时的滑雪不用带胶');
 n += 12;
+
+// 款名：普通版叫「能量胶BASIC」，时间表格子里简写成 BASIC，和 PRO 对应。「能量胶」只作品类的统称
+assert.deepStrictEqual([...new Set(planFuel({}).items.map((i) => i.productName))].sort(), ['BASIC', 'PRO'], '格子里的款名');
+assert.ok(planFuel({}).reasons.some((x) => x.indexOf('含咖啡因的 BASIC 不超过 4 支') > 0), '说明里普通版叫 BASIC');
+assert.ok(planFuel({}).reasons.every((x) => x.indexOf('能量胶') < 0), '说明里不再用「能量胶」指普通版');
+n += 3;
 
 // 强度：三档，从轻到重。key 不变（long、hard、race），已保存的计划照常能用；每档带一句说明
 assert.deepStrictEqual(SCENES.map((s) => s.key + ':' + s.label), ['long:轻松训练', 'hard:高强度训练', 'race:比赛'], '强度的顺序和名称');

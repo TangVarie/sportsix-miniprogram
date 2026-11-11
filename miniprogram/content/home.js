@@ -21,9 +21,9 @@ module.exports = {
     "cards": [
       {
         "n": "01", "word": "缓释", "line": "平稳供能，中间不断档",
-        "body": "能量胶用快慢双碳，即时补能 + 长效续航，告别能量过山车。PRO 用 HBCD，像打点滴一样匀速供能。",
+        "body": "BASIC 用快慢双碳，即时补能 + 长效续航，告别能量过山车。PRO 用 HBCD，像打点滴一样匀速供能。",
         "graphic": "assets/graphics/chart-release.svg", "graphicLabels": ["冲得快，掉得也快", "平稳供能"],
-        "chips": ["能量胶", "能量胶PRO"]
+        "chips": ["能量胶BASIC", "能量胶PRO"]
       },
       {
         "n": "02", "word": "超低渗", "line": "快排空，不坠胃",
@@ -67,7 +67,8 @@ module.exports = {
   "brand": {
     "image": "assets/photos/endorsement/factory.jpg",
     "eyebrow": "BRAND", "title": ["韩国大象集团旗下", "专业运动营养品牌"],
-    "body": "依托集团六十余年科研积淀打造，秉持六大运动核心价值。",
+    "body": "依托集团六十余年科研积淀打造。",
+    "six": { "eyebrow": "SIX VALUES", "title": "六大运动核心价值" },
     "values": [
       { "icon": "globe", "text": "原料全球甄选" },
       { "icon": "pin", "text": "韩国本土原厂出品" },
