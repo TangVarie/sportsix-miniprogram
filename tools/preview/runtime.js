@@ -68,8 +68,9 @@ function createWx(opts) {
   return wx;
 }
 
-/** 在干净的 require 缓存里加载小程序文件 */
+/** 重新执行页面或组件的 JS（它依赖的 utils 等模块保持已加载的状态） */
 function freshRequire(file) {
+  delete require.cache[require.resolve(file)];
   return require(file);
 }
 function clearCache() {
