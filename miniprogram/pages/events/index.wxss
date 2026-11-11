@@ -38,8 +38,19 @@
   height: 85rpx; padding: 0 35rpx; border-radius: 42rpx;
   background: #C2E541; color: #010439; font-size: 27rpx; font-weight: 900;
 }
-.ev-remind--done { background: #F5F5F5; color: #5E6170; }
+/* 已设提醒：换成灰色时弹一下 */
+.ev-remind--done { background: #F5F5F5; color: #5E6170; animation: sxPop .3s ease-out; }
 .ev-remind__icon { display: block; width: 35rpx; height: 35rpx; }
+
+/* 加载中的占位块，高度同照片卡和行卡 */
+.ev-skeleton { height: 185rpx; border-radius: 31rpx; }
+.ev-skeleton--tall { height: 539rpx; }
+
+/* 没有活动时的「敬请期待」：沿用赛事照片卡上半部分的画法（照片、海拔线、标题位置） */
+.ev-empty { position: relative; height: 408rpx; border-radius: 31rpx; overflow: hidden; background: #010439; color: #FFFFFF; }
+.ev-empty__photo { position: absolute; left: 0; top: 0; width: 100%; height: 408rpx; }
+.ev-empty__ridge { position: absolute; left: 0; bottom: 0; width: 673rpx; height: 212rpx; }
+.ev-empty__title { position: absolute; left: 31rpx; top: 31rpx; font-size: 42rpx; line-height: 58rpx; font-weight: 900; }
 
 /* 试用装：黄绿卡 */
 .ev-lime { position: relative; height: 323rpx; border-radius: 31rpx; overflow: hidden; background: #C2E541; color: #010439; }

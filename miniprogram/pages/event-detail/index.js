@@ -1,23 +1,17 @@
 const events = require('../../utils/events.js');
 const store = require('../../utils/store.js');
 const member = require('../../content/member.js');
-const { baseData, go, navTone, headerTone } = require('../../utils/page.js');
+const messages = require('../../content/messages.js');
+const config = require('../../config.js');
+const { baseData, go, navTone, headerTone, imgLoaded } = require('../../utils/page.js');
 
 // 「已设提醒」的说法：活动自己带 actionDone 就用它（目前只有赛事示例有），否则用会员文案里同一个状态名
 const REMINDED_TEXT = member.me.events.states[1];
 // 「已报名」同样用会员文案里的状态名
 const SIGNED_TEXT = member.me.events.states[0];
 
-// 报名结果的提示。文案还没有，先留方括号占位（docs/04-open-items.md）
-const SIGNUP_TOAST = {
-  ok: '[报名成功提示]',
-  not_open: '[报名未开放提示]',
-  closed: '[报名已结束提示]',
-  full: '[名额已满提示]',
-  not_found: '[活动不存在提示]',
-  no_backend: '[报名待接入后台]',
-  network: '[网络异常提示]'
-};
+// 报名结果的提示（content/messages）。没配云环境时没有地方登记报名，按网络异常提示
+const SIGNUP_TOAST = Object.assign({ no_backend: messages.signup.network }, messages.signup);
 
 Page({
   data: Object.assign(baseData(), {
@@ -28,8 +22,14 @@ Page({
     reminded: false,
     remindedText: REMINDED_TEXT,
     signed: false,
-    signedText: SIGNED_TEXT
+    signedText: SIGNED_TEXT,
+    groupReady: config.groupReady
   }),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad(query) {
     this.eventId = query.id;
@@ -94,7 +94,7 @@ Page({
     this.signing = true;
     store.signup(this.data.event.id).then(() => {
       this.setData({ signed: true });
-      wx.showToast({ title: SIGNUP_TOAST.ok, icon: 'none' });
+      wx.showToast({ title: SIGNUP_TOAST.ok, icon: 'success' });
     }).catch((e) => {
       // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
       if (e.code === 'not_member') { go('join'); return; }
@@ -102,8 +102,7 @@ Page({
     }).then(() => { this.signing = false; });
   },
 
-  onGroup() {
-    // 群的形式（企业微信群、客服二维码）未定
-    wx.showToast({ title: '[加群方式待定]', icon: 'none' });
+onGroup() {
+    // 群的形式（企业微信群、客服二维码）定了以后在这里接；现在这个入口不显示（config.groupReady）
   }
 });

@@ -82,6 +82,14 @@ async function functionTests() {
   eq(cloud.state.sent[0].touser, 'user-a', '发给设了提醒的人');
   eq(cloud.state.sent[0].templateId, 'tmpl', '用登记时的模板');
   eq(cloud.state.sent[0].page, 'pages/event-detail/index?id=race', '点消息进活动详情');
+  const msg = cloud.state.sent[0].data;
+  eq(Object.keys(msg).sort(), ['thing1', 'thing4', 'thing8', 'time3', 'time7'], '消息带齐模板的五个字段');
+  eq(msg.thing1.value, '春季路跑', '活动名称');
+  eq(msg.thing4.value, '报名已开放', '温馨提示');
+  eq(msg.thing8.value, '上海 滨江', '活动地点');
+  const timeRe = /^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/;
+  ok(timeRe.test(msg.time7.value) && timeRe.test(msg.time3.value) && msg.time7.value !== msg.time3.value, '开始时间和截止时间');
+  ok(Object.keys(msg).every((k) => msg[k].value && msg[k].value.length <= 20), '每个字段都有值且不超长');
   eq(await cloud.run(() => remind.main()), { sent: 0, failed: 0 }, '不重复发');
   eq((await call('bootstrap')).data.reminders, [], '发过的提醒不再算「已设提醒」');
 
@@ -154,6 +162,8 @@ async function remindTests() {
   const results = await cloud.run(() => Promise.all([remind.main(), remind.main()]));
   eq(results[0].sent + results[1].sent, 2, '两次执行重叠：每条提醒只发一次');
   eq(cloud.state.sent.map((m) => m.touser).sort(), ['u1', 'u2'], '排在 100 场以后的活动也检查到了');
+  const bare = cloud.state.sent[0].data; // 这些活动没填地点和报名截止时间
+  ok(bare.thing8.value === '详见活动详情' && bare.time3.value === bare.time7.value, '没填地点、截止时间时用兜底值，字段不为空');
   eq(cloud.col('reminders').filter((r) => r.status === 'sent').length, 2, '发完记成 sent');
   ok(cloud.col('reminders').find((r) => r._id === 'u1_old5').sent === false, '活动日期已过的不发');
 }
@@ -228,11 +238,12 @@ async function clientTests() {
   ok(texts.length === 8 && !texts.join('|').includes('['), '详情页不带方括号占位');
   p.onSignup();
   await tick();
-  ok(!p.data.signed && lastCall('showToast').args.title.includes('未开放'), '没开放时报名失败并提示');
+  eq([p.data.signed, lastCall('showToast').args.title], [false, '报名还没有开放'], '没开放时报名失败并提示');
   cloud.state.now += DAY + HOUR;
   p.onSignup();
   await tick();
   ok(p.data.signed, '报名成功');
+  eq(lastCall('showToast').args.title, '报名成功', '报名成功有提示');
 
   // 我的：活动里先显示已报名
   p = env.openPage('pages/me/index', {});
@@ -307,6 +318,29 @@ async function clientTests() {
     ok(q.data.registered, '同步返回前注册成功');
     await new Promise((r) => setTimeout(r, 150));
     ok(q.data.registered && !!e4.wx.__storage.sx_member, '迟到的旧快照没有覆盖注册状态');
+  }
+
+  // 云端一场活动都没有：第一次等返回时显示占位块，之后回到这一页直接显示「敬请期待」，不再闪占位块
+  {
+    const c5 = createCloud();
+    const api5 = c5.load('api');
+    const wxc = { init() {}, callFunction(o) { return c5.run(() => api5.main(o.data)).then((result) => ({ result: result })); } };
+    const e5 = createEnv({ wx: { cloud: wxc } });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', subscribeTemplateId: 'tmpl', sampleEvents: false });
+    e5.launch();
+    const q = e5.openPage('pages/events/index', {});
+    ok(q.data.loading && !q.data.hasUpcoming, '第一次取活动、还没返回：显示占位块');
+    await tick();
+    ok(!q.data.loading && !q.data.hasUpcoming, '云端没有活动：显示「敬请期待」');
+    eq(q.data.empty.title, '敬请期待', '空状态的文案');
+    q.onShow();
+    ok(!q.data.loading, '再回到这一页：不再显示占位块');
+    await tick();
+    c5.state.data.events = [{ _id: 'new', type: '赛事', title: '新活动', status: 'published', date: new Date(c5.state.now + 5 * DAY) }];
+    q.onShow();
+    ok(!q.data.loading && !q.data.hasUpcoming, '后台新增了活动、还没取回来：先显示上次的结果');
+    await tick();
+    eq(q.data.upcoming.map((e) => e.id), ['new'], '取回来以后显示新活动');
   }
 
   // 换设备（本机没有缓存）：启动时从云端同步回来

@@ -1,13 +1,20 @@
-<!-- 分段选择：选中为深蓝底白字。field 是 input 的字段名，value 是当前值 -->
+<!--
+  分段选择：选中为深蓝底白字。field 是 input 的字段名，value 是当前值，on 是当前值的序号。
+  三层叠在一起：最下面每个选项一块白底，中间一块深蓝底随选中项滑动，最上面是可点的文字。
+-->
 <template name="fuel-seg">
-  <view class="fuel-seg fuel-seg--{{cols}}">
-    <view wx:for="{{options}}" wx:key="label" class="fuel-seg__btn sx-pressable {{item.value === value ? 'fuel-seg__btn--on' : ''}}" hover-class="sx-press" data-field="{{field}}" data-index="{{index}}" bindtap="onPick">{{item.label}}</view>
+  <view class="fuel-seg">
+    <view class="fuel-seg__track fuel-seg--{{cols}}"><view wx:for="{{options}}" wx:key="label" class="fuel-seg__slot"></view></view>
+    <view class="fuel-seg__ind fuel-seg__ind--{{cols}}" style="transform: translateX(calc({{on}} * (100% + 12rpx)))"></view>
+    <view class="fuel-seg__btns fuel-seg--{{cols}}">
+      <view wx:for="{{options}}" wx:key="label" class="fuel-seg__btn sx-pressable {{item.value === value ? 'fuel-seg__btn--on' : ''}}" hover-class="sx-press" data-field="{{field}}" data-index="{{index}}" bindtap="onPick">{{item.label}}</view>
+    </view>
   </view>
 </template>
 
 <view class="page sx-tab-page" style="--sx-safe-top: {{safeTop}}px">
   <view class="fuel-header sx-in">
-    <view class="fuel-header__photo sx-photo"><image class="sx-photo__img fuel-header__img" src="{{photo}}" mode="aspectFill" /></view>
+    <view class="fuel-header__photo sx-photo"><image class="sx-photo__img fuel-header__img sx-img-fade {{loaded.head ? '' : 'sx-img-wait'}}" data-img="head" bindload="onImgLoad" binderror="onImgLoad" src="{{photo}}" mode="aspectFill" /></view>
     <view class="fuel-header__shade"></view>
     <view class="fuel-header__text">
       <text class="sx-eyebrow fuel-header__eyebrow">FUEL PLAN</text>
@@ -21,11 +28,11 @@
     <view class="fuel-card__head"><text class="fuel-card__no sx-num">01</text><text class="fuel-card__title">这场运动</text></view>
     <view class="fuel-row">
       <text class="fuel-row__label">项目</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'sport', options: sports, value: input.sport, cols: 4}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'sport', options: sports, value: input.sport, on: on.sport, cols: 4}}" /></view>
     </view>
     <view wx:if="{{showScene}}" class="fuel-row">
       <text class="fuel-row__label">场景</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'scene', options: scenes, value: input.scene, cols: 3}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'scene', options: scenes, value: input.scene, on: on.scene, cols: 3}}" /></view>
     </view>
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">预计时长</text>
@@ -56,11 +63,11 @@
     </view>
     <view class="fuel-row">
       <text class="fuel-row__label">咖啡因</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'caffeineSensitive', options: caffeines, value: input.caffeineSensitive, cols: 2}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'caffeineSensitive', options: caffeines, value: input.caffeineSensitive, on: on.caffeineSensitive, cols: 2}}" /></view>
     </view>
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">用胶经验</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'firstTime', options: experiences, value: input.firstTime, cols: 2}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'firstTime', options: experiences, value: input.firstTime, on: on.firstTime, cols: 2}}" /></view>
     </view>
   </view>
 
@@ -69,11 +76,11 @@
     <view class="fuel-card__head"><text class="fuel-card__no sx-num">03</text><text class="fuel-card__title">当天</text></view>
     <view class="fuel-row">
       <text class="fuel-row__label">出发时间</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'start', options: starts, value: input.start, cols: 3}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'start', options: starts, value: input.start, on: on.start, cols: 3}}" /></view>
     </view>
     <view class="fuel-row fuel-row--last">
       <text class="fuel-row__label">天气</text>
-      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'hot', options: weathers, value: input.hot, cols: 2}}" /></view>
+      <view class="fuel-row__main"><template is="fuel-seg" data="{{field: 'hot', options: weathers, value: input.hot, on: on.hot, cols: 2}}" /></view>
     </view>
   </view>
 
@@ -83,7 +90,7 @@
       <view class="fuel-result__top">
         <view class="fuel-result__count">
           <text class="fuel-result__word">这场带</text>
-          <text class="fuel-result__total sx-num">{{plan.total}}</text>
+          <text wx:for="{{[plan.total]}}" wx:key="*this" class="fuel-result__total fuel-roll sx-num">{{item}}</text>
           <text class="fuel-result__word">支</text>
         </view>
         <view class="fuel-legend">
@@ -95,28 +102,28 @@
       <view class="fuel-stats">
         <view class="fuel-stat">
           <text class="fuel-stat__label">总碳水</text>
-          <view class="fuel-stat__value"><text class="fuel-stat__num sx-num">{{plan.totalCarb}}</text><text class="fuel-stat__unit">g</text></view>
+          <view class="fuel-stat__value"><text wx:for="{{[plan.totalCarb]}}" wx:key="*this" class="fuel-stat__num fuel-roll sx-num">{{item}}</text><text class="fuel-stat__unit">g</text></view>
         </view>
         <view class="fuel-stat fuel-stat--next">
           <text class="fuel-stat__label">咖啡因</text>
-          <view class="fuel-stat__value"><text class="fuel-stat__num sx-num">{{plan.caffeineMg}}</text><text class="fuel-stat__unit">mg</text></view>
+          <view class="fuel-stat__value"><text wx:for="{{[plan.caffeineMg]}}" wx:key="*this" class="fuel-stat__num fuel-roll sx-num">{{item}}</text><text class="fuel-stat__unit">mg</text></view>
         </view>
         <view class="fuel-stat fuel-stat--next">
           <text class="fuel-stat__label">能量</text>
-          <view class="fuel-stat__value"><text class="fuel-stat__num sx-num">{{plan.kcal}}</text><text class="fuel-stat__unit">千卡</text></view>
+          <view class="fuel-stat__value"><text wx:for="{{[plan.kcal]}}" wx:key="*this" class="fuel-stat__num fuel-roll sx-num">{{item}}</text><text class="fuel-stat__unit">千卡</text></view>
         </view>
       </view>
 
       <!-- 时间轴：开始前的那支在 0%，出发点在 8%，结束在 100% -->
       <view class="fuel-line">
         <view class="fuel-line__track"></view>
-        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}}" style="left: {{item.position}}%"></view>
+        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}} {{active === index ? 'fuel-line__dot--active' : ''}}" style="left: {{item.position}}%"></view>
         <text class="fuel-line__start">出发</text>
         <text class="fuel-line__end">{{plan.durationLabel}}</text>
       </view>
 
       <view class="fuel-cells">
-        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-cell sx-pop {{item.gel ? 'fuel-cell--gel' : ''}}">
+        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-cell sx-pop {{item.gel ? 'fuel-cell--gel' : ''}} {{active === index ? 'fuel-cell--active' : ''}}" data-index="{{index}}" bindtap="onFocus">
           <text class="fuel-cell__time">{{item.label}}</text>
           <text class="fuel-cell__name">{{item.productName}}</text>
         </view>

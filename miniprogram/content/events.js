@@ -2,6 +2,11 @@
 module.exports = {
   "_note": "past 是电商页上列出的真实赛事。upcoming 是三种卡片样式的示例，方括号内全部是占位，上线后由后台或配置提供。",
   "types": ["赛事", "试用装", "抽奖"],
+  "empty": {
+    "_note": "「即将开始」里没有活动时显示。文案由项目方给定。配图沿用赛事卡片的照片和海拔线。",
+    "title": "敬请期待",
+    "image": "assets/photos/web/trail-sunset.jpg", "graphic": "assets/graphics/ridge-line.svg"
+  },
   "upcoming": [
     {
       "style": "poster", "type": "赛事", "tag": "会员优先报名",

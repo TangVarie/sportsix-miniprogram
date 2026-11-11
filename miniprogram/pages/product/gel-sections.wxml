@@ -7,7 +7,7 @@
   <view class="pd-sub pd-sources__sub">{{s.sources.sub}}</view>
   <view class="pd-radar pd-radar--5 sx-rise">
     <image class="pd-radar__chart" src="{{s.sources.graphic}}" />
-    <image class="pd-radar__pack pd-radar__pack--5" src="{{packImage}}" mode="heightFix" />
+    <image class="pd-radar__pack pd-radar__pack--5 sx-img-fade {{loaded.radarPack ? '' : 'sx-img-wait'}}" data-img="radarPack" bindload="onImgLoad" binderror="onImgLoad" src="{{packImage}}" mode="heightFix" />
   </view>
 </view>
 

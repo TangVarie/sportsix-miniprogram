@@ -71,6 +71,7 @@
 .ed-bar__btns { display: flex; gap: 23rpx; }
 .ed-btn { display: flex; align-items: center; justify-content: center; gap: 12rpx; box-sizing: border-box; height: 100rpx; border-radius: 50rpx; font-size: 31rpx; color: #010439; }
 .ed-btn--ghost { flex: 1; border: 3rpx solid #010439; background: #FFFFFF; font-weight: 700; }
-.ed-btn--done { border-color: #F5F5F5; background: #F5F5F5; color: #5E6170; }
+/* 已设提醒、已报名：换成灰色时弹一下 */
+.ed-btn--done { border-color: #F5F5F5; background: #F5F5F5; color: #5E6170; animation: sxPop .3s ease-out; }
 .ed-btn--primary { flex: 1.4; background: #C2E541; font-weight: 900; }
 .ed-btn__icon { display: block; width: 38rpx; height: 38rpx; }

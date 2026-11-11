@@ -2,7 +2,7 @@
 
 <view class="pd-banner pd-banner--gel js-dark">
   <view class="pd-banner__photo sx-photo">
-    <image class="sx-photo__img pd-banner__img--gel" src="{{s.howTo.banner.image}}" mode="aspectFill" />
+    <image class="sx-photo__img pd-banner__img--gel sx-img-fade {{loaded.banner ? '' : 'sx-img-wait'}}" data-img="banner" bindload="onImgLoad" binderror="onImgLoad" src="{{s.howTo.banner.image}}" mode="aspectFill" />
   </view>
   <view class="pd-banner__text">
     <text class="sx-eyebrow pd-eyebrow--lime">{{s.howTo.banner.eyebrow}}</text>

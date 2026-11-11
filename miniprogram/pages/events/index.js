@@ -1,6 +1,6 @@
 const events = require('../../utils/events.js');
 const store = require('../../utils/store.js');
-const { baseData, selectTab, go, navTone, headerTone } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, headerTone, imgLoaded } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 Page({
@@ -8,9 +8,17 @@ Page({
     arc: assetUrl('assets/graphics/events-header-arc.svg'),
     tab: 'upcoming',
     hasUpcoming: false,
+    // 第一次从云端取活动、还没返回
+    loading: false,
+    empty: events.getEmpty(),
     upcoming: [],
     past: []
   }),
+
+  /** 图片加载完（或加载失败）：让它淡入 */
+  onImgLoad(e) {
+    imgLoaded(this, e);
+  },
 
   onLoad() {
     this.setData(baseData());
@@ -28,8 +36,12 @@ Page({
   onShow() {
     selectTab(this, 2);
     // 提醒状态可能在详情页里变了，每次显示都重读；再从云端取一次最新的活动
+    if (events.isFirstLoad()) this.setData({ loading: true });
     this.render();
-    events.refresh().then((changed) => { if (changed) this.render(); });
+    events.refresh().then((changed) => {
+      if (changed) this.render();
+      if (this.data.loading) this.setData({ loading: false });
+    });
   },
 
   onUnload() {
@@ -39,10 +51,8 @@ Page({
   /** 按缓存里的活动和提醒状态重画列表 */
   render() {
     const upcoming = events.listUpcoming().map((e) => Object.assign({}, e, { reminded: events.hasReminder(e.id) }));
-    const hasUpcoming = upcoming.length > 0;
-    // 没有活动时「即将开始」分页隐藏，只看往期；有了活动再回到默认分页
-    const tab = hasUpcoming ? (this.data.hasUpcoming ? this.data.tab : 'upcoming') : 'past';
-    this.setData({ upcoming: upcoming, hasUpcoming: hasUpcoming, tab: tab });
+    // 没有活动时「即将开始」里显示「敬请期待」
+    this.setData({ upcoming: upcoming, hasUpcoming: upcoming.length > 0 });
   },
 
   onTab(e) {

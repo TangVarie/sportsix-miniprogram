@@ -63,7 +63,7 @@
     </view>
 
     <view class="me-menu sx-rise" style="animation-delay: .5s">
-      <view wx:for="{{me.menu}}" wx:key="icon" class="me-menu__row {{index < me.menu.length - 1 ? 'me-menu__row--line' : ''}}" data-key="{{item.icon}}" bindtap="onMenu">
+      <view wx:for="{{menu}}" wx:key="icon" class="me-menu__row {{index < menu.length - 1 ? 'me-menu__row--line' : ''}}" data-key="{{item.icon}}" bindtap="onMenu">
         <image class="me-menu__icon" src="/assets/icons/{{item.icon}}-blue.svg" />
         <text class="me-menu__text">{{item.text}}</text>
         <image class="me-menu__arrow" src="/assets/icons/chevron-grey.svg" />
@@ -77,10 +77,10 @@
       <view class="me-join__lines" />
       <image class="me-join__arc" src="{{joinArc}}" />
       <view class="me-join__pack me-join__pack--pro sx-float" style="animation-duration: 6s; animation-delay: .8s">
-        <image class="me-join__pack-img me-join__pack-img--pro" src="{{packPro}}" mode="heightFix" />
+        <image class="me-join__pack-img me-join__pack-img--pro sx-img-fade {{loaded.packPro ? '' : 'sx-img-wait'}}" data-img="packPro" bindload="onImgLoad" binderror="onImgLoad" src="{{packPro}}" mode="heightFix" />
       </view>
       <view class="me-join__pack me-join__pack--gel sx-float">
-        <image class="me-join__pack-img me-join__pack-img--gel" src="{{packGel}}" mode="heightFix" />
+        <image class="me-join__pack-img me-join__pack-img--gel sx-img-fade {{loaded.packGel ? '' : 'sx-img-wait'}}" data-img="packGel" bindload="onImgLoad" binderror="onImgLoad" src="{{packGel}}" mode="heightFix" />
       </view>
       <view class="me-join__title">
         <image class="me-join__wordmark sx-rise" src="{{wordmark}}" />

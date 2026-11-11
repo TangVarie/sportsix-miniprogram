@@ -11,7 +11,7 @@
       <text class="pd-hero__ghost sx-num">{{nameEn}}</text>
       <image class="pd-hero__arc-img" src="{{heroArc}}" />
       <view class="pd-hero__pack pd-hero__pack--pro sx-float">
-        <image class="pd-hero__img pd-hero__img--pro" src="{{p.image}}" mode="heightFix" />
+        <image class="pd-hero__img pd-hero__img--pro sx-img-fade {{loaded.heroPro ? '' : 'sx-img-wait'}}" data-img="heroPro" bindload="onImgLoad" binderror="onImgLoad" src="{{p.image}}" mode="heightFix" />
       </view>
     </block>
     <block wx:else>
@@ -25,10 +25,10 @@
       <!-- 切换口味时 key 变化，节点重建，弹出动效重新播放 -->
       <view wx:for="{{packs}}" wx:key="key" class="pd-hero__packs sx-pop">
         <view class="pd-hero__pack pd-hero__pack--back sx-float" style="animation-duration: 6s; animation-delay: .8s">
-          <image class="pd-hero__img pd-hero__img--back" src="{{item.back}}" mode="heightFix" />
+          <image class="pd-hero__img pd-hero__img--back sx-img-fade {{loaded.heroBack ? '' : 'sx-img-wait'}}" data-img="heroBack" bindload="onImgLoad" binderror="onImgLoad" src="{{item.back}}" mode="heightFix" />
         </view>
         <view class="pd-hero__pack pd-hero__pack--front sx-float">
-          <image class="pd-hero__img pd-hero__img--front" src="{{item.front}}" mode="heightFix" />
+          <image class="pd-hero__img pd-hero__img--front sx-img-fade {{loaded.heroFront ? '' : 'sx-img-wait'}}" data-img="heroFront" bindload="onImgLoad" binderror="onImgLoad" src="{{item.front}}" mode="heightFix" />
         </view>
       </view>
     </block>

@@ -2,7 +2,7 @@
 
 <view class="pd-banner pd-banner--pro js-dark">
   <view class="pd-banner__photo sx-photo">
-    <image class="sx-photo__img pd-banner__img--pro" src="{{s.guide.banner.image}}" mode="aspectFill" />
+    <image class="sx-photo__img pd-banner__img--pro sx-img-fade {{loaded.banner ? '' : 'sx-img-wait'}}" data-img="banner" bindload="onImgLoad" binderror="onImgLoad" src="{{s.guide.banner.image}}" mode="aspectFill" />
   </view>
   <view class="pd-banner__fade"></view>
 </view>

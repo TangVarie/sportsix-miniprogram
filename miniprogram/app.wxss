@@ -86,6 +86,19 @@ page {
 .sx-in .sx-grow-y { transform-origin: center bottom; animation: sxGrowY .9s cubic-bezier(.2, .7, .2, 1) .2s both; }
 .sx-in .sx-pop { animation: sxPop .3s ease-out both; }
 .sx-float { animation: sxFloat 5s ease-in-out infinite alternate; }
+
+/*
+ * 图片加载完再淡入（utils/page.js 的 imgLoaded）。
+ * sx-img-wait 用一段动画把图片先藏住：加载完成后去掉这个类，透明度回到它本来的值，由 sx-img-fade 的过渡带出来。
+ * 动画自己会在 6 秒后结束并显示图片，加载事件没来也不会一直藏着；开了「减少动态效果」时不藏，直接显示。
+ */
+.sx-img-fade { transition: opacity .4s ease; }
+.sx-img-wait { animation: sxImgHold 6s linear both; }
+@keyframes sxImgHold { from, 99% { opacity: 0; } to { opacity: 1; } }
+
+/* 加载中的占位块：一明一暗 */
+.sx-skeleton { background: var(--sx-grey); animation: sxSkeleton 1.1s ease-in-out infinite alternate; }
+@keyframes sxSkeleton { from { opacity: 1; } to { opacity: .45; } }
 .sx-glow { animation: sxGlow 2.8s ease-in-out infinite alternate; }
 
 /* 场景照片压成深蓝单色：外层深蓝底，照片去色、提高对比后以 screen 叠上去。透明度按设计稿在各处单独写。 */
