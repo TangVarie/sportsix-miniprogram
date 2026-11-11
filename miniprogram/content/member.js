@@ -1,6 +1,6 @@
 // 由 tools/sync-content.js 从 reference/content/member.json 生成，不要手改。
 module.exports = {
-  "_note": "会员权益是常规项，规则后续补充；权益下面的一句话说明是设计写的，规则定了再改。注册只取微信身份和手机号。",
+  "_note": "会员权益是常规项，规则后续补充；权益下面的一句话说明是设计写的，规则定了再改。注册只取微信身份和手机号。注册按钮原文是「微信手机号一键注册」，平台审核不允许手机号验证的前置页面出现「微信」字样，已去掉。",
   "join": {
     "eyebrow": "MEMBER",
     "title": ["成为", "SPORTSIX", "会员"],
@@ -10,11 +10,11 @@ module.exports = {
       { "icon": "star", "title": "积分", "body": "参与活动累积积分" },
       { "icon": "ticket", "title": "抽奖", "body": "会员专享抽奖" }
     ],
-    "button": "微信手机号一键注册",
+    "button": "手机号一键注册",
     "agreement": "我已阅读并同意《用户协议》《隐私政策》"
   },
   "me": {
-    "profile": { "nickname": "[微信昵称]", "phone": "[手机号]" },
+    "profile": { "nickname": "[昵称]", "phone": "[手机号]" },
     "card": { "memberNo": "会员编号 [会员编号]", "pointsLabel": "积分", "points": "[积分]" },
     "perksTitle": "会员权益",
     "perks": ["优先报名", "试用装", "积分", "抽奖"],
