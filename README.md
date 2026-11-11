@@ -35,7 +35,7 @@ npm run assets
 - `cloudEnv`：微信云开发的环境 ID。留空时会员、提醒、补给计划只存在本机，用来看页面状态；填了以后走云开发。开通和部署步骤见 `cloudfunctions/README.md`。
 - `subscribeTemplateId`：「活动开始提醒」订阅消息模板 ID。
 - `sampleEvents`：已经是 `false`，显示云数据库 `events` 集合里的活动，没有活动时显示「敬请期待」。改成 `true` 可以看三种活动卡片的占位示例，对照设计稿用。
-- `reference/content/legal.json` 的 `fill`：用户协议和隐私政策里的联系方式还是占位，待补。正文上线前请法务审阅。
+- `reference/content/legal.json`：用户协议和隐私政策的正文，主体信息已填。上线前请法务审阅。
 
 工程约定（目录、样式、动效、状态栏等）写在 `CLAUDE.md` 末尾。
 

@@ -82,9 +82,14 @@ async function functionTests() {
   eq(cloud.state.sent[0].touser, 'user-a', '发给设了提醒的人');
   eq(cloud.state.sent[0].templateId, 'tmpl', '用登记时的模板');
   eq(cloud.state.sent[0].page, 'pages/event-detail/index?id=race', '点消息进活动详情');
-  eq(Object.keys(cloud.state.sent[0].data).length, 3, '消息有三个字段：活动名称、开始时间、温馨提示');
-  eq(cloud.state.sent[0].data.thing1.value, '春季路跑', '活动名称');
-  ok(/^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/.test(cloud.state.sent[0].data.time2.value), '开始时间的格式');
+  const msg = cloud.state.sent[0].data;
+  eq(Object.keys(msg).sort(), ['thing1', 'thing4', 'thing8', 'time3', 'time7'], '消息带齐模板的五个字段');
+  eq(msg.thing1.value, '春季路跑', '活动名称');
+  eq(msg.thing4.value, '报名已开放', '温馨提示');
+  eq(msg.thing8.value, '上海 滨江', '活动地点');
+  const timeRe = /^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/;
+  ok(timeRe.test(msg.time7.value) && timeRe.test(msg.time3.value) && msg.time7.value !== msg.time3.value, '开始时间和截止时间');
+  ok(Object.keys(msg).every((k) => msg[k].value && msg[k].value.length <= 20), '每个字段都有值且不超长');
   eq(await cloud.run(() => remind.main()), { sent: 0, failed: 0 }, '不重复发');
   eq((await call('bootstrap')).data.reminders, [], '发过的提醒不再算「已设提醒」');
 
@@ -157,6 +162,8 @@ async function remindTests() {
   const results = await cloud.run(() => Promise.all([remind.main(), remind.main()]));
   eq(results[0].sent + results[1].sent, 2, '两次执行重叠：每条提醒只发一次');
   eq(cloud.state.sent.map((m) => m.touser).sort(), ['u1', 'u2'], '排在 100 场以后的活动也检查到了');
+  const bare = cloud.state.sent[0].data; // 这些活动没填地点和报名截止时间
+  ok(bare.thing8.value === '详见活动详情' && bare.time3.value === bare.time7.value, '没填地点、截止时间时用兜底值，字段不为空');
   eq(cloud.col('reminders').filter((r) => r.status === 'sent').length, 2, '发完记成 sent');
   ok(cloud.col('reminders').find((r) => r._id === 'u1_old5').sent === false, '活动日期已过的不发');
 }
