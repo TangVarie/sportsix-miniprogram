@@ -7,6 +7,7 @@ const path = require('path');
 const { renderFile, readWxss, wxssToCss } = require('./wxml.js');
 
 const ROOT = path.resolve(__dirname, '../../miniprogram');
+const LOCAL_ASSETS = 'http://127.0.0.1:8787';
 
 function setByPath(obj, key, value) {
   const parts = key.replace(/\[(\d+)\]/g, '.$1').split('.');
@@ -118,6 +119,8 @@ function createEnv(opts) {
   opts = opts || {};
   clearCache();
   const wx = createWx(opts);
+  // 预览时素材固定用本地资源服务，不依赖线上的云存储
+  require(path.join(ROOT, 'config.js')).assetBase = opts.assetBase || LOCAL_ASSETS;
   const appJson = readJson(path.join(ROOT, 'app.json'));
   const css = [wxssToCss(readWxss(path.join(ROOT, 'app.wxss')))];
   const cssSeen = new Set();
@@ -251,4 +254,4 @@ function createEnv(opts) {
   return env;
 }
 
-module.exports = { createEnv, ROOT };
+module.exports = { createEnv, ROOT, LOCAL_ASSETS };

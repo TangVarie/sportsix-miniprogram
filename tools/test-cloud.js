@@ -353,7 +353,84 @@ async function clientTests() {
   ok(p.data.registered && p.data.plan.saved, '同步完成后页面自动刷新成会员状态');
 }
 
+/** 字体：资源在云存储时走「下载到本机 → Data URL」，不依赖跨域许可；任何一步失败都退回 https 地址 */
+async function fontTests() {
+  const path = require('path');
+  const { createEnv, ROOT } = require('./preview/runtime.js');
+  const CDN = 'https://636c-test-env-1500000000.tcb.qcloud.la';
+  const tick = () => new Promise((r) => setTimeout(r, 20));
+  const FONT_FILES = ['barlow-condensed-latin-700-italic.woff2', 'barlow-condensed-latin-800-italic.woff2', 'barlow-condensed-latin-700-normal.woff2'];
+
+  function launch(opts) {
+    const files = opts.files;                 // 本机文件：路径 → base64
+    const downloads = [];
+    const attempts = [];                      // dataUrlFails 时：每次 loadFontFace 的 source
+    const loaded = [];                        // dataUrlFails 时：加载成功的
+    const wxExtra = {
+      env: { USER_DATA_PATH: 'wxfile://usr' },
+      getFileSystemManager: () => ({
+        readFile(o) { if (o.filePath in files) o.success({ data: files[o.filePath] }); else o.fail({ errMsg: 'no such file' }); },
+        copyFile(o) { files[o.destPath] = files[o.srcPath]; },
+        unlink(o) { delete files[o.filePath]; }
+      }),
+      cloud: {
+        init() {},
+        callFunction: () => Promise.resolve({ result: { ok: true, data: { member: null, plan: null, reminders: [], signups: [] } } }),
+        downloadFile(o) {
+          downloads.push(o.fileID);
+          if (opts.downloadFails) return Promise.reject({ errMsg: 'downloadFile:fail' });
+          const tmp = 'wxfile://tmp/' + downloads.length;
+          files[tmp] = 'QkFTRTY0';
+          return Promise.resolve({ tempFilePath: tmp });
+        }
+      }
+    };
+    if (opts.dataUrlFails) {
+      // 模拟「Data URL 的字体内容是坏的」：这种 source 一律加载失败
+      wxExtra.loadFontFace = (o) => {
+        attempts.push(o.source);
+        if (o.source.indexOf('data:') >= 0) { o.fail({ status: 'error' }); return; }
+        loaded.push(o);
+      };
+    }
+    const env = createEnv({ wx: wxExtra, assetBase: opts.assetBase || CDN });
+    Object.assign(require(path.join(ROOT, 'config.js')), { cloudEnv: 'test-env', sampleEvents: false });
+    env.launch();
+    return { env: env, downloads: downloads, attempts: attempts, loaded: loaded };
+  }
+
+  const files = {};
+  let r = launch({ files: files });
+  await tick();
+  eq(r.env.wx.__fonts.length, 3, '三个字重都交给 loadFontFace');
+  ok(r.env.wx.__fonts.every((f) => f.source === 'url("data:font/woff2;base64,QkFTRTY0")' && f.global && f.family === 'Barlow Condensed'), '云存储的字体以 Data URL 加载');
+  eq(r.downloads[0], 'cloud://test-env.636c-test-env-1500000000/assets/fonts/barlow-condensed-latin-700-italic.woff2', '云文件 ID 由环境 ID 和资源域名拼出');
+  eq(r.env.wx.__fonts.map((f) => f.desc.style + f.desc.weight).sort(), ['italic700', 'italic800', 'normal700'], '字重和样式');
+
+  r = launch({ files: files });
+  await tick();
+  ok(r.downloads.length === 0 && r.env.wx.__fonts.length === 3, '第二次启动读本机缓存，不再下载');
+
+  r = launch({ files: {}, downloadFails: true });
+  await tick();
+  ok(r.env.wx.__fonts.length === 3 && r.env.wx.__fonts.every((f) => f.source.startsWith('url("' + CDN + '/assets/fonts/')), '下载失败时退回 https 地址');
+
+  // 本机缓存的内容坏了：Data URL 加载失败后删掉缓存，改用 https 地址再试一次
+  const broken = {};
+  FONT_FILES.forEach((name) => { broken['wxfile://usr/sx-' + name] = 'QlJPS0VO'; });
+  r = launch({ files: broken, dataUrlFails: true });
+  await tick();
+  eq(r.attempts.filter((s) => s.indexOf('data:') >= 0).length, 3, '先试本机缓存的 Data URL');
+  ok(r.loaded.length === 3 && r.loaded.every((f) => f.source.startsWith('url("' + CDN + '/assets/fonts/')), 'Data URL 加载失败后改用 https 地址');
+  eq(Object.keys(broken).filter((k) => k.indexOf('wxfile://usr/') === 0).length, 0, '坏掉的缓存被删掉，下次启动重新下载');
+
+  r = launch({ files: {}, assetBase: 'http://127.0.0.1:8787' });
+  await tick();
+  ok(r.downloads.length === 0 && r.env.wx.__fonts.every((f) => f.source.startsWith('url("http://127.0.0.1:8787/assets/fonts/')), '资源不在云存储时直接用地址加载');
+}
+
 (async () => {
+  await fontTests();
   await functionTests();
   await signupFailureTests();
   await remindTests();

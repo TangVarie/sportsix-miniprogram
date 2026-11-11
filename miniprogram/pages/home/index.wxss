@@ -89,10 +89,11 @@
 .hm-specs { display: flex; flex-direction: column; padding: 38rpx 38rpx 46rpx; }
 .hm-specs__row { display: flex; align-items: center; gap: 31rpx; padding: 35rpx 0; }
 .hm-specs__row--rule { border-bottom: 1px solid #E6E6E7; }
-.hm-specs__num { flex-shrink: 0; display: flex; align-items: baseline; gap: 8rpx; width: 246rpx; }
+/* 数字一栏至少 246rpx（设计稿的宽度）；字体没加载出来、数字变宽时这一栏跟着变宽，把右边的文字往右推，不压上去 */
+.hm-specs__num { flex-shrink: 0; display: flex; align-items: baseline; gap: 8rpx; min-width: 246rpx; white-space: nowrap; }
 .hm-specs__value { font-size: 100rpx; line-height: 104rpx; color: #061A70; }
 .hm-specs__unit { font-size: 31rpx; line-height: normal; color: #061A70; }
-.hm-specs__text { display: flex; flex-direction: column; gap: 4rpx; }
+.hm-specs__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .hm-specs__title { font-size: 31rpx; line-height: 46rpx; font-weight: 700; color: #010439; }
 .hm-specs__body { font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
 

@@ -2,8 +2,10 @@
  * 运行配置。
  *
  * assetBase       图片、视频、字体的统一资源前缀，后面直接拼 content 里的 `assets/...` 路径。
- *                 开发时用本地资源服务（仓库根目录 `npm run assets`，并在开发者工具里勾选「不校验合法域名」）。
- *                 上线前把仓库里的 assets/ 传到 CDN 或云存储，换成 https 地址，并把域名加进小程序的合法域名。
+ *                 现在是云存储的地址（云开发控制台「存储」里文件下载地址的开头那一段）。
+ *                 改了素材要重新上传：npm run cdn 挑出用到的文件，再传到云存储的 assets/ 下。
+ *                 想用本地素材调试时，临时改成 'http://127.0.0.1:8787'，在仓库根目录跑 npm run assets，
+ *                 并在开发者工具里勾选「不校验合法域名」。
  * cloudEnv        微信云开发的环境 ID。填了就走云开发：会员、报名、提醒、补给计划、活动都经云函数 api 读写；
  *                 留空时只存在本机，用来在没有云环境时看页面状态（不取手机号、不发订阅消息）。
  *                 部署步骤见 cloudfunctions/README.md。
@@ -14,7 +16,7 @@
  *                 定了以后做好对应的页面或弹层，再改成 true。
  */
 module.exports = {
-  assetBase: 'http://127.0.0.1:8787',
+  assetBase: 'https://636c-cloud1-d1g1u97accc6092f6-1529732437.tcb.qcloud.la',
   cloudEnv: 'cloud1-d1g1u97accc6092f6',
   subscribeTemplateId: 'APVCkWz7HLHIurWipctjacSf6Ii9nKuLuNuv7JsqrmQ',
   sampleEvents: false,

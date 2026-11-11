@@ -23,7 +23,8 @@ page {
   --sx-radius-panel: 35rpx;
   --sx-btn-h: 100rpx;
   --sx-tabbar-h: 123rpx;
-  --sx-font-num: 'Barlow Condensed', -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  /* Barlow Condensed 没加载出来时，先退到系统里的窄体字（iOS 的 Avenir Next Condensed / DIN Condensed，安卓的 sans-serif-condensed），宽度接近，版面不至于被撑开 */
+  --sx-font-num: 'Barlow Condensed', 'Avenir Next Condensed', 'DIN Condensed', 'sans-serif-condensed', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
   /* 状态栏高度，由页面根节点的 style 覆盖 */
   --sx-safe-top: 0px;
 }

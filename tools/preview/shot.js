@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { createEnv, ROOT } = require('./runtime.js');
+const { createEnv, ROOT, LOCAL_ASSETS } = require('./runtime.js');
 const { staticHandler, serveAssets } = require('../serve-assets.js');
 
 function args() {
@@ -50,7 +50,7 @@ async function main() {
 
   // 服务：资源（8787，若已在运行则复用）和页面（随机端口）
   const config = require(path.join(ROOT, 'config.js'));
-  const assetPort = parseInt(new URL(config.assetBase).port || '80', 10);
+  const assetPort = parseInt(new URL(LOCAL_ASSETS).port, 10);
   let assetServer = null;
   try { assetServer = await serveAssets(assetPort); } catch (e) { if (e.code !== 'EADDRINUSE') throw e; }
   const files = staticHandler([{ prefix: '/', dir: ROOT + path.sep }]);
