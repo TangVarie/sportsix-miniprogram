@@ -105,6 +105,8 @@ const actions = {
       if (!event.input || typeof event.input[k] !== PLAN_KEYS[k]) throw fail('bad_input');
       input[k] = event.input[k];
     }
+    // 天气是后加的输入，旧版本的小程序不会带
+    if (typeof event.input.weather === 'string') input.weather = event.input.weather;
     const r = event.result || {};
     const result = { total: Number(r.total) || 0, gelCount: Number(r.gelCount) || 0, proCount: Number(r.proCount) || 0 };
     await db.collection('plans').doc(openid).set({ data: { openid: openid, input: input, result: result, savedAt: db.serverDate() } });

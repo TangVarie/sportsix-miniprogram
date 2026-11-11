@@ -1,4 +1,4 @@
-const { planFuel, SPORTS, SCENES, STARTS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
+const { planFuel, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
 const messages = require('../../content/messages.js');
 const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick } = require('../../utils/page.js');
@@ -17,7 +17,7 @@ const OPTIONS = {
   start: byKey(STARTS),
   caffeineSensitive: [{ value: false, label: '正常' }, { value: true, label: '敏感' }],
   firstTime: [{ value: false, label: '用过' }, { value: true, label: '第一次' }],
-  hot: [{ value: false, label: '常温' }, { value: true, label: '高温' }]
+  weather: byKey(WEATHERS)
 };
 
 /** 步进输入的范围 */
@@ -33,10 +33,14 @@ function normalize(raw) {
   Object.keys(DEFAULT_INPUT).forEach((k) => {
     input[k] = raw && raw[k] !== undefined && raw[k] !== null ? raw[k] : DEFAULT_INPUT[k];
   });
-  ['sport', 'scene', 'start'].forEach((k) => {
+  // 以前保存的计划只有 hot（高温与否），没有 weather：hot 为真的按高温处理
+  if ((!raw || raw.weather == null) && raw && raw.hot) input.weather = 'hot';
+  ['sport', 'scene', 'start', 'weather'].forEach((k) => {
     if (!OPTIONS[k].some((o) => o.value === input[k])) input[k] = DEFAULT_INPUT[k];
   });
-  ['caffeineSensitive', 'hot', 'firstTime'].forEach((k) => { input[k] = !!input[k]; });
+  ['caffeineSensitive', 'firstTime'].forEach((k) => { input[k] = !!input[k]; });
+  // hot 是旧字段，跟着 weather 走，保持两者一致
+  input.hot = input.weather === 'hot';
   ['minutes', 'kg'].forEach((k) => { input[k] = clamp(Number(input[k]) || DEFAULT_INPUT[k], RANGE[k]); });
   return input;
 }
@@ -99,7 +103,7 @@ Page({
     starts: OPTIONS.start,
     caffeines: OPTIONS.caffeineSensitive,
     experiences: OPTIONS.firstTime,
-    weathers: OPTIONS.hot
+    weathers: OPTIONS.weather
   }, view(normalize(DEFAULT_INPUT))),
 
   /** 图片加载完（或加载失败）：让它淡入 */
