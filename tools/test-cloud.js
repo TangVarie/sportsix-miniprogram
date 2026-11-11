@@ -70,6 +70,17 @@ async function functionTests() {
   eq(r.data.member.points, 500, '老会员补送注册积分');
   r = await call('bootstrap');
   eq(r.data.member.memberNo, '100002', '补发过的不再换号');
+
+  // 同一个老会员的两个请求同时进来：两边拿到同一个编号，和库里存的一致，积分只送一次
+  cloud.col('members').push({ _id: 'user-twice', openid: 'user-twice', phone: '13900009999', memberNo: null, points: 0, createdAt: new Date(cloud.state.now) });
+  cloud.state.openid = 'user-twice';
+  const both = await Promise.all([call('bootstrap'), call('bootstrap')]);
+  const kept = cloud.col('members').find((d) => d._id === 'user-twice');
+  eq(both.map((x) => x.data.member.memberNo), [kept.memberNo, kept.memberNo], '同时进来的两个请求拿到同一个编号');
+  ok(/^\d{6}$/.test(kept.memberNo), '编号已经发下来');
+  eq(both.map((x) => x.data.member.points), [500, 500], '同时进来也只送一次积分');
+  cloud.col('members').splice(cloud.col('members').findIndex((d) => d._id === 'user-twice'), 1);
+  cloud.state.openid = 'user-old';
   eq(r.data.member.points, 500, '补送过的不再送');
 
   eq((await call('setNickname', { nickname: '   ' })).code, 'bad_nickname', '昵称不能为空');

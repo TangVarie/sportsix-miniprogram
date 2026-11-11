@@ -53,7 +53,7 @@ cloudfunctions/
 
 | 集合 | `_id` | 字段 |
 |---|---|---|
-| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`memberNo`、`points`、`welcomeBonus`（已送过注册积分）、`createdAt` |
+| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
 | `events` 活动 | 自动 | 见下 |
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |

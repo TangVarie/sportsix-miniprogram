@@ -61,7 +61,9 @@ async function nextMemberNo() {
 /**
  * 把会员记录补齐：
  * - 没有编号的（编号规则定下来之前注册的，或注册时取号失败的）补发一个；
- * - 没领过注册积分的（送积分的规则定下来之前注册的）补送一次。用「还没有 welcomeBonus 标记」做更新条件，不会送两次。
+ * - 没领过注册积分的（送积分的规则定下来之前注册的）补送一次。
+ * 两样都用「还没有标记」做更新条件（numbered、welcomeBonus）：同一个会员的两个请求同时进来时只有一个写得进去，
+ * 另一个改用库里已经写好的那份，所以编号不会被后来的请求换掉，积分也不会送两次。没写进去的那个号空着不再用。
  * 补不上不影响别的功能，下次进入时再补。
  */
 async function ensureMember(member) {
@@ -71,8 +73,9 @@ async function ensureMember(member) {
     if (!m.memberNo) {
       const no = await nextMemberNo();
       if (no) {
-        await db.collection('members').doc(m._id).update({ data: { memberNo: no } });
-        m = Object.assign({}, m, { memberNo: no });
+        await db.collection('members').where({ _id: m._id, numbered: _.exists(false) })
+          .update({ data: { memberNo: no, numbered: true } });
+        m = await findById('members', m._id) || m;
       }
     }
     if (!m.welcomeBonus) {
@@ -164,7 +167,12 @@ const actions = {
       openid: openid, phone: info.purePhoneNumber, countryCode: info.countryCode || '', nickname: '',
       memberNo: null, points: WELCOME_POINTS, welcomeBonus: true, createdAt: db.serverDate()
     };
-    await db.collection('members').doc(openid).set({ data: doc });
+    // 用 add 而不是 set：同一个人的两个注册请求同时进来时，后到的那个写不进去，不会把先建好的记录（连同编号）盖掉
+    try {
+      await db.collection('members').add({ data: Object.assign({ _id: openid }, doc) });
+    } catch (e) {
+      if (!(await findById('members', openid))) throw e;
+    }
     return { member: memberView(await ensureMember(await findById('members', openid))) };
   },
 
