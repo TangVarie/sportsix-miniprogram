@@ -20,7 +20,7 @@ npm run assets
 
 | 命令 | 作用 |
 |---|---|
-| `npm test` | 补给公式测试，加文案是否已同步的检查 |
+| `npm test` | 补给公式测试、文案是否已同步、工程自检（页面文件、图标和资源路径、WXSS 禁用写法） |
 | `npm run content` | 由 `reference/content/*.json` 生成 `miniprogram/content/*.js` |
 | `npm run assets` | 本地资源服务，`http://127.0.0.1:8787/assets/...` |
 | `npm run size` | 包体积检查（单包上限 2M） |

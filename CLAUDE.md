@@ -101,6 +101,6 @@ tools/
 
 ### 检查
 
-- `npm test`：补给公式测试和 content 同步检查。
+- `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）。
 - `node tools/preview/shot.js --route pages/<页面>/index --compare design/screens/<截图>.png --out out/<名字>.png`：渲染并和设计稿并排对照，逐张看 `out/*-cmp-N.png`。`--do` 可以先调页面方法走到某个状态。
 - 预览只是近似，最终以微信开发者工具和真机为准。
