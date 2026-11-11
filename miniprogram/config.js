@@ -13,7 +13,7 @@
  */
 module.exports = {
   assetBase: 'http://127.0.0.1:8787',
-  cloudEnv: '',
+  cloudEnv: 'cloud1-d1g1u97accc6092f6',
   subscribeTemplateId: '',
   sampleEvents: true
 };

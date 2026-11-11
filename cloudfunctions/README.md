@@ -18,7 +18,7 @@ cloudfunctions/
 
 1. **AppID**：`project.config.json` 里已经填了正式 AppID。用这个小程序的管理员或开发者微信登录开发者工具。
 2. **开通云开发**：在微信开发者工具里点左上角「云开发」，创建环境，记下环境 ID。
-3. **填环境 ID**：`miniprogram/config.js` 的 `cloudEnv` 填上环境 ID。
+3. **环境 ID**：`miniprogram/config.js` 的 `cloudEnv` 已经填好（`cloud1-d1g1u97accc6092f6`）。
 4. **建集合**：在云开发控制台的数据库里新建五个集合：`members`、`events`、`signups`、`reminders`、`plans`。权限都设成「所有用户不可读写」（只有云函数能读写）。
 5. **上传云函数**：在开发者工具的文件树里右键 `cloudfunctions/api` 和 `cloudfunctions/remind`，各选一次「上传并部署：云端安装依赖」。`remind` 再右键选「上传触发器」。云函数默认的超时时间很短，在云开发控制台的云函数配置里把 `remind` 调到 60 秒、`api` 调到 10 秒。
 6. **申请订阅消息模板**：在公众平台的「订阅消息」里申请一条「活动开始提醒」类的一次性模板，把模板 ID 填到 `miniprogram/config.js` 的 `subscribeTemplateId`。然后按模板的字段改 `cloudfunctions/remind/template.js`（见下），重新上传 `remind`。
