@@ -19,7 +19,7 @@ cloudfunctions/
 1. **AppID**：`project.config.json` 里已经填了正式 AppID。用这个小程序的管理员或开发者微信登录开发者工具。
 2. **开通云开发**：在微信开发者工具里点左上角「云开发」，创建环境，记下环境 ID。
 3. **环境 ID**：`miniprogram/config.js` 的 `cloudEnv` 已经填好（`cloud1-d1g1u97accc6092f6`）。
-4. **建集合**：在云开发控制台的数据库里新建五个集合：`members`、`events`、`signups`、`reminders`、`plans`。权限都设成「所有用户不可读写」（只有云函数能读写）。
+4. **建集合**：在云开发控制台的数据库里新建五个集合：`members`、`events`、`signups`、`reminders`、`plans`。权限都设成「所有用户不可读写」（只有云函数能读写）。另有一个 `counters` 集合（存下一个会员编号）不用手动建，第一位会员注册时云函数会自己建；建好后可以在控制台把它的权限也改成「所有用户不可读写」。
 5. **上传云函数**：在开发者工具的文件树里右键 `cloudfunctions/api` 和 `cloudfunctions/remind`，各选一次「上传并部署：云端安装依赖」。`remind` 再右键选「上传触发器」。云函数默认的超时时间很短，在云开发控制台的云函数配置里把 `remind` 调到 60 秒、`api` 调到 10 秒。
 6. **订阅消息模板**：已申请公共模板「活动动态通知」，模板 ID 已填在 `miniprogram/config.js` 的 `subscribeTemplateId`，五个字段已对到 `cloudfunctions/remind/template.js`。改了这个文件后要重新上传 `remind`。
 7. **录入活动**：按下面的格式在 `events` 集合里添加活动。没有活动时「活动」页的「即将开始」显示「敬请期待」，录入后自动出现，不用改代码也不用重新发版。
@@ -53,13 +53,18 @@ cloudfunctions/
 
 | 集合 | `_id` | 字段 |
 |---|---|---|
-| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`memberNo`、`points`、`createdAt` |
+| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
 | `events` 活动 | 自动 | 见下 |
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
+| `counters` 计数 | `memberNo` | `next`（下一个会员编号）。云函数自动建，不要手动改 |
 
-会员编号和积分的规则还没定：注册时 `memberNo` 留空、`points` 为 0。`memberNo` 为空时页面上保持占位，规则定了以后在这里补发号逻辑。
+会员编号按注册先后发，6 位数字，从 100001 起（`api` 里的 `nextMemberNo`）。没有编号的会员（规则定下来之前注册的，或注册时取号失败的）下次进入小程序时补发，页面上暂时显示「—」。
+
+注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要手动给某个会员加减积分，在控制台里改他那条记录的 `points`。
+
+昵称由用户在会员页自己填（`setNickname` 接口），最多 20 个字。输入框用的是微信的昵称键盘，内容安全由微信的组件检测。
 
 小程序端拿到的手机号是打码后的（`138****1234`），完整手机号只存在 `members` 里。
 

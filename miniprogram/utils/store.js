@@ -61,7 +61,7 @@ function sync(retries) {
   }).catch(() => false); // 取不到时先用上次的缓存
 }
 
-/** 会员：未注册返回 null。云开发下是 { phoneMasked, memberNo, points, createdAt } */
+/** 会员：未注册返回 null。云开发下是 { nickname, phoneMasked, memberNo, points, createdAt } */
 function getMember() { return read(KEY.member, null); }
 function isMember() { return !!getMember(); }
 
@@ -71,11 +71,24 @@ function isMember() { return !!getMember(); }
  */
 function register(code) {
   if (!cloud.enabled()) {
-    const member = { createdAt: Date.now() };
+    const member = { createdAt: Date.now(), points: 500 };
     write(KEY.member, member);
     return Promise.resolve(member);
   }
   return tracked(cloud.call('register', { code: code }).then((d) => {
+    write(KEY.member, d.member);
+    return d.member;
+  }));
+}
+
+/** 改昵称。没配云环境时只改本机的。 */
+function setNickname(nickname) {
+  if (!cloud.enabled()) {
+    const member = Object.assign({}, getMember(), { nickname: nickname });
+    write(KEY.member, member);
+    return Promise.resolve(member);
+  }
+  return tracked(cloud.call('setNickname', { nickname: nickname }).then((d) => {
     write(KEY.member, d.member);
     return d.member;
   }));
@@ -132,7 +145,7 @@ function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
   sync, onChange,
-  getMember, isMember, register,
+  getMember, isMember, register, setNickname,
   getReminders, hasReminder, addReminder,
   getSignups, hasSignup, signup,
   getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan

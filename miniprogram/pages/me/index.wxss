@@ -68,8 +68,10 @@
   display: flex; align-items: center; justify-content: center;
 }
 .me-head__avatar-icon { display: block; width: 54rpx; height: 54rpx; }
-.me-head__text { display: flex; flex-direction: column; gap: 8rpx; padding-top: 8rpx; }
-.me-head__name { font-size: 38rpx; line-height: 54rpx; font-weight: 900; }
+.me-head__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; padding-top: 8rpx; }
+.me-head__name-row { display: flex; align-items: center; gap: 12rpx; }
+.me-head__name { min-width: 0; font-size: 38rpx; line-height: 54rpx; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-head__edit { flex-shrink: 0; display: block; width: 35rpx; height: 35rpx; opacity: .7; }
 .me-head__phone { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
 
 /* 会员卡：压在头部下半截上 */
@@ -87,7 +89,9 @@
 .me-card__wordmark { display: block; width: 235rpx; height: 40rpx; }
 .me-card__no { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
 .me-card__bottom { position: absolute; left: 38rpx; bottom: 35rpx; display: flex; flex-direction: column; }
+.me-card__label-row { display: flex; align-items: center; gap: 15rpx; }
 .me-card__label { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; }
+.me-card__note { font-size: 21rpx; line-height: 35rpx; color: #C9CEE8; opacity: .7; }
 .me-card__points { font-size: 65rpx; line-height: 85rpx; font-weight: 900; color: #FFFFFF; }
 .me-card__slogan { position: absolute; right: 38rpx; top: 46rpx; display: block; width: 177rpx; height: 17rpx; }
 
@@ -139,3 +143,23 @@
 .me-menu__icon { flex-shrink: 0; display: block; width: 42rpx; height: 42rpx; }
 .me-menu__text { flex: 1; }
 .me-menu__arrow { flex-shrink: 0; display: block; width: 31rpx; height: 31rpx; }
+
+/* 改昵称的弹层（设计稿里没有，后加的）。面板靠上放，键盘弹起时不会被挡住 */
+.me-name-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 200; background: rgba(1, 4, 57, .6); }
+.me-name {
+  position: absolute; left: 58rpx; right: 58rpx; top: 22%; box-sizing: border-box;
+  padding: 46rpx 38rpx 38rpx; border-radius: 31rpx; background: #FFFFFF; color: #010439;
+}
+.me-name__title { font-size: 35rpx; line-height: 46rpx; font-weight: 900; }
+.me-name__input {
+  box-sizing: border-box; height: 92rpx; margin-top: 31rpx; padding: 0 27rpx; border-radius: 23rpx;
+  background: #F4F4F5; font-size: 31rpx; color: #010439;
+}
+.me-name__ph { color: #9A9CA8; }
+.me-name__btns { display: flex; gap: 23rpx; margin-top: 38rpx; }
+.me-name__btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; height: 85rpx; border-radius: 42rpx;
+  background: #F4F4F5; font-size: 29rpx; font-weight: 700; color: #010439;
+}
+.me-name__btn--ok { background: #C2E541; }
+.me-name__btn--busy { opacity: .5; }

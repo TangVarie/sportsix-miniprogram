@@ -7,7 +7,7 @@ const messages = require('../../content/messages.js');
 const legal = require('../../content/legal.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
-const { baseData, selectTab, go, navTone, imgLoaded } = require('../../utils/page.js');
+const { baseData, selectTab, go, navTone, imgLoaded, tick } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 /**
@@ -100,16 +100,17 @@ function myEvents() {
 }
 
 /**
- * 头部和会员卡上的个人信息。云开发下手机号是打码后的；
- * 昵称不收集（注册只取微信身份和手机号），会员编号和积分的规则没定，没有数据的项保持 content 里的占位。
+ * 头部和会员卡上的个人信息。云开发下手机号是打码后的。
+ * 昵称是用户自己填的（点名字改），没填时显示 content 里的「SPORTSIX 会员」；
+ * 会员编号由云函数按注册先后发；积分注册时送 500。编号还没拿到时显示「—」，不把方括号占位露给用户。
  */
 function profile() {
   const m = store.getMember() || {};
   return {
-    nickname: member.me.profile.nickname,
-    phone: m.phoneMasked || member.me.profile.phone,
-    memberNo: m.memberNo ? member.me.card.memberNo.replace(/\[[^\]]+\]/, m.memberNo) : member.me.card.memberNo,
-    points: typeof m.points === 'number' ? String(m.points) : member.me.card.points
+    nickname: m.nickname || member.me.profile.nickname,
+    phone: m.phoneMasked || '',
+    memberNo: member.me.card.memberNo.replace(/\[[^\]]+\]/, m.memberNo || '—'),
+    points: String(typeof m.points === 'number' ? m.points : 0)
   };
 }
 
@@ -148,6 +149,10 @@ Page({
     packGel: assetUrl('assets/product/energy-gel-grape.png'),
     packPro: assetUrl('assets/product/energy-gel-pro-pineapple.png'),
     agreed: false,
+    // 改昵称的弹层
+    nameEditing: false,
+    nameDraft: '',
+    nameSaving: false,
     // 云开发下注册按钮是手机号快速验证组件；没配云环境时是普通按钮，只在本机记录
     cloudMode: cloud.enabled()
   }, readState()),
@@ -223,7 +228,7 @@ Page({
 
     // 从计算页点「保存到我的」过来的：把那份输入存下，成功后回到计算页，由它按刚存下的输入还原
     const pending = store.getPendingPlan();
-    if (!pending) return;
+    if (!pending) { wx.showToast({ title: messages.register.ok, icon: 'none' }); return; }
     const r = fuel.planFuel(pending);
     store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).then(() => {
       store.clearPendingPlan();
@@ -245,6 +250,65 @@ Page({
   onEvent(e) {
     go('event-detail', { id: e.currentTarget.dataset.id });
   },
+
+  /**
+   * 改昵称。输入框是昵称键盘（type="nickname"），键盘上方可以一键选用微信昵称。
+   * 微信会在输入框失焦时异步检测内容，通过 bindnicknamereview 告知结果（基础库 2.29.1 起）；没通过的会被微信清空。
+   * 所以保存时先等这个结果：等到「通过」就存，「没通过」提示换一个；1.5 秒内没等到（旧基础库、开发者工具）按通过处理。
+   */
+  onNameEdit() {
+    tick();
+    this.nameReview = null;
+    this.setData({ nameEditing: true, nameDraft: (store.getMember() || {}).nickname || '', nameSaving: false });
+  },
+
+  onNameCancel() {
+    if (this.data.nameSaving) return;
+    this.setData({ nameEditing: false });
+  },
+
+  /** 内容变了，之前的检测结果作废 */
+  onNameInput() {
+    this.nameReview = null;
+  },
+
+  onNameReview(e) {
+    const d = e.detail || {};
+    this.nameReview = d.pass || d.timeout ? 'pass' : 'fail';
+    if (this.nameWaiting) this.nameWaiting(this.nameReview);
+  },
+
+  onNameSubmit(e) {
+    if (this.data.nameSaving) return;
+    const name = String((e.detail.value || {}).nickname || '').trim();
+    if (!name || name === ((store.getMember() || {}).nickname || '')) { this.setData({ nameEditing: false }); return; }
+    this.setData({ nameSaving: true });
+    const reviewed = this.nameReview
+      ? Promise.resolve(this.nameReview)
+      : new Promise((resolve) => {
+        const timer = setTimeout(() => resolve('pass'), 1500);
+        this.nameWaiting = (r) => { clearTimeout(timer); resolve(r); };
+      });
+    reviewed.then((r) => {
+      this.nameWaiting = null;
+      if (r === 'fail') {
+        this.nameReview = null;
+        this.setData({ nameSaving: false, nameDraft: '' });
+        wx.showToast({ title: messages.nickname.rejected, icon: 'none' });
+        return null;
+      }
+      return store.setNickname(name).then(() => {
+        this.setData(Object.assign({ nameEditing: false, nameSaving: false }, readState()));
+        wx.showToast({ title: messages.nickname.saved, icon: 'none' });
+      });
+    }).catch(() => {
+      this.setData({ nameSaving: false });
+      wx.showToast({ title: messages.nickname.failed, icon: 'none' });
+    });
+  },
+
+  /** 弹层里点到面板上不关闭 */
+  noop() {},
 
   /** 菜单：隐私政策打开正文；联系我们弹出联系方式（和协议里写的是同一份）；加入社群的去向还没定 */
   onMenu(e) {

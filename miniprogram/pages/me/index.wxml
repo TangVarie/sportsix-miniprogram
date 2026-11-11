@@ -5,7 +5,11 @@
     <view class="me-head sx-grid-bg">
       <view class="me-head__avatar sx-rise"><image class="me-head__avatar-icon" src="/assets/icons/user-white.svg" /></view>
       <view class="me-head__text sx-rise" style="animation-delay: .1s">
-        <text class="me-head__name">{{profile.nickname}}</text>
+        <!-- 点名字改昵称 -->
+        <view class="me-head__name-row sx-pressable" hover-class="sx-press" bindtap="onNameEdit">
+          <text class="me-head__name">{{profile.nickname}}</text>
+          <image class="me-head__edit" src="/assets/icons/edit-white.svg" />
+        </view>
         <text class="me-head__phone">{{profile.phone}}</text>
       </view>
     </view>
@@ -18,7 +22,10 @@
         <text class="me-card__no">{{profile.memberNo}}</text>
       </view>
       <view class="me-card__bottom">
-        <text class="me-card__label">{{me.card.pointsLabel}}</text>
+        <view class="me-card__label-row">
+          <text class="me-card__label">{{me.card.pointsLabel}}</text>
+          <text class="me-card__note">{{me.card.pointsNote}}</text>
+        </view>
         <text class="me-card__points">{{profile.points}}</text>
       </view>
       <image class="me-card__slogan" src="{{slogan}}" />
@@ -113,5 +120,18 @@
         <view class="me-join__agree-text"><block wx:for="{{agreement}}" wx:key="text"><text wx:if="{{item.doc}}" data-doc="{{item.doc}}" catchtap="onDoc">{{item.text}}</text><text wx:else>{{item.text}}</text></block></view>
       </view>
     </view>
+  </view>
+
+  <!-- 改昵称的弹层。输入框是昵称键盘，键盘上方可以一键选用微信昵称；用 form 提交取值（官方建议的做法） -->
+  <view wx:if="{{nameEditing}}" class="me-name-mask" catchtap="onNameCancel" catchtouchmove="noop">
+    <form class="me-name" catchtap="noop" bindsubmit="onNameSubmit">
+      <view class="me-name__title">{{me.profile.edit.title}}</view>
+      <input class="me-name__input" name="nickname" type="nickname" value="{{nameDraft}}" maxlength="20" focus="{{true}}" cursor-spacing="120"
+        placeholder="{{me.profile.edit.placeholder}}" placeholder-class="me-name__ph" bindinput="onNameInput" bindnicknamereview="onNameReview" />
+      <view class="me-name__btns">
+        <view class="me-name__btn sx-pressable" hover-class="sx-press" bindtap="onNameCancel">{{me.profile.edit.cancel}}</view>
+        <button class="sx-btn-reset me-name__btn me-name__btn--ok {{nameSaving ? 'me-name__btn--busy' : ''}}" hover-class="sx-press" form-type="submit">{{me.profile.edit.save}}</button>
+      </view>
+    </form>
   </view>
 </view>

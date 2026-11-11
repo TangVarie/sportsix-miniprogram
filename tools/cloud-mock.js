@@ -13,10 +13,14 @@ function createCloud() {
     phones: {},        // code → 手机号
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
-    addFails: null     // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
+    addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
+    absent: { counters: true }   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
-  const col = (name) => (state.data[name] = state.data[name] || []);
+  const col = (name) => {
+    if (state.absent[name]) throw new Error('collection not exists: ' + name);
+    return (state.data[name] = state.data[name] || []);
+  };
   const val = (v) => (v instanceof Date ? v.getTime() : v);
   const isOp = (v) => v && typeof v === 'object' && v.$op;
 
@@ -94,6 +98,11 @@ function createCloud() {
       inc: (v) => ({ $op: 'inc', v: v })
     },
     serverDate: () => new Date(state.now),
+    async createCollection(name) {
+      if (!state.absent[name]) throw new Error('collection already exists: ' + name);
+      delete state.absent[name];
+      return { errMsg: 'createCollection:ok' };
+    },
     collection: (name) => query(name)
   };
 
