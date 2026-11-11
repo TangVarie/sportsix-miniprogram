@@ -28,6 +28,9 @@ async function findById(name, id) {
 
 const SEQ_ID = 'memberNo';
 const MEMBER_NO_START = 100001;
+/** 注册送的积分。页面上的说法在 reference/content/member.json 和 messages.json，改的时候一起改 */
+const WELCOME_POINTS = 500;
+const NICKNAME_MAX = 20;
 
 /**
  * 发一个会员编号：按注册先后递增的数字，从 100001 起。
@@ -55,18 +58,38 @@ async function nextMemberNo() {
   return null;
 }
 
-/** 没有编号的会员（编号规则定下来之前注册的，或注册时取号失败的）补发一个 */
-async function ensureMemberNo(member) {
-  if (!member || member.memberNo) return member;
+/**
+ * 把会员记录补齐：
+ * - 没有编号的（编号规则定下来之前注册的，或注册时取号失败的）补发一个；
+ * - 没领过注册积分的（送积分的规则定下来之前注册的）补送一次。用「还没有 welcomeBonus 标记」做更新条件，不会送两次。
+ * 补不上不影响别的功能，下次进入时再补。
+ */
+async function ensureMember(member) {
+  if (!member) return member;
+  let m = member;
   try {
-    const no = await nextMemberNo();
-    if (!no) return member;
-    await db.collection('members').doc(member._id).update({ data: { memberNo: no } });
-    return Object.assign({}, member, { memberNo: no });
+    if (!m.memberNo) {
+      const no = await nextMemberNo();
+      if (no) {
+        await db.collection('members').doc(m._id).update({ data: { memberNo: no } });
+        m = Object.assign({}, m, { memberNo: no });
+      }
+    }
+    if (!m.welcomeBonus) {
+      const res = await db.collection('members').where({ _id: m._id, welcomeBonus: _.exists(false) })
+        .update({ data: { points: _.inc(WELCOME_POINTS), welcomeBonus: true } });
+      if (res.stats.updated) m = await findById('members', m._id) || m;
+    }
   } catch (e) {
-    console.error('ensureMemberNo', e);
-    return member;
+    console.error('ensureMember', e);
   }
+  return m;
+}
+
+/** 昵称：去掉换行等控制字符和首尾空格，最多 20 个字 */
+function cleanNickname(v) {
+  const s = String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, '').trim();
+  return Array.from(s).slice(0, NICKNAME_MAX).join('');
 }
 
 /** 返回给小程序端的会员信息：手机号只给打码后的 */
@@ -74,6 +97,7 @@ function memberView(m) {
   if (!m) return null;
   const phone = String(m.phone || '');
   return {
+    nickname: m.nickname || '',
     phoneMasked: phone.length >= 7 ? phone.slice(0, 3) + '****' + phone.slice(-4) : '',
     memberNo: m.memberNo || null,
     points: typeof m.points === 'number' ? m.points : null,
@@ -109,7 +133,7 @@ const PLAN_KEYS = { sport: 'string', scene: 'string', start: 'string', minutes: 
 const actions = {
   /** 进入小程序时取一次：会员、补给计划、已设提醒和已报名的活动 id */
   async bootstrap(event, openid) {
-    const member = await ensureMemberNo(await findById('members', openid));
+    const member = await ensureMember(await findById('members', openid));
     const plan = member ? await findById('plans', openid) : null;
     const reminders = await db.collection('reminders').where({ openid: openid, sent: false }).limit(100).get();
     const signups = await db.collection('signups').where({ openid: openid }).limit(100).get();
@@ -124,7 +148,7 @@ const actions = {
   /** 注册：用手机号快速验证组件给的 code 换手机号，建会员。已注册的直接返回。 */
   async register(event, openid) {
     const existing = await findById('members', openid);
-    if (existing) return { member: memberView(await ensureMemberNo(existing)) };
+    if (existing) return { member: memberView(await ensureMember(existing)) };
     if (!event.code) throw fail('missing_code');
     let info;
     try {
@@ -135,10 +159,22 @@ const actions = {
       throw fail('phone_failed');
     }
     if (!info || !info.purePhoneNumber) throw fail('phone_failed');
-    // 积分从 0 开始（怎么得分还没定，见 docs/04-open-items.md）；编号在建好会员后发，取号失败不影响注册，下次进入时补发
-    const doc = { openid: openid, phone: info.purePhoneNumber, countryCode: info.countryCode || '', memberNo: null, points: 0, createdAt: db.serverDate() };
+    // 注册送 WELCOME_POINTS 积分；编号在建好会员后发，取号失败不影响注册，下次进入时补发
+    const doc = {
+      openid: openid, phone: info.purePhoneNumber, countryCode: info.countryCode || '', nickname: '',
+      memberNo: null, points: WELCOME_POINTS, welcomeBonus: true, createdAt: db.serverDate()
+    };
     await db.collection('members').doc(openid).set({ data: doc });
-    return { member: memberView(await ensureMemberNo(await findById('members', openid))) };
+    return { member: memberView(await ensureMember(await findById('members', openid))) };
+  },
+
+  /** 改昵称。昵称是用户在昵称输入框里自己填的（可以一键选用微信昵称），内容安全由微信的输入框组件检测。 */
+  async setNickname(event, openid) {
+    if (!(await findById('members', openid))) throw fail('not_member');
+    const nickname = cleanNickname(event.nickname);
+    if (!nickname) throw fail('bad_nickname');
+    await db.collection('members').doc(openid).update({ data: { nickname: nickname } });
+    return { member: memberView(await findById('members', openid)) };
   },
 
   /** 保存补给计划（只留最近一份）。input 是公式的输入，result 是支数等摘要。 */

@@ -52,20 +52,32 @@ async function functionTests() {
   eq(r.data.member.memberNo, '100001', '第一位会员的编号是 100001');
   eq(cloud.col('members')[0].memberNo, '100001', '编号存进会员记录');
   eq(cloud.col('counters')[0].next, 100002, '计数集合自动建好，记着下一个号');
-  eq(r.data.member.points, 0, '积分从 0 开始');
+  eq(r.data.member.points, 500, '注册送 500 积分');
+  eq(r.data.member.nickname, '', '昵称一开始是空的');
   ok(!JSON.stringify(r.data).includes('13800001234'), '不把完整手机号返回给小程序端');
   eq(cloud.col('members')[0].phone, '13800001234', '库里存完整手机号');
   r = await call('register', { code: 'whatever' });
   eq(r.data.member.phoneMasked, '138****1234', '重复注册返回已有会员');
   eq(cloud.col('members').length, 1, '不重复建会员');
   eq(r.data.member.memberNo, '100001', '重复注册不换编号');
+  eq(r.data.member.points, 500, '重复注册不重复送积分');
 
   // 编号规则定下来之前注册的会员没有编号：下次进入时补发，按取号先后往下排
   cloud.col('members').push({ _id: 'user-old', openid: 'user-old', phone: '13900005678', memberNo: null, points: 0, createdAt: new Date(cloud.state.now) });
   cloud.state.openid = 'user-old';
   r = await call('bootstrap');
   eq(r.data.member.memberNo, '100002', '老会员进入时补发编号');
-  eq((await call('bootstrap')).data.member.memberNo, '100002', '补发过的不再换号');
+  eq(r.data.member.points, 500, '老会员补送注册积分');
+  r = await call('bootstrap');
+  eq(r.data.member.memberNo, '100002', '补发过的不再换号');
+  eq(r.data.member.points, 500, '补送过的不再送');
+
+  eq((await call('setNickname', { nickname: '   ' })).code, 'bad_nickname', '昵称不能为空');
+  r = await call('setNickname', { nickname: '  跑\n者小王  ' });
+  eq(r.data.member.nickname, '跑者小王', '昵称去掉换行和首尾空格');
+  r = await call('setNickname', { nickname: '一二三四五六七八九十一二三四五六七八九十多出来的' });
+  eq(Array.from(r.data.member.nickname).length, 20, '昵称最多 20 个字');
+  eq((await call('bootstrap')).data.member.nickname, r.data.member.nickname, '昵称存进会员记录');
   cloud.col('members').splice(cloud.col('members').findIndex((d) => d._id === 'user-old'), 1);
   cloud.state.openid = 'user-a';
 
@@ -225,10 +237,26 @@ async function clientTests() {
   await tick();
   ok(p.data.registered, '注册成功切到会员状态');
   eq(p.data.profile.phone, '138****1234', '显示打码手机号');
-  eq(p.data.profile.points, '0', '显示积分');
+  eq(p.data.profile.points, '500', '显示积分');
   ok(/^会员编号 \d{6}$/.test(p.data.profile.memberNo), '显示会员编号');
-  eq(p.data.profile.nickname, 'SPORTSIX 会员', '昵称统一显示');
+  eq(p.data.profile.nickname, 'SPORTSIX 会员', '没填昵称时的显示');
   ok(!JSON.stringify(p.data.profile).includes('['), '会员信息里没有方括号占位');
+
+  // 改昵称：等微信的昵称检测结果，通过才保存
+  p.onNameEdit();
+  ok(p.data.nameEditing, '点名字打开改昵称的弹层');
+  p.onNameReview({ detail: { pass: false, timeout: false } });
+  p.onNameSubmit({ detail: { value: { nickname: '不合适的昵称' } } });
+  await tick();
+  eq(p.data.profile.nickname, 'SPORTSIX 会员', '没通过检测的昵称不保存');
+  ok(p.data.nameEditing, '没通过时弹层留着，可以换一个');
+  p.onNameInput();
+  p.onNameSubmit({ detail: { value: { nickname: ' 跑者小王 ' } } });
+  p.onNameReview({ detail: { pass: true, timeout: false } });
+  await tick();
+  eq(p.data.profile.nickname, '跑者小王', '通过检测后保存并显示新昵称');
+  ok(!p.data.nameEditing, '保存后关闭弹层');
+  eq(cloud.col('members').find((d) => d._id === cloud.state.openid).nickname, '跑者小王', '昵称存到云端');
   eq(cloud.col('plans')[0].input.sport, 'trail', '注册后把待保存的计划存到云端');
   eq(lastCall('switchTab').args.url, '/pages/fuel/index', '回到计算页');
   ok(app.globalData.fuelRestore, '计算页按保存的输入还原');

@@ -6,7 +6,13 @@ module.exports = {
     "saveFailed": "保存失败，请稍后再试"
   },
   "register": {
+    "ok": "注册成功，已送 500 积分",
     "failed": "注册失败，请稍后再试"
+  },
+  "nickname": {
+    "saved": "昵称已更新",
+    "rejected": "这个昵称不能使用，请换一个",
+    "failed": "保存失败，请稍后再试"
   },
   "signup": {
     "ok": "报名成功",
