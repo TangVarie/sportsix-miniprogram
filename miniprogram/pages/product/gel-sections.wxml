@@ -12,7 +12,7 @@
 </view>
 
 <!-- 快慢双碳：和首页共用的组件 -->
-<dual-carb id="rv-dualCarb" shown="{{seen.dualCarb}}" />
+<dual-carb id="rv-dualCarb" class="js-dark" shown="{{seen.dualCarb}}" />
 
 <!-- 高配比能量胶：柱形图 -->
 <view id="rv-density" class="pd-sec pd-density {{seen.density ? 'sx-in' : 'sx-wait'}}">
@@ -79,7 +79,7 @@
 </view>
 
 <!-- 全球甄选进口原料：四个 0 -->
-<view id="rv-clean" class="pd-sec pd-clean sx-grid-bg {{seen.clean ? 'sx-in' : 'sx-wait'}}">
+<view id="rv-clean" class="pd-sec pd-clean sx-grid-bg js-dark {{seen.clean ? 'sx-in' : 'sx-wait'}}">
   <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.clean.eyebrow}}</text>
   <view class="pd-h2 pd-h2--light">
     <view wx:for="{{s.clean.titleLines}}" wx:key="*this">{{item}}</view>

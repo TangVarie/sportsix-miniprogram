@@ -1,6 +1,6 @@
 <!-- 能量胶：食用方法（products.energyGel.sections 的 howTo），由 index.wxml include -->
 
-<view class="pd-banner pd-banner--gel">
+<view class="pd-banner pd-banner--gel js-dark">
   <view class="pd-banner__photo sx-photo">
     <image class="sx-photo__img pd-banner__img--gel" src="{{s.howTo.banner.image}}" mode="aspectFill" />
   </view>

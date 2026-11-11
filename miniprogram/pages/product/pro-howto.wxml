@@ -1,6 +1,6 @@
 <!-- 能量胶PRO：食用方法（products.energyGelPro.sections 的 guide 和 qa），由 index.wxml include -->
 
-<view class="pd-banner pd-banner--pro">
+<view class="pd-banner pd-banner--pro js-dark">
   <view class="pd-banner__photo sx-photo">
     <image class="sx-photo__img pd-banner__img--pro" src="{{s.guide.banner.image}}" mode="aspectFill" />
   </view>
@@ -8,7 +8,7 @@
 </view>
 
 <!-- 食用指南：竖线加圆点 -->
-<view id="rv-guide" class="pd-sec pd-guide sx-grid-bg {{seen.guide ? 'sx-in' : 'sx-wait'}}">
+<view id="rv-guide" class="pd-sec pd-guide sx-grid-bg js-dark {{seen.guide ? 'sx-in' : 'sx-wait'}}">
   <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.guide.eyebrow}}</text>
   <view class="pd-h2 pd-h2--light">{{s.guide.title}}</view>
   <view class="pd-steps">

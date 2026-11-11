@@ -1,5 +1,5 @@
 const products = require('../../content/products.js');
-const { baseData, watchReveal, navTone, go } = require('../../utils/page.js');
+const { baseData, watchReveal, navTone, measureDarkZones, go } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
 const PRODUCTS = { 'energy-gel': products.energyGel, 'energy-gel-pro': products.energyGelPro };
@@ -87,7 +87,7 @@ Page({
 
   onLoad(query) {
     this.setData(Object.assign(baseData(), build(query.id)));
-    // 首屏高度换成屏幕 px，滚过之后状态栏换成深色字
+    // 首屏高度换成屏幕 px：深色分区的位置还没量到时，先按「滚过首屏换成深色字」处理
     let width = 390;
     try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 取不到就按设计宽度 */ }
     this.heroHeight = Math.round((HERO_H * width) / 390);
@@ -95,10 +95,13 @@ Page({
 
   onReady() {
     this.stopReveal = watchReveal(this, REVEAL[this.data.id] || []);
+    // 深浅分区交替：量出各段深色区（class 带 js-dark）的位置，状态栏文字跟着换色
+    this.stopMeasure = measureDarkZones(this);
   },
 
   onUnload() {
     if (this.stopReveal) this.stopReveal();
+    if (this.stopMeasure) this.stopMeasure();
   },
 
   onPageScroll(e) {

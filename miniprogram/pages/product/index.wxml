@@ -6,7 +6,7 @@
 <view class="page pd-page" style="--sx-safe-top: {{safeTop}}px">
 
   <!-- 首屏 -->
-  <view class="pd-hero sx-grid-bg sx-in">
+  <view class="pd-hero sx-grid-bg js-dark sx-in">
     <block wx:if="{{isPro}}">
       <text class="pd-hero__ghost sx-num">{{nameEn}}</text>
       <image class="pd-hero__arc-img" src="{{heroArc}}" />

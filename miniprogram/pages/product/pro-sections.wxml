@@ -27,7 +27,7 @@
 </view>
 
 <!-- 吸收集中，还是持续释放：两条曲线 -->
-<view id="rv-release" class="pd-sec pd-release sx-grid-bg {{seen.release ? 'sx-in' : 'sx-wait'}}">
+<view id="rv-release" class="pd-sec pd-release sx-grid-bg js-dark {{seen.release ? 'sx-in' : 'sx-wait'}}">
   <text class="sx-eyebrow pd-eyebrow pd-eyebrow--lime">{{s.release.eyebrow}}</text>
   <view class="pd-h2 pd-h2--light">{{s.release.title}}</view>
   <view class="pd-release__cols">
