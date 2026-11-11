@@ -27,6 +27,7 @@ Page({
   onLoad(query) {
     this.docType = query.type;
     this.setData(Object.assign(baseData(), { doc: build(query.type) }));
+    wx.setNavigationBarTitle({ title: this.data.doc.title });
     // 头部设计高 132px
     this.toneAt = headerTone(132);
   },

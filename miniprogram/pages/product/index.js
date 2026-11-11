@@ -92,6 +92,8 @@ Page({
 
   onLoad(query) {
     this.setData(Object.assign(baseData(), build(query.id)));
+    // 页面是自定义导航，标题不显示在页面上，但会出现在任务切换、最近使用等地方
+    wx.setNavigationBarTitle({ title: this.data.p.name });
     // 首屏高度换成屏幕 px：深色分区的位置还没量到时，先按「滚过首屏换成深色字」处理
     let width = 390;
     try { width = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 390; } catch (e) { /* 取不到就按设计宽度 */ }

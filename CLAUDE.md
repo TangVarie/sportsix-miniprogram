@@ -112,6 +112,17 @@ tools/
 - 会员、报名、提醒、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 
+### 只有真机和审核才会暴露的事
+
+本地预览看不到这些，写新页面、新按钮时逐条过一遍：
+
+- 页面要有 `onShareAppMessage` 和 `navigationBarTitleText`（`npm test` 会检查）。
+- 按钮在「现在不能用」的时候点了要有提示，不能没反应（没勾选协议点注册、订阅消息被拒绝后点提醒）。
+- 给用户看的地方不能露出方括号占位；没有数据就不显示或显示「—」。
+- 调用手机号验证的页面上不能出现「微信」字样和微信的图标。
+- 页面顶部右侧留给微信的胶囊按钮，内容不要伸到那里；有个人信息的页面不让转发。
+- 发新版本后靠 `app.js` 的 `watchUpdate` 提示重启；页面路径改了，旧的转发卡片由 `onPageNotFound` 兜到首页。
+
 ### 检查
 
 - `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）、云开发测试（`tools/test-cloud.js`）。

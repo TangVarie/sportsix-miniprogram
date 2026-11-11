@@ -40,8 +40,9 @@ for (const f of files.filter((x) => x.endsWith('.json'))) {
 for (const u of new Set(units)) {
   for (const ext of ['.js', '.json', '.wxml', '.wxss']) if (!exists(u + ext)) errors.push('缺文件：' + rel(u + ext));
 }
-// 页面不定义 onShareAppMessage 的话，右上角菜单里的「转发」是灰的
+// 页面不定义 onShareAppMessage 的话，右上角菜单里的「转发」是灰的；页面标题会出现在任务切换、最近使用等地方
 for (const p of app.pages) {
+  if (!JSON.parse(fs.readFileSync(path.join(root, p + '.json'), 'utf8')).navigationBarTitleText) errors.push('页面没有标题 navigationBarTitleText：' + p);
   if (!/\bonShareAppMessage\s*\(/.test(fs.readFileSync(path.join(root, p + '.js'), 'utf8'))) errors.push('页面没有定义 onShareAppMessage，不能转发：' + p);
 }
 for (const t of app.tabBar.list) if (!app.pages.includes(t.pagePath)) errors.push('tabBar 页面不在 pages 里：' + t.pagePath);

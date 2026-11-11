@@ -1,4 +1,5 @@
 {
+  "navigationBarTitleText": "产品",
   "usingComponents": {
     "dual-carb": "/components/dual-carb/index",
     "product-key-points": "/components/product-key-points/index",

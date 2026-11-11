@@ -12,6 +12,9 @@ const cloud = require('./cloud.js');
 const store = require('./store.js');
 const format = require('./format.js');
 const { withAssets } = require('./assets.js');
+const messages = require('../content/messages.js');
+
+const toast = (title) => wx.showToast({ title: title, icon: 'none' });
 
 const CACHE_KEY = 'sx_events';
 const join = (list) => list.filter(Boolean).join(' · ');
@@ -136,6 +139,7 @@ function getDetail(event) {
 /**
  * 「提醒我」：一次性订阅消息，用户每点一次授权换一条通知，所以必须由点击直接触发。
  * 模板 ID 没填时只在本机记录，不会真的发消息。
+ * 没设上时提示一句：用户以前选过「总是拒绝」或关了订阅消息总开关时，微信不会再弹授权窗，不提示的话看起来像按钮没反应。
  * @returns {Promise<boolean>} 是否已设提醒
  */
 function remind(eventId) {
@@ -145,10 +149,10 @@ function remind(eventId) {
     wx.requestSubscribeMessage({
       tmplIds: [tmpl],
       success: (res) => {
-        if (res[tmpl] !== 'accept') { resolve(false); return; }
-        store.addReminder(eventId, tmpl).then(() => resolve(true)).catch(() => resolve(false));
+        if (res[tmpl] !== 'accept') { toast(messages.remind.declined); resolve(false); return; }
+        store.addReminder(eventId, tmpl).then(() => resolve(true)).catch(() => { toast(messages.remind.failed); resolve(false); });
       },
-      fail: () => resolve(false)
+      fail: () => { toast(messages.remind.declined); resolve(false); }
     });
   });
 }

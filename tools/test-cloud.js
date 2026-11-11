@@ -238,6 +238,9 @@ async function clientTests() {
   ok(p.data.cloudMode && !p.data.registered, '云开发模式的注册页');
   let html = env.renderHtml();
   ok(!html.includes('<wx-button'), '未勾选协议时没有手机号按钮');
+  p.onRegister();
+  eq(lastCall('showToast').args.title, '请先阅读并同意用户协议和隐私政策', '未勾选就点注册：提示先勾选');
+  ok(!p.data.registered, '未勾选不注册');
   p.onAgree({});
   html = env.renderHtml();
   ok(html.includes('<wx-button'), '勾选后是手机号按钮');

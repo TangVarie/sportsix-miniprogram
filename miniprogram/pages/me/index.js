@@ -215,10 +215,13 @@ Page({
   onAgreePrivacy() {},
 
   /**
-   * 注册（没配云环境时）。必须先勾选协议。不取手机号，只在本机记「已注册」，用来看页面状态。
+   * 没勾选协议时，注册按钮是普通按钮，点了走这里：提示先勾选。
+   * 没配云环境时，勾选后也走这里：不取手机号，只在本机记「已注册」，用来看页面状态。
    */
   onRegister() {
-    if (!this.data.agreed || this.data.cloudMode) return;
+    // 没勾选协议就点按钮：提示一句，不然看起来像按钮坏了
+    if (!this.data.agreed) { wx.showToast({ title: messages.register.needAgree, icon: 'none' }); return; }
+    if (this.data.cloudMode) return;
     store.register().then(() => this.afterRegister());
   },
 

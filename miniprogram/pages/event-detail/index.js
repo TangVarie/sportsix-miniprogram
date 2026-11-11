@@ -64,6 +64,7 @@ Page({
   render() {
     const event = events.getEvent(this.eventId);
     if (!event) { this.setData({ event: null }); return; }
+    if (event.title) wx.setNavigationBarTitle({ title: event.title });
     const detail = events.getDetail(event);
     this.setData({
       event: event,
