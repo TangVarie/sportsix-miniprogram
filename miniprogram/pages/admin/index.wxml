@@ -79,4 +79,25 @@
     </view>
     <view wx:if="{{member}}" class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onAdjust">{{copy.points.submit}}</view>
   </view>
+
+  <!-- 电脑端：给网页版后台取一次性的登录码 -->
+  <view wx:if="{{tab === 'web'}}" class="ad-body">
+    <view class="ad-card">
+      <view class="ad-web__title">{{copy.web.title}}</view>
+      <view wx:for="{{copy.web.steps}}" wx:key="*this" class="ad-web__step">
+        <text class="ad-web__no sx-num">{{index + 1}}</text>
+        <text class="ad-web__text">{{item}}</text>
+      </view>
+      <view class="ad-web__url">
+        <text class="ad-label">{{copy.web.urlLabel}}</text>
+        <text class="ad-web__url-text" user-select="{{true}}">{{webUrl || copy.web.urlEmpty}}</text>
+        <view wx:if="{{webUrl}}" class="ad-mini ad-gap sx-pressable" hover-class="sx-press" bindtap="onCopyUrl">{{copy.web.copy}}</view>
+      </view>
+    </view>
+    <view wx:if="{{webCode}}" class="ad-web__code-card sx-grid-bg">
+      <text class="ad-web__code sx-num" user-select="{{true}}">{{webCode}}</text>
+      <text class="ad-web__code-hint">{{copy.web.codeHint}}</text>
+    </view>
+    <view class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onWebCode">{{webCode ? copy.web.again : copy.web.get}}</view>
+  </view>
 </view>

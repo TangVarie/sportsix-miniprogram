@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SPORTSIX 运营后台</title>
+<!--
+  SPORTSIX 运营后台（电脑端）。一个文件，没有构建步骤，传到云开发的「静态网站」就能用。
+  部署和使用见 cloudfunctions/README.md 的「电脑端后台」。
+
+  它怎么工作：
+  - 用微信云开发的 Web SDK 以「未登录模式」调云函数 api（和小程序调的是同一个）。
+  - 登录：管理员在小程序「我的 → 运营后台 → 电脑端」里取一个 12 位登录码，填到这里换一个登录凭证，
+    之后每次调用都带着它。凭证存在这台电脑的浏览器里，12 小时后过期。
+  - 能做的事和小程序里的运营后台一样：活动、公告、积分。权限在云函数里检查。
+
+  页面上显示的内容一律用 textContent 写进去，不拼 HTML。
+-->
+<style>
+  :root {
+    --navy: #010439; --blue: #061A70; --lime: #C2E541; --grey: #F5F5F5; --line: #E6E6E7;
+    --text: #14141E; --sub: #5E6170; --mute: #9A9CA8; --white: #FFFFFF; --danger: #C0392B;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--grey); color: var(--text);
+    font: 14px/22px -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+  .grid-bg {
+    background-color: var(--navy);
+    background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .wordmark { font-size: 26px; line-height: 32px; font-weight: 900; font-style: italic; letter-spacing: .5px; color: var(--white); }
+
+  /* 登录 */
+  .login { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login__card { width: 400px; max-width: 100%; padding: 36px 32px 32px; border-radius: 18px; background: var(--white); color: var(--text); }
+  .login__eyebrow { font-size: 12px; line-height: 18px; font-weight: 700; font-style: italic; letter-spacing: 1px; color: var(--blue); }
+  .login__title { margin: 4px 0 20px; font-size: 26px; line-height: 34px; font-weight: 900; color: var(--navy); }
+  .login__code { width: 100%; height: 56px; padding: 0 12px; border: 2px solid var(--line); border-radius: 12px; font-size: 24px; font-weight: 700; letter-spacing: 3px; text-align: center; outline: none; }
+  .login__code:focus { border-color: var(--navy); }
+  .login__hint { margin: 14px 0 0; font-size: 13px; line-height: 20px; color: var(--sub); }
+  .login__error { min-height: 20px; margin: 10px 0 0; font-size: 13px; line-height: 20px; color: var(--danger); }
+
+  /* 按钮 */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 20px; border: 0; border-radius: 20px; background: var(--lime); color: var(--navy); font-weight: 700; white-space: nowrap; }
+  .btn:hover { filter: brightness(.96); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn--block { width: 100%; height: 52px; margin-top: 16px; border-radius: 26px; font-size: 16px; font-weight: 900; }
+  .btn--navy { background: var(--navy); color: var(--white); }
+  .btn--line { background: var(--white); border: 1px solid #C9CEE8; }
+  .btn--small { height: 32px; padding: 0 14px; border-radius: 16px; font-size: 13px; }
+  .link { padding: 0; border: 0; background: none; color: var(--blue); font-weight: 700; }
+
+  /* 框架 */
+  .shell { display: flex; min-height: 100%; }
+  .side { flex-shrink: 0; width: 220px; padding: 28px 16px 20px; display: flex; flex-direction: column; color: var(--white); position: sticky; top: 0; height: 100vh; }
+  .side__sub { margin: 2px 0 28px 2px; font-size: 12px; line-height: 18px; color: #C9CEE8; }
+  .nav { display: flex; flex-direction: column; gap: 6px; }
+  .nav__item { height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: transparent; color: #C9CEE8; font-weight: 700; text-align: left; }
+  .nav__item:hover { background: rgba(255,255,255,.06); }
+  .nav__item--on { background: var(--white); color: var(--navy); }
+  .side__foot { margin-top: auto; font-size: 13px; line-height: 20px; color: #C9CEE8; }
+  .side__who { margin-bottom: 10px; word-break: break-all; }
+  .side__out { padding: 0; border: 0; background: none; color: var(--lime); font-weight: 700; }
+  .main { flex: 1; min-width: 0; padding: 32px 36px 60px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .head__title { margin: 0; font-size: 26px; line-height: 34px; font-weight: 900; color: var(--navy); }
+  .head__tools { display: flex; align-items: center; gap: 10px; }
+  .panel { padding: 24px; border-radius: 18px; background: var(--white); }
+  .panel + .panel { margin-top: 16px; }
+  .panel__title { margin: 0 0 16px; font-size: 17px; line-height: 26px; font-weight: 900; color: var(--navy); }
+  .muted { color: var(--sub); }
+  .hint { margin: 8px 0 0; font-size: 13px; line-height: 20px; color: var(--sub); }
+
+  /* 表单 */
+  .field { display: block; margin-bottom: 16px; }
+  .field__label { display: block; margin-bottom: 6px; font-size: 13px; line-height: 20px; font-weight: 700; color: var(--navy); }
+  .input, .select, .textarea { width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); outline: none; }
+  .textarea { height: 160px; padding: 10px 12px; line-height: 22px; resize: vertical; }
+  .input:focus, .select:focus, .textarea:focus { border-color: var(--navy); }
+  .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .seg { display: inline-flex; gap: 6px; padding: 4px; border-radius: 12px; background: var(--grey); }
+  .seg__btn { height: 34px; padding: 0 18px; border: 0; border-radius: 9px; background: transparent; font-weight: 700; color: var(--text); }
+  .seg__btn--on { background: var(--navy); color: var(--white); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: var(--navy); }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch__track { position: relative; width: 48px; height: 28px; border-radius: 14px; background: #C9CEE8; transition: background .2s; }
+  .switch__track::after { content: ''; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 11px; background: var(--white); transition: transform .2s; }
+  .switch input:checked + .switch__track { background: var(--navy); }
+  .switch input:checked + .switch__track::after { transform: translateX(20px); background: var(--lime); }
+  .switch input:focus-visible + .switch__track { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* 活动表格 */
+  .table-wrap { overflow-x: auto; border-radius: 18px; background: var(--white); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 14px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { padding-left: 20px; }
+  th:last-child, td:last-child { padding-right: 20px; }
+  .cell-sub { font-size: 12px; line-height: 18px; color: var(--sub); }
+  th { font-size: 12px; line-height: 18px; font-weight: 700; color: var(--sub); background: #FAFAFB; }
+  tr:last-child td { border-bottom: 0; }
+  .cell-title { display: flex; align-items: center; gap: 12px; min-width: 200px; white-space: normal; }
+  .thumb { flex-shrink: 0; width: 56px; height: 40px; border-radius: 8px; background: var(--grey) center / cover no-repeat; }
+  .cell-title__name { font-weight: 700; color: var(--navy); }
+  .cell-title__type { font-size: 12px; line-height: 18px; color: var(--sub); }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; line-height: 18px; font-weight: 700; }
+  .chip--published { background: var(--lime); color: var(--navy); }
+  .chip--draft, .chip--ended { background: var(--line); color: var(--sub); }
+  .ops { display: flex; gap: 8px; }
+  .empty { padding: 48px 16px; text-align: center; color: var(--sub); }
+
+  /* 右侧抽屉：新建和编辑活动 */
+  .mask { position: fixed; inset: 0; z-index: 20; background: rgba(1, 4, 57, .5); }
+  .drawer { position: fixed; right: 0; top: 0; bottom: 0; z-index: 21; width: 560px; max-width: 100%; display: flex; flex-direction: column; background: var(--white); box-shadow: -8px 0 32px rgba(1, 4, 57, .18); }
+  .drawer__head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+  .drawer__title { margin: 0; font-size: 20px; line-height: 28px; font-weight: 900; color: var(--navy); }
+  .drawer__close { width: 36px; height: 36px; border: 0; border-radius: 18px; background: var(--grey); font-size: 20px; line-height: 1; }
+  .drawer__body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .drawer__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--line); }
+  .group { margin: 8px 0 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 15px; line-height: 24px; font-weight: 900; color: var(--navy); }
+  .group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .cover { display: flex; align-items: center; gap: 14px; }
+  .cover__img { flex-shrink: 0; width: 160px; height: 100px; border: 1px dashed #C9CEE8; border-radius: 10px; background: var(--grey) center / cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--mute); }
+  .cover__img--has { border-style: solid; color: transparent; }
+  .cover__btns { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* 公告预览、会员卡片 */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  .preview { padding: 28px 20px; border-radius: 18px; text-align: center; }
+  .preview__label { margin-bottom: 14px; font-size: 12px; line-height: 18px; color: #C9CEE8; }
+  .modal { width: 260px; max-width: 100%; margin: 0 auto; border-radius: 12px; background: var(--white); color: var(--text); overflow: hidden; }
+  .modal__title { padding: 20px 20px 0; font-size: 16px; line-height: 24px; font-weight: 700; }
+  .modal__content { padding: 10px 20px 18px; font-size: 14px; line-height: 22px; color: var(--sub); white-space: pre-wrap; word-break: break-word; }
+  .modal__btn { padding: 12px; border-top: 1px solid var(--line); font-weight: 700; color: #576B95; }
+  .search { display: flex; gap: 10px; max-width: 520px; }
+  .member { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; margin-bottom: 18px; border-radius: 14px; background: var(--grey); }
+  .member__name { font-size: 17px; line-height: 26px; font-weight: 900; color: var(--navy); }
+  .member__points { text-align: right; }
+  .member__num { font-size: 34px; line-height: 40px; font-weight: 900; font-style: italic; color: var(--blue); }
+
+  /* 提示条 */
+  .toast { position: fixed; left: 50%; bottom: 36px; z-index: 40; transform: translateX(-50%); max-width: 80%; padding: 10px 20px; border-radius: 22px; background: var(--navy); color: var(--white); font-weight: 700; box-shadow: 0 6px 24px rgba(1, 4, 57, .25); }
+  .toast--bad { background: var(--danger); }
+
+  @media (max-width: 900px) {
+    .shell { flex-direction: column; }
+    .side { position: static; width: auto; height: auto; flex-direction: row; align-items: center; gap: 16px; padding: 14px 16px; }
+    .side__sub, .side__who { display: none; }
+    .nav { flex-direction: row; }
+    .side__foot { margin: 0 0 0 auto; }
+    .main { padding: 20px 16px 48px; }
+    .cols { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="view-login" class="login grid-bg" hidden>
+  <form id="login-form" class="login__card" autocomplete="off">
+    <div class="login__eyebrow">SPORTSIX</div>
+    <h1 class="login__title">运营后台</h1>
+    <input id="login-code" class="login__code" inputmode="numeric" maxlength="16" placeholder="登录码" aria-label="登录码">
+    <p class="login__hint">打开小程序，进「我的 → 运营后台 → 电脑端」，点「获取登录码」，把 12 位数字填在这里。登录码 5 分钟内有效，只能用一次。</p>
+    <p id="login-error" class="login__error" role="alert"></p>
+    <button id="login-submit" class="btn btn--block" type="submit">登录</button>
+  </form>
+</div>
+
+<!-- 后台 -->
+<div id="view-app" class="shell" hidden>
+  <aside class="side grid-bg">
+    <div>
+      <div class="wordmark">SPORTSIX</div>
+      <div class="side__sub">运营后台</div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav__item" data-tab="events" type="button">活动</button>
+      <button class="nav__item" data-tab="notice" type="button">公告</button>
+      <button class="nav__item" data-tab="points" type="button">积分</button>
+    </nav>
+    <div class="side__foot">
+      <div id="who" class="side__who"></div>
+      <button id="logout" class="side__out" type="button">退出登录</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- 活动 -->
+    <section id="tab-events" hidden>
+      <div class="head">
+        <h1 class="head__title">活动</h1>
+        <div class="head__tools">
+          <input id="ev-search" class="input" style="width: 200px" placeholder="按名称找" aria-label="按名称找">
+          <select id="ev-filter" class="select" style="width: 120px" aria-label="按状态筛选">
+            <option value="">全部</option><option value="published">已上架</option><option value="draft">未上架</option><option value="ended">已结束</option>
+          </select>
+          <button id="ev-new" class="btn" type="button">新建活动</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>活动</th><th>时间和地点</th><th>报名时间</th><th>已报名</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="ev-rows"></tbody>
+        </table>
+        <div id="ev-empty" class="empty" hidden></div>
+      </div>
+    </section>
+
+    <!-- 公告 -->
+    <section id="tab-notice" hidden>
+      <div class="head"><h1 class="head__title">公告</h1></div>
+      <div class="cols">
+        <form id="notice-form" class="panel">
+          <label class="field"><span class="field__label">标题</span>
+            <input id="notice-title" class="input" maxlength="20" placeholder="最多 20 个字，可以不填"></label>
+          <label class="field"><span class="field__label">内容</span>
+            <textarea id="notice-content" class="textarea" maxlength="200" placeholder="最多 200 个字"></textarea></label>
+          <label class="switch"><input id="notice-enabled" type="checkbox"><span class="switch__track"></span><span>打开小程序时弹出</span></label>
+          <p class="hint">保存后，每位用户下次打开小程序时弹一次。改了再保存，会再弹一次。关掉开关再保存，就不再弹。</p>
+          <button id="notice-save" class="btn" type="submit" style="margin-top: 18px">保存</button>
+          <p id="notice-hint" class="hint" style="margin-top: 10px" hidden></p>
+        </form>
+        <div class="preview grid-bg">
+          <div class="preview__label">用户看到的样子</div>
+          <div class="modal">
+            <div id="pv-title" class="modal__title"></div>
+            <div id="pv-content" class="modal__content"></div>
+            <div class="modal__btn">知道了</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 积分 -->
+    <section id="tab-points" hidden>
+      <div class="head"><h1 class="head__title">积分</h1></div>
+      <div class="panel">
+        <form id="find-form" class="search">
+          <input id="find-query" class="input" inputmode="numeric" placeholder="手机号或会员编号" aria-label="手机号或会员编号">
+          <button id="find-submit" class="btn btn--navy" type="submit">查找</button>
+        </form>
+      </div>
+      <form id="adjust-form" class="panel" hidden>
+        <div class="member">
+          <div>
+            <div id="m-name" class="member__name"></div>
+            <div id="m-no" class="muted"></div>
+            <div id="m-phone" class="muted"></div>
+          </div>
+          <div class="member__points"><div class="muted">当前积分</div><div id="m-points" class="member__num"></div></div>
+        </div>
+        <div class="field"><span class="field__label">加还是减</span>
+          <div class="seg" id="sign-seg">
+            <button class="seg__btn seg__btn--on" data-sign="1" type="button">加积分</button>
+            <button class="seg__btn" data-sign="-1" type="button">减积分</button>
+          </div>
+        </div>
+        <div class="row">
+          <label class="field"><span class="field__label">数量</span>
+            <input id="adj-amount" class="input" inputmode="numeric" maxlength="6" placeholder="整数"></label>
+          <label class="field"><span class="field__label">原因</span>
+            <input id="adj-reason" class="input" maxlength="30" placeholder="会员在积分记录里能看到"></label>
+        </div>
+        <button id="adj-submit" class="btn" type="submit">确认调整</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<!-- 新建、编辑活动 -->
+<div id="drawer-mask" class="mask" hidden></div>
+<form id="drawer" class="drawer" hidden autocomplete="off">
+  <div class="drawer__head">
+    <h2 id="drawer-title" class="drawer__title"></h2>
+    <button id="drawer-close" class="drawer__close" type="button" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer__body">
+    <div class="group">基本信息</div>
+    <div class="field"><span class="field__label">类型</span>
+      <div class="seg" id="type-seg">
+        <button class="seg__btn" data-type="赛事" type="button">赛事</button>
+        <button class="seg__btn" data-type="试用装" type="button">试用装</button>
+        <button class="seg__btn" data-type="抽奖" type="button">抽奖</button>
+      </div>
+    </div>
+    <label class="field"><span class="field__label">名称</span><input id="f-title" class="input" maxlength="40" placeholder="活动名称"></label>
+    <label class="field"><span class="field__label">活动时间</span><input id="f-date" class="input" type="datetime-local"></label>
+    <div class="row">
+      <label class="field"><span class="field__label">城市</span><input id="f-city" class="input" maxlength="20" placeholder="比如 上海"></label>
+      <label class="field"><span class="field__label">场地</span><input id="f-venue" class="input" maxlength="40" placeholder="比如 徐汇滨江"></label>
+    </div>
+
+    <div class="group">报名</div>
+    <div class="row">
+      <label class="field"><span class="field__label">报名开始</span><input id="f-signupStart" class="input" type="datetime-local"></label>
+      <label class="field"><span class="field__label">报名结束</span><input id="f-signupEnd" class="input" type="datetime-local"></label>
+    </div>
+    <label class="field"><span class="field__label">会员提前报名</span><input id="f-memberSignupStart" class="input" type="datetime-local">
+      <span class="hint" style="display:block">填了，活动卡片上显示「会员优先报名」，提醒也按这个时间发。</span></label>
+    <div class="row">
+      <label class="field"><span class="field__label">名额</span><input id="f-quota" class="input" inputmode="numeric" maxlength="6" placeholder="不填就不限"></label>
+      <label class="field"><span class="field__label">名额写法</span><input id="f-quotaText" class="input" maxlength="20" placeholder="比如 限 200 份"></label>
+    </div>
+    <label class="field" id="f-drawAt-field"><span class="field__label">开奖时间</span><input id="f-drawAt" class="input" type="datetime-local"></label>
+
+    <div class="group">头图和介绍</div>
+    <div class="field"><span class="field__label">头图</span>
+      <div class="cover">
+        <div id="f-cover-img" class="cover__img">默认配图</div>
+        <div class="cover__btns">
+          <button id="f-cover-pick" class="btn btn--line btn--small" type="button">选择图片</button>
+          <button id="f-cover-clear" class="link" type="button" hidden>不用头图</button>
+          <input id="f-cover-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        </div>
+      </div>
+      <span class="hint" style="display:block">不选就用默认配图。图片会自动压到合适的大小再上传。</span>
+    </div>
+    <label class="field"><span class="field__label">介绍</span><textarea id="f-intro" class="textarea" maxlength="1000" placeholder="活动介绍，可以分段"></textarea></label>
+  </div>
+  <div class="drawer__foot">
+    <label class="switch"><input id="f-published" type="checkbox"><span class="switch__track"></span><span>上架</span></label>
+    <button id="drawer-save" class="btn" type="submit">保存</button>
+  </div>
+</form>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- 配置：和小程序用的是同一个 AppID、同一个云环境 ---------- */
+  var CONFIG = {
+    appid: 'wx224e462fe4941de6',
+    env: 'cloud1-d1g1u97accc6092f6',
+    // 微信云开发 Web SDK（官方文档给的地址）
+    sdk: 'https://web-9gikcbug35bad3a8-1304825656.tcloudbaseapp.com/sdk/1.4.0/cloud.js'
+  };
+  var TOKEN_KEY = 'sx_admin_token';
+
+  /* ---------- 小工具 ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  var two = function (n) { return (n < 10 ? '0' : '') + n; };
+  /** 时间戳 → 「11月25日 09:30」 */
+  function moment(ms) {
+    if (!ms) return '';
+    var d = new Date(ms);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + two(d.getHours()) + ':' + two(d.getMinutes());
+  }
+  /** 时间戳 → datetime-local 输入框的值（按这台电脑的时区） */
+  function toInput(ms) {
+    if (!ms) return '';
+    var d = new Date(ms);
+    return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) + 'T' + two(d.getHours()) + ':' + two(d.getMinutes());
+  }
+  function fromInput(v) {
+    if (!v) return null;
+    var t = new Date(v).getTime();
+    return isFinite(t) ? t : null;
+  }
+
+  var toastTimer = 0;
+  function toast(text, bad) {
+    var t = $('toast');
+    t.textContent = text;
+    t.className = 'toast' + (bad ? ' toast--bad' : '');
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  var ERRORS = {
+    forbidden: '没有权限',
+    not_found: '没有找到',
+    bad_type: '请选择类型',
+    missing_title: '请填写名称',
+    missing_date: '请选择活动时间',
+    bad_signup_time: '报名结束要晚于报名开始',
+    missing_content: '请填写公告内容',
+    missing_query: '请填写手机号或会员编号',
+    bad_delta: '请填写数量',
+    missing_reason: '请填写原因',
+    insufficient: '积分不够减',
+    missing_file: '请选择图片',
+    bad_file: '只能用 JPG、PNG、WebP 图片',
+    file_too_large: '图片太大了',
+    bad_code: '登录码不对，或者已经过期',
+    web_expired: '登录过期了，请重新登录',
+    sdk: '连不上云开发，请检查网络后刷新页面',
+    network: '网络异常，请稍后再试'
+  };
+  var errorText = function (e) { return ERRORS[e && e.code] || ERRORS.network; };
+
+  /* ---------- 调云函数 ---------- */
+  var token = '';
+  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { /* 浏览器不让存，就只在这次打开期间有效 */ }
+  function setToken(t) {
+    token = t || '';
+    try { if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 同上 */ }
+  }
+
+  var sdkReady = null;
+  /** 加载 Web SDK 并以未登录模式连上云环境。只做一次 */
+  function sdk() {
+    if (sdkReady) return sdkReady;
+    sdkReady = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = CONFIG.sdk;
+      s.onload = function () {
+        try {
+          var root = window.cloud || (window.wx && window.wx.cloud);
+          var c = new root.Cloud({ identityless: true, resourceAppid: CONFIG.appid, resourceEnv: CONFIG.env });
+          Promise.resolve(c.init()).then(function () { resolve(c); }, reject);
+        } catch (e) { reject(e); }
+      };
+      s.onerror = function () { reject(new Error('sdk')); };
+      document.head.appendChild(s);
+    }).catch(function (e) { sdkReady = null; throw Object.assign(e instanceof Error ? e : new Error('sdk'), { code: 'sdk' }); });
+    return sdkReady;
+  }
+
+  /** 调接口。成功 resolve 接口返回的 data；失败 reject 一个带 code 的 Error。登录过期时回到登录页 */
+  function call(action, data) {
+    var mine = session;
+    return sdk().then(function (c) {
+      return c.callFunction({ name: 'api', data: Object.assign({ action: action, webToken: token }, data) });
+    }).then(function (res) {
+      // 请求发出去以后已经退出过或过期过：这个结果属于上一次登录，不能再动现在的页面，
+      // 也不能因为旧凭证过期把刚登录的人踢出去。返回一个不会有结果的 Promise，后面的处理都不会跑
+      if (mine !== session) return new Promise(function () {});
+      var r = res && res.result;
+      if (r && r.ok) return r.data;
+      var code = (r && r.code) || 'network';
+      if (code === 'web_expired') { setToken(''); showLogin(ERRORS.web_expired); }
+      throw Object.assign(new Error(code), { code: code });
+    }, function (e) {
+      if (mine !== session) return new Promise(function () {});
+      throw Object.assign(e instanceof Error ? e : new Error('network'), { code: (e && e.code) || 'network' });
+    });
+  }
+
+  /* ---------- 登录 ---------- */
+  // 每退出或过期一次加一。请求回来时这个数变了，说明它是上一次登录期间发的
+  var session = 0;
+  /** 退出或登录过期：上一次登录期间取到的内容都不算数，下次登录重新取 */
+  function resetSession() {
+    session += 1; // 还没回来的请求从这一刻起都不作数，见 call()
+    events = [];
+    coverUrls = {};
+    $('ev-rows').textContent = '';
+    saving = 0;
+    notice = { ready: false, loading: false, failed: false, saving: false };
+    $('notice-title').value = '';
+    $('notice-content').value = '';
+    $('notice-enabled').checked = false;
+    previewNotice();
+    syncNotice();
+    finding = false;
+    adjusting = false;
+    $('find-submit').disabled = false;
+    $('adj-submit').disabled = false;
+    $('find-query').value = '';
+    showMember(null);
+  }
+
+  function showLogin(message) {
+    closeDrawer();
+    resetSession();
+    $('view-app').hidden = true;
+    $('view-login').hidden = false;
+    $('login-error').textContent = message || '';
+    $('login-code').value = '';
+    $('login-code').focus();
+  }
+  function showApp(name) {
+    $('view-login').hidden = true;
+    $('view-app').hidden = false;
+    $('who').textContent = name || '';
+    switchTab('events');
+  }
+
+  // 输入时四位一组，好对着手机核对
+  $('login-code').addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
+  });
+
+  $('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var code = $('login-code').value.replace(/\D/g, '');
+    if (code.length !== 12) { $('login-error').textContent = '登录码是 12 位数字'; return; }
+    var btn = $('login-submit');
+    btn.disabled = true;
+    $('login-error').textContent = '';
+    call('webLogin', { code: code }).then(function (d) {
+      setToken(d.token);
+      showApp(d.name || '管理员');
+    }).catch(function (err) {
+      $('login-error').textContent = errorText(err);
+    }).then(function () { btn.disabled = false; });
+  });
+
+  $('logout').addEventListener('click', function () {
+    call('webLogout').catch(function () { /* 退不掉也照样清掉本机的凭证 */ }).then(function () {
+      setToken('');
+      showLogin('');
+    });
+  });
+
+  /* ---------- 切换分区 ---------- */
+  var TABS = ['events', 'notice', 'points'];
+  function switchTab(tab) {
+    TABS.forEach(function (t) { $('tab-' + t).hidden = t !== tab; });
+    Array.prototype.forEach.call($('nav').children, function (b) {
+      b.className = 'nav__item' + (b.getAttribute('data-tab') === tab ? ' nav__item--on' : '');
+    });
+    if (tab === 'events') loadEvents();
+    if (tab === 'notice' && !notice.ready) loadNotice();
+  }
+  $('nav').addEventListener('click', function (e) {
+    var tab = e.target.getAttribute && e.target.getAttribute('data-tab');
+    if (tab) switchTab(tab);
+  });
+
+  /* ---------- 活动 ---------- */
+  var events = [];
+  var coverUrls = {}; // 云存储的 fileID → 能在网页上显示的地址
+  var STATE_TEXT = { published: '已上架', draft: '未上架', ended: '已结束' };
+  function stateOf(e) {
+    if (e.status !== 'published') return 'draft';
+    return e.date && e.date < Date.now() - 24 * 3600 * 1000 ? 'ended' : 'published';
+  }
+  /** 头图的显示地址：https 的直接用；云存储的要先换成临时地址 */
+  function coverUrl(cover) {
+    if (!cover) return '';
+    return cover.indexOf('cloud://') === 0 ? (coverUrls[cover] || '') : cover;
+  }
+
+  var listSeq = 0;
+  function loadEvents() {
+    // 连着读了几次（切分区、保存、上下架）时，先发的可能后到：只用最后发出的那次的结果
+    var mine = ++listSeq;
+    return call('adminEvents').then(function (d) {
+      if (mine !== listSeq) return null;
+      events = d.events || [];
+      renderEvents();
+      var need = events.map(function (e) { return e.cover; }).filter(function (c) { return c && c.indexOf('cloud://') === 0 && !coverUrls[c]; });
+      if (!need.length) return null;
+      // 一次最多换 50 个
+      var batches = [];
+      for (var i = 0; i < need.length; i += 50) batches.push(need.slice(i, i + 50));
+      return Promise.all(batches.map(function (ids) {
+        return call('adminFileUrls', { ids: ids }).then(function (r) { Object.assign(coverUrls, r.urls || {}); });
+      })).then(renderEvents);
+    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); });
+  }
+
+  function renderEvents() {
+    var q = $('ev-search').value.trim().toLowerCase();
+    var f = $('ev-filter').value;
+    var rows = events.filter(function (e) {
+      return (!q || String(e.title).toLowerCase().indexOf(q) >= 0) && (!f || stateOf(e) === f);
+    });
+    var body = $('ev-rows');
+    body.textContent = '';
+    rows.forEach(function (e) {
+      var tr = el('tr');
+      var state = stateOf(e);
+
+      var title = el('td');
+      var box = el('div', 'cell-title');
+      var thumb = el('div', 'thumb');
+      var url = coverUrl(e.cover);
+      if (url) thumb.style.backgroundImage = 'url("' + encodeURI(url).replace(/"/g, '%22') + '")';
+      var text = el('div');
+      text.appendChild(el('div', 'cell-title__name', e.title));
+      text.appendChild(el('div', 'cell-title__type', e.type));
+      box.appendChild(thumb); box.appendChild(text); title.appendChild(box);
+      tr.appendChild(title);
+
+      // 两行一格：上面是时间，下面是地点；报名时间上面是开始，下面是结束
+      var when = el('td');
+      when.appendChild(el('div', '', moment(e.date)));
+      when.appendChild(el('div', 'cell-sub', [e.city, e.venue].filter(Boolean).join(' ') || '—'));
+      tr.appendChild(when);
+      var open = e.memberSignupStart || e.signupStart;
+      var signup = el('td');
+      if (open || e.signupEnd) {
+        signup.appendChild(el('div', '', open ? moment(open) + ' 起' : '—'));
+        signup.appendChild(el('div', 'cell-sub', e.signupEnd ? '到 ' + moment(e.signupEnd) : '不限结束时间'));
+      } else {
+        signup.textContent = '—';
+      }
+      tr.appendChild(signup);
+      tr.appendChild(el('td', '', (e.signupCount || 0) + (e.quota ? ' / ' + e.quota : '')));
+      var st = el('td'); st.appendChild(el('span', 'chip chip--' + state, STATE_TEXT[state])); tr.appendChild(st);
+
+      var ops = el('td');
+      var wrap = el('div', 'ops');
+      var edit = el('button', 'btn btn--line btn--small', '编辑');
+      edit.type = 'button';
+      edit.addEventListener('click', function () { openDrawer(e); });
+      var pub = e.status === 'published';
+      var toggle = el('button', 'btn btn--small' + (pub ? ' btn--line' : ' btn--navy'), pub ? '下架' : '上架');
+      toggle.type = 'button';
+      toggle.addEventListener('click', function () {
+        toggle.disabled = true;
+        call('adminSetEventStatus', { id: e.id, status: pub ? 'draft' : 'published' }).then(function () {
+          toast(pub ? '已下架' : '已上架，小程序里能看到了');
+          return loadEvents();
+        }).catch(function (err) { toggle.disabled = false; if (err.code !== 'web_expired') toast(errorText(err), true); });
+      });
+      wrap.appendChild(edit); wrap.appendChild(toggle); ops.appendChild(wrap);
+      tr.appendChild(ops);
+      body.appendChild(tr);
+    });
+    var empty = $('ev-empty');
+    empty.hidden = rows.length > 0;
+    empty.textContent = events.length ? '没有符合条件的活动' : '还没有活动，点右上角「新建活动」';
+  }
+  $('ev-search').addEventListener('input', renderEvents);
+  $('ev-filter').addEventListener('change', renderEvents);
+  $('ev-new').addEventListener('click', function () { openDrawer(null); });
+
+  /* ---------- 活动表单 ---------- */
+  var TIME_FIELDS = ['date', 'signupStart', 'signupEnd', 'memberSignupStart', 'drawAt'];
+  var TEXT_FIELDS = ['title', 'city', 'venue', 'quotaText', 'intro'];
+  var form = { id: '', type: '赛事', cover: '' };
+  // 每打开或关上一次表单就换一个号。头图传完回来时号变了，说明那个表单已经不在了，结果作废
+  var editor = 0;
+  var uploading = false;
+  var saving = 0; // 正在保存的那个表单的号，0 是没有在保存
+  /** 保存按钮：头图在传或者这个表单正在保存时不能点 */
+  function syncSave() { $('drawer-save').disabled = uploading || saving === editor; }
+
+  function setType(type) {
+    form.type = type;
+    Array.prototype.forEach.call($('type-seg').children, function (b) {
+      b.className = 'seg__btn' + (b.getAttribute('data-type') === type ? ' seg__btn--on' : '');
+    });
+    // 开奖时间只有抽奖用得上
+    $('f-drawAt-field').hidden = type !== '抽奖';
+  }
+  function setCover(cover, url) {
+    form.cover = cover || '';
+    var img = $('f-cover-img');
+    var shown = url || coverUrl(form.cover);
+    img.style.backgroundImage = shown ? 'url("' + encodeURI(shown).replace(/"/g, '%22') + '")' : '';
+    img.className = 'cover__img' + (shown ? ' cover__img--has' : '');
+    img.textContent = form.cover ? (shown ? '' : '已有头图') : '默认配图';
+    $('f-cover-clear').hidden = !form.cover;
+    $('f-cover-pick').textContent = form.cover ? '换一张' : '选择图片';
+  }
+
+  function openDrawer(e) {
+    editor += 1;
+    setUploading(false);
+    form.id = e ? e.id : '';
+    $('drawer-title').textContent = e ? '编辑活动' : '新建活动';
+    setType(e ? e.type : '赛事');
+    TEXT_FIELDS.forEach(function (k) { $('f-' + k).value = e ? (e[k] || '') : ''; });
+    TIME_FIELDS.forEach(function (k) { $('f-' + k).value = e ? toInput(e[k]) : ''; });
+    $('f-quota').value = e && e.quota ? String(e.quota) : '';
+    $('f-published').checked = !!e && e.status === 'published';
+    setCover(e ? e.cover : '');
+    $('drawer-mask').hidden = false;
+    $('drawer').hidden = false;
+    $('f-title').focus();
+  }
+  function closeDrawer() {
+    editor += 1;
+    $('drawer-mask').hidden = true;
+    $('drawer').hidden = true;
+  }
+  $('drawer-close').addEventListener('click', closeDrawer);
+  $('drawer-mask').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('drawer').hidden) closeDrawer(); });
+  $('type-seg').addEventListener('click', function (e) {
+    var type = e.target.getAttribute && e.target.getAttribute('data-type');
+    if (type) setType(type);
+  });
+
+  /**
+   * 把选的图片压成 JPEG：最长边不超过 1600px，文件不超过约 500KB。
+   * 云函数一次能收的数据有限，手机拍的原图直接传会失败。
+   */
+  function compress(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        var ctx = canvas.getContext('2d');
+        // 透明的图压成 JPEG 会变黑底，先垫一层白
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        var quality = 0.86;
+        var out = canvas.toDataURL('image/jpeg', quality);
+        // base64 比原文件大三分之一：约 500KB 的图是 68 万个字符上下
+        while (out.length > 680000 && quality > 0.4) { quality -= 0.12; out = canvas.toDataURL('image/jpeg', quality); }
+        resolve(out.slice(out.indexOf(',') + 1));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(Object.assign(new Error('bad_file'), { code: 'bad_file' })); };
+      img.src = url;
+    });
+  }
+  /** 头图正在上传时不能保存（不然存下去的还是旧图），也不能再选一张 */
+  function setUploading(on) {
+    uploading = on;
+    $('f-cover-pick').disabled = on;
+    syncSave();
+    if (on) $('f-cover-pick').textContent = '正在上传';
+  }
+  $('f-cover-pick').addEventListener('click', function () { $('f-cover-file').click(); });
+  $('f-cover-clear').addEventListener('click', function () { setCover(''); });
+  $('f-cover-file').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    this.value = '';
+    if (!file) return;
+    var mine = editor; // 这次上传属于现在打开的这个表单
+    setUploading(true);
+    compress(file).then(function (data) {
+      return call('adminUploadCover', { data: data });
+    }).then(function (r) {
+      if (r.url) coverUrls[r.fileID] = r.url;
+      // 传完时表单已经关了或换成别的活动了：这张图不能安到别的活动上
+      if (mine !== editor) return;
+      setUploading(false);
+      setCover(r.fileID, r.url);
+    }).catch(function (e) {
+      if (mine !== editor) return;
+      setUploading(false);
+      setCover(form.cover);
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    });
+  });
+
+  $('drawer').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (uploading) { toast('头图还在上传，等一下再保存', true); return; }
+    if (saving === editor) return; // 这个表单已经在保存了，不重复提交（新建的活动重复提交会建出两个）
+    var quota = parseInt($('f-quota').value, 10);
+    var event = { type: form.type, quota: quota > 0 ? quota : null, cover: form.cover, status: $('f-published').checked ? 'published' : 'draft' };
+    TEXT_FIELDS.forEach(function (k) { event[k] = $('f-' + k).value; });
+    TIME_FIELDS.forEach(function (k) { event[k] = fromInput($('f-' + k).value); });
+    if (form.type !== '抽奖') event.drawAt = null;
+    // 先在这里拦一下必填项，省一次来回；云函数里还会再检查
+    if (!event.title.trim()) { toast(ERRORS.missing_title, true); $('f-title').focus(); return; }
+    if (!event.date) { toast(ERRORS.missing_date, true); $('f-date').focus(); return; }
+    var mine = editor; // 这次保存属于现在打开的这个表单
+    saving = mine;
+    syncSave();
+    call('adminSaveEvent', { id: form.id, event: event }).then(function () {
+      toast('已保存');
+      // 存完时这个表单已经关了、又开了别的活动：不能把正在填的那个表单关掉
+      if (mine === editor) closeDrawer();
+      return loadEvents();
+    }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      // 按钮的状态只归当时那个表单管；换了表单以后，按钮由新表单自己管
+      .then(function () { if (saving === mine) saving = 0; syncSave(); });
+  });
+
+  /* ---------- 公告 ---------- */
+  function previewNotice() {
+    $('pv-title').textContent = $('notice-title').value.trim() || '公告';
+    $('pv-content').textContent = $('notice-content').value.trim() || '（内容）';
+  }
+  // ready：现在的公告已经读到并填进表单了。没读到之前表单是空的，这时保存会把线上的公告清掉，所以不让改也不让存
+  var notice = { ready: false, loading: false, failed: false, saving: false };
+  function syncNotice() {
+    var off = !notice.ready;
+    $('notice-title').disabled = off;
+    $('notice-content').disabled = off;
+    $('notice-enabled').disabled = off;
+    $('notice-save').disabled = off || notice.saving;
+    var hint = $('notice-hint');
+    hint.hidden = notice.ready;
+    hint.textContent = notice.failed ? '没读到现在的公告，点左边的「公告」再读一次' : '正在读取现在的公告';
+  }
+  function loadNotice() {
+    if (notice.loading) return;
+    notice.loading = true;
+    notice.failed = false;
+    syncNotice();
+    call('adminNotice').then(function (d) {
+      $('notice-title').value = d.notice.title;
+      $('notice-content').value = d.notice.content;
+      $('notice-enabled').checked = d.notice.enabled;
+      previewNotice();
+      notice.ready = true;
+    }).catch(function (e) {
+      notice.failed = true;
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    }).then(function () { notice.loading = false; syncNotice(); });
+  }
+  $('notice-title').addEventListener('input', previewNotice);
+  $('notice-content').addEventListener('input', previewNotice);
+  $('notice-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!notice.ready || notice.saving) return;
+    notice.saving = true;
+    syncNotice();
+    call('adminSaveNotice', { notice: { title: $('notice-title').value, content: $('notice-content').value, enabled: $('notice-enabled').checked } })
+      .then(function () { toast('公告已保存'); })
+      .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { notice.saving = false; syncNotice(); });
+  });
+  previewNotice();
+  syncNotice();
+
+  /* ---------- 积分 ---------- */
+  var member = null;
+  var sign = 1;
+  // 每查一次会员换一个号。调整积分的结果回来时号变了，说明页面上已经是另一次查找的结果了
+  var selection = 0;
+  var finding = false;
+  var adjusting = false;
+  function nameOf(m) { return (m.nickname || 'SPORTSIX 会员') + '（' + m.memberNo + '）'; }
+  function renderMember(m) {
+    member = m;
+    $('adjust-form').hidden = !m;
+    if (!m) return;
+    $('m-name').textContent = m.nickname || 'SPORTSIX 会员';
+    $('m-no').textContent = '会员编号 ' + (m.memberNo || '—');
+    $('m-phone').textContent = m.phoneMasked || '';
+    $('m-points').textContent = String(m.points || 0);
+  }
+  /** 换成另一位会员（或清空）：填到一半的数量和原因一起清掉 */
+  function showMember(m) {
+    selection += 1;
+    renderMember(m);
+    $('adj-amount').value = '';
+    $('adj-reason').value = '';
+  }
+  $('find-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (finding) return;
+    finding = true;
+    var btn = $('find-submit');
+    btn.disabled = true;
+    call('adminFindMember', { query: $('find-query').value }).then(function (d) {
+      showMember(d.member);
+    }).catch(function (err) { showMember(null); if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { finding = false; btn.disabled = false; });
+  });
+  $('sign-seg').addEventListener('click', function (e) {
+    var s = e.target.getAttribute && e.target.getAttribute('data-sign');
+    if (!s) return;
+    sign = Number(s);
+    Array.prototype.forEach.call(this.children, function (b) { b.className = 'seg__btn' + (b.getAttribute('data-sign') === s ? ' seg__btn--on' : ''); });
+  });
+  $('adjust-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!member || adjusting) return;
+    var amount = parseInt($('adj-amount').value, 10);
+    if (!(amount > 0)) { toast(ERRORS.bad_delta, true); $('adj-amount').focus(); return; }
+    var reason = $('adj-reason').value.trim();
+    if (!reason) { toast(ERRORS.missing_reason, true); $('adj-reason').focus(); return; }
+    var who = nameOf(member);
+    if (!window.confirm('给 ' + who + (sign > 0 ? ' 加 ' : ' 减 ') + amount + ' 积分？')) return;
+    var btn = $('adj-submit');
+    var mine = selection; // 这次调整属于现在页面上的这位会员
+    adjusting = true;
+    btn.disabled = true;
+    call('adminAdjustPoints', { memberNo: member.memberNo, delta: sign > 0 ? amount : -amount, reason: reason }).then(function (d) {
+      if (mine === selection) {
+        showMember(d.member);
+        toast('已调整');
+        return;
+      }
+      // 结果回来时页面上已经换了一次查找的结果：不动正在填的数量和原因，只说清楚刚才那笔是给谁的。
+      // 页面上要是还是同一位会员，把积分数更新一下
+      if (member && member.memberNo === d.member.memberNo) renderMember(d.member);
+      toast('已给 ' + who + ' 调整');
+    }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { adjusting = false; btn.disabled = false; });
+  });
+
+  /* ---------- 打开页面：有凭证就先问一下还管不管用 ---------- */
+  if (!token) {
+    showLogin('');
+  } else {
+    call('webMe').then(function (d) { showApp(d.name || '管理员'); })
+      .catch(function (e) { if (e.code !== 'web_expired') showLogin(errorText(e)); });
+  }
+})();
+</script>
+</body>
+</html>

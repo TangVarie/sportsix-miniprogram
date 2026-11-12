@@ -9,6 +9,7 @@
     "shot": "node tools/preview/shot.js",
     "size": "node tools/check-size.js",
     "check": "node tools/check-project.js",
-    "cdn": "node tools/pack-assets.js"
+    "cdn": "node tools/pack-assets.js",
+    "test:web": "node tools/test-web-admin.js"
   }
 }

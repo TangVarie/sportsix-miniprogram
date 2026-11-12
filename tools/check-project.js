@@ -88,4 +88,14 @@ for (const f of files.filter((x) => x.endsWith('.wxml'))) {
 }
 
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
+// 电脑端后台（web-admin/index.html）里写的 AppID 和云环境，要和小程序用的是同一个
+{
+  const html = fs.readFileSync(path.join(repo, 'web-admin/index.html'), 'utf8');
+  const appid = JSON.parse(fs.readFileSync(path.join(repo, 'project.config.json'), 'utf8')).appid;
+  const env = require(path.join(root, 'config.js')).cloudEnv;
+  if (html.indexOf("appid: '" + appid + "'") < 0) errors.push('web-admin/index.html 里的 appid 和 project.config.json 不一致');
+  if (env && html.indexOf("env: '" + env + "'") < 0) errors.push('web-admin/index.html 里的 env 和 miniprogram/config.js 的 cloudEnv 不一致');
+  if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
+}
+
 console.log('工程自检通过：' + new Set(units).size + ' 个页面和组件，' + files.length + ' 个文件');

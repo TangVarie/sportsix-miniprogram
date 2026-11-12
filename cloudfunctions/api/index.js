@@ -13,9 +13,17 @@
  *   point_logs 积分记录  每次加减积分记一条；第一次用到时云函数自己建这个集合
  *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
  *
+ *   admin_web  电脑端后台的登录码、登录凭证；第一次用到时云函数自己建这个集合
+ *
  * 运营后台的接口（admin 开头）只给管理员用：会员记录上有 admin: true，在云开发控制台里手动加。
+ *
+ * 电脑端后台是一个网页（web-admin/），没有微信身份。它的调用走「未登录访问」：
+ *   1. 管理员在小程序的运营后台里取一个一次性的登录码（adminWebCode）；
+ *   2. 网页用登录码换一个登录凭证（webLogin），之后每次调用都带上（webToken）；
+ *   3. 没有微信身份的调用只认 webLogin 和 WEB_ACTIONS 里列的后台接口，别的一概不处理。
  *   counters   计数      只有一条 _id 为 memberNo 的记录，存下一个会员编号；第一次用到时云函数自己建这个集合
  */
+const crypto = require('crypto');
 const cloud = require('wx-server-sdk');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -128,6 +136,86 @@ function cleanText(v, max, multiline) {
 
 /** 昵称：去掉换行等控制字符和首尾空格，最多 20 个字 */
 const cleanNickname = (v) => cleanText(v, NICKNAME_MAX);
+
+/* ---------- 电脑端后台的登录 ---------- */
+
+const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+/** 登录码 5 分钟内有效，只能用一次 */
+const WEB_CODE_TTL = 5 * 60 * 1000;
+/**
+ * 登录码 12 位数字。网页没有微信身份，分不清谁是谁，所以没法「输错几次就锁」：
+ * 那样任何人乱输几次就能把所有管理员挡在外面。改成靠位数防猜：一万亿种里只有刚取的那一个是对的，
+ * 又只管 5 分钟，就算每秒猜上千次也基本猜不中。输错不记数、不写库，乱输的人什么都改变不了。
+ */
+const WEB_CODE_DIGITS = 12;
+/** 登录一次管 12 小时 */
+const WEB_SESSION_TTL = 12 * 3600 * 1000;
+/** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
+const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotice', 'adminSaveNotice',
+  'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
+
+/** admin_web 集合里的一条记录。集合还没建时当作没有 */
+async function webDoc(id) {
+  try { return await findById('admin_web', id); } catch (e) { return null; }
+}
+/** 写 admin_web 集合里的一条记录。集合第一次用到时自己建 */
+async function webSet(id, data) {
+  try {
+    await db.collection('admin_web').doc(id).set({ data: data });
+  } catch (e) {
+    await db.createCollection('admin_web');
+    await db.collection('admin_web').doc(id).set({ data: data });
+  }
+}
+
+/** 随机的 n 位数字。每一位从随机字节里取，250 以上的字节丢掉，这样十个数字出现的机会一样 */
+function randomDigits(n) {
+  let out = '';
+  while (out.length < n) {
+    const bytes = crypto.randomBytes(n * 2);
+    for (let i = 0; i < bytes.length && out.length < n; i++) if (bytes[i] < 250) out += String(bytes[i] % 10);
+  }
+  return out;
+}
+
+/**
+ * 网页用登录码换登录凭证。登录码和凭证在库里都只存摘要，库里的数据被人看到也登录不了。
+ * 输错了只是登录不上，不记数也不写库（原因见 WEB_CODE_DIGITS 的说明）。
+ */
+async function webLogin(event) {
+  const now = Date.now();
+  const code = String(event.code == null ? '' : event.code).replace(/\D/g, '');
+  const id = 'c_' + sha(code);
+  const doc = code.length === WEB_CODE_DIGITS ? await webDoc(id) : null;
+  let ok = !!doc && doc.kind === 'code' && doc.used === false && doc.expiresAt > now;
+  if (ok) {
+    // 条件更新：同一个登录码被两个请求同时拿来用，只有一个能成
+    const res = await db.collection('admin_web').where({ _id: id, used: false }).update({ data: { used: true } });
+    ok = res.stats.updated > 0;
+  }
+  // 取登录码之后被撤掉管理员的，也登录不了
+  const member = ok ? await findById('members', doc.openid) : null;
+  if (!ok || !member || member.admin !== true) throw fail('bad_code');
+  const token = crypto.randomBytes(32).toString('hex');
+  await webSet('s_' + sha(token), { kind: 'session', openid: doc.openid, expiresAt: now + WEB_SESSION_TTL, createdAt: db.serverDate() });
+  return { token: token, expiresAt: now + WEB_SESSION_TTL, name: member.nickname || '' };
+}
+
+/** 登录凭证 → 是哪位管理员（openid）。凭证不对或过期返回 null */
+async function webSession(token) {
+  if (!token || typeof token !== 'string') return null;
+  const s = await webDoc('s_' + sha(token));
+  if (!s || s.kind !== 'session' || !(s.expiresAt > Date.now())) return null;
+  return s.openid;
+}
+
+/** 图片的头几个字节 → 扩展名。只收 JPEG、PNG、WebP */
+function imageExt(buf) {
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
+  if (buf.length > 8 && buf.slice(0, 8).toString('hex') === '89504e470d0a1a0a') return 'png';
+  if (buf.length > 12 && buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP') return 'webp';
+  return '';
+}
 
 /* ---------- 运营后台 ---------- */
 
@@ -402,6 +490,54 @@ const actions = {
     return { notice: { title: data.title, content: data.content, enabled: data.enabled } };
   },
 
+  /** 小程序里取电脑端后台的登录码：12 位数字，5 分钟内有效，只能用一次 */
+  async adminWebCode(event, openid) {
+    await requireAdmin(openid);
+    const code = randomDigits(WEB_CODE_DIGITS);
+    await webSet('c_' + sha(code), { kind: 'code', openid: openid, used: false, expiresAt: Date.now() + WEB_CODE_TTL, createdAt: db.serverDate() });
+    return { code: code, expiresIn: WEB_CODE_TTL / 1000 };
+  },
+
+  /** 电脑端后台：凭证还管不管用，登录的是谁 */
+  async webMe(event, openid) {
+    const m = await requireAdmin(openid);
+    return { name: m.nickname || '', memberNo: m.memberNo || '' };
+  },
+
+  /** 电脑端后台：退出登录，这个凭证作废 */
+  async webLogout(event, openid) {
+    if (event.webToken) await db.collection('admin_web').doc('s_' + sha(event.webToken)).update({ data: { expiresAt: 0 } });
+    return {};
+  },
+
+  /**
+   * 电脑端后台传活动头图：网页把图片压好，用 base64 交上来，这里存进云存储的 events/ 目录。
+   * 只收 JPEG、PNG、WebP，最大 2MB。返回 fileID（活动的 cover 存它）和一个临时的访问地址（网页上预览用）。
+   */
+  async adminUploadCover(event, openid) {
+    await requireAdmin(openid);
+    const buf = Buffer.from(String(event.data || ''), 'base64');
+    if (!buf.length) throw fail('missing_file');
+    if (buf.length > 2 * 1024 * 1024) throw fail('file_too_large');
+    const ext = imageExt(buf);
+    if (!ext) throw fail('bad_file');
+    const name = 'events/' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.' + ext;
+    const up = await cloud.uploadFile({ cloudPath: name, fileContent: buf });
+    const urls = await cloud.getTempFileURL({ fileList: [up.fileID] });
+    return { fileID: up.fileID, url: (urls.fileList[0] && urls.fileList[0].tempFileURL) || '' };
+  },
+
+  /** 电脑端后台：把云存储的 fileID 换成能在网页上显示的临时地址。一次最多 50 个 */
+  async adminFileUrls(event, openid) {
+    await requireAdmin(openid);
+    const ids = (Array.isArray(event.ids) ? event.ids : []).filter((x) => typeof x === 'string' && x.indexOf('cloud://') === 0).slice(0, 50);
+    if (!ids.length) return { urls: {} };
+    const res = await cloud.getTempFileURL({ fileList: ids });
+    const urls = {};
+    (res.fileList || []).forEach((f) => { if (f.tempFileURL) urls[f.fileID] = f.tempFileURL; });
+    return { urls: urls };
+  },
+
   /** 按手机号或会员编号找会员 */
   async adminFindMember(event, openid) {
     await requireAdmin(openid);
@@ -485,11 +621,21 @@ const actions = {
 };
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  const handler = actions[event && event.action];
-  if (!handler) return { ok: false, code: 'unknown_action' };
-  if (!OPENID) return { ok: false, code: 'no_openid' };
+  let OPENID = '';
+  try { OPENID = cloud.getWXContext().OPENID || ''; } catch (e) { /* 网页来的调用没有微信身份 */ }
+  const action = event && event.action;
+  const handler = actions[action];
   try {
+    // 没有微信身份：只有电脑端后台的网页会这样调。只认登录，和带着登录凭证调后台接口
+    if (!OPENID) {
+      if (action === 'webLogin') return { ok: true, data: await webLogin(event || {}) };
+      if (!handler) return { ok: false, code: 'unknown_action' };
+      if (WEB_ACTIONS.indexOf(action) < 0) return { ok: false, code: 'no_openid' };
+      const admin = await webSession(event.webToken);
+      if (!admin) return { ok: false, code: 'web_expired' };
+      return { ok: true, data: await handler(event, admin) };
+    }
+    if (!handler) return { ok: false, code: 'unknown_action' };
     return { ok: true, data: await handler(event, OPENID) };
   } catch (e) {
     if (e && e.code && typeof e.code === 'string') return { ok: false, code: e.code };

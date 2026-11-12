@@ -15,6 +15,10 @@ module.exports = {
     {
       "key": "points",
       "text": "积分"
+    },
+    {
+      "key": "web",
+      "text": "电脑端"
     }
   ],
   "events": {
@@ -123,5 +127,19 @@ module.exports = {
     "insufficient": "积分不够减",
     "upload": "图片上传失败，请再试一次",
     "network": "网络异常，请稍后再试"
+  },
+  "web": {
+    "title": "在电脑上用后台",
+    "steps": [
+      "在电脑浏览器里打开下面的网址。",
+      "点「获取登录码」，把 12 位数字填到网页上。"
+    ],
+    "urlLabel": "网址",
+    "urlEmpty": "还没有配置网址",
+    "copy": "复制网址",
+    "copied": "已复制",
+    "get": "获取登录码",
+    "again": "重新获取",
+    "codeHint": "5 分钟内有效，只能用一次。登录一次管 12 小时。"
   }
 };
