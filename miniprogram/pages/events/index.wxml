@@ -24,6 +24,17 @@
       <image class="ev-empty__ridge sx-draw" src="{{empty.graphic}}" />
       <text class="ev-empty__title">{{empty.title}}</text>
     </view>
+    <!-- 订阅新活动通知（设计稿里没有，样式沿用提醒按钮和卡片的描边） -->
+    <view class="ev-news sx-rise" style="animation-delay: .15s">
+      <view class="ev-news__text">
+        <text class="ev-news__title">{{news.title}}</text>
+        <text class="ev-news__body">{{news.body}}</text>
+      </view>
+      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews">
+        <image class="ev-remind__icon" src="/assets/icons/bell-{{newsOn ? 'grey' : 'navy'}}.svg" />
+        <text>{{newsOn ? news.actionDone : news.action}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 即将开始：三种卡片样式 -->
@@ -74,6 +85,17 @@
         <image class="ev-row__arrow" src="/assets/icons/chevron-blue.svg" />
       </view>
     </block>
+    <!-- 订阅新活动通知（设计稿里没有，样式沿用提醒按钮和卡片的描边） -->
+    <view class="ev-news sx-rise" style="animation-delay: {{0.05 + upcoming.length * 0.1}}s">
+      <view class="ev-news__text">
+        <text class="ev-news__title">{{news.title}}</text>
+        <text class="ev-news__body">{{news.body}}</text>
+      </view>
+      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews">
+        <image class="ev-remind__icon" src="/assets/icons/bell-{{newsOn ? 'grey' : 'navy'}}.svg" />
+        <text>{{newsOn ? news.actionDone : news.action}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 往期 -->

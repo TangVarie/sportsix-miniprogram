@@ -1,5 +1,5 @@
 /**
- * 会员、报名、提醒、补给计划的读写。页面只通过这个文件拿这些数据。
+ * 会员、报名、提醒、新活动通知、补给计划的读写。页面只通过这个文件拿这些数据。
  *
  * 读是同步的，读的是本机缓存；写返回 Promise。
  * - 配了云环境（config.cloudEnv）：写先发到云函数 api，成功后更新缓存；
@@ -8,7 +8,7 @@
  */
 const cloud = require('./cloud.js');
 
-const KEY = { member: 'sx_member', reminders: 'sx_reminders', signups: 'sx_signups', plan: 'sx_plan', pending: 'sx_pending_plan', noticeSeen: 'sx_notice_seen' };
+const KEY = { member: 'sx_member', reminders: 'sx_reminders', signups: 'sx_signups', plan: 'sx_plan', pending: 'sx_pending_plan', noticeSeen: 'sx_notice_seen', news: 'sx_news' };
 
 // 运营在后台设的公告，随启动同步拿到。只放在内存里：每次打开小程序都重新取
 let notice = null;
@@ -59,6 +59,7 @@ function sync(retries) {
     write(KEY.plan, d.plan);
     write(KEY.reminders, d.reminders || []);
     write(KEY.signups, d.signups || []);
+    write(KEY.news, d.news ? true : null);
     notice = d.notice || null;
     emit();
     return true;
@@ -140,6 +141,16 @@ function addReminder(eventId, templateId) {
   return tracked(cloud.call('remind', { eventId: eventId, templateId: templateId }).then(() => { addTo(KEY.reminders, eventId); }));
 }
 
+/**
+ * 新活动通知：订阅了、还没收到通知时是 true。收到一条之后云端会把它改回 false，要再点一次才有下一条。
+ */
+function hasNews() { return read(KEY.news, false) === true; }
+/** 登记订阅。templateId 是用户刚授权的订阅消息模板；没配云环境或没有模板时只记在本机。 */
+function subscribeNews(templateId) {
+  if (!cloud.enabled() || !templateId) { write(KEY.news, true); return Promise.resolve(); }
+  return tracked(cloud.call('subscribeNews', { templateId: templateId }).then(() => { write(KEY.news, true); }));
+}
+
 /** 已报名的活动 id 列表 */
 function getSignups() { return read(KEY.signups, []); }
 function hasSignup(eventId) { return getSignups().indexOf(eventId) >= 0; }
@@ -178,7 +189,7 @@ function clearPendingPlan() { write(KEY.pending, null); }
 module.exports = {
   sync, onChange, unseenNotice, markNoticeSeen,
   getMember, isMember, register, setNickname, fetchPoints,
-  getReminders, hasReminder, addReminder,
+  getReminders, hasReminder, addReminder, hasNews, subscribeNews,
   getSignups, hasSignup, signup,
   getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan
 };

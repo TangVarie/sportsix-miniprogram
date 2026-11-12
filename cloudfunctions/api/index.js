@@ -14,6 +14,7 @@
  *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
  *
  *   admin_web  电脑端后台的登录码、登录凭证；第一次用到时云函数自己建这个集合
+ *   news_subs  新活动通知的订阅  _id 用 openid，每人一条；第一次用到时云函数自己建这个集合
  *
  * 运营后台的接口（admin 开头）只给管理员用：会员记录上有 admin: true，在云开发控制台里手动加。
  *
@@ -151,7 +152,7 @@ const WEB_CODE_DIGITS = 12;
 /** 登录一次管 12 小时 */
 const WEB_SESSION_TTL = 12 * 3600 * 1000;
 /** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
-const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotice', 'adminSaveNotice',
+const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminNotice', 'adminSaveNotice',
   'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
 
 /** admin_web 集合里的一条记录。集合还没建时当作没有 */
@@ -228,9 +229,27 @@ async function requireAdmin(openid) {
 
 const EVENT_TYPES = ['赛事', '试用装', '抽奖'];
 
-/** 运营后台看到的活动：比小程序里多了状态和已报名人数 */
+/**
+ * 运营后台看到的活动：比小程序里多了状态、已报名人数和「新活动通知」发到哪一步了。
+ * notify 为 null 是还没通知过；status 是 pending（在发）或 done（发完了），sent、failed 是发到和没发到的人数。
+ */
 function adminEventView(e) {
-  return Object.assign(eventView(e), { status: e.status === 'published' ? 'published' : 'draft', signupCount: e.signupCount || 0 });
+  return Object.assign(eventView(e), {
+    status: e.status === 'published' ? 'published' : 'draft',
+    signupCount: e.signupCount || 0,
+    notify: e.notifyStatus ? { status: e.notifyStatus === 'done' ? 'done' : 'pending', at: ms(e.notifyAt), sent: e.notifySent || 0, failed: e.notifyFailed || 0 } : null
+  });
+}
+
+/* ---------- 新活动通知 ---------- */
+
+/** 这位用户的订阅记录。集合还没建时当作没有 */
+async function newsDoc(openid) {
+  try { return await findById('news_subs', openid); } catch (e) { return null; }
+}
+/** 现在有多少人订阅着、还没收到通知。集合还没建时是 0 */
+async function newsWaiting() {
+  try { return (await db.collection('news_subs').where({ sent: false }).count()).total; } catch (e) { return 0; }
 }
 
 /** 把后台表单交上来的活动整理成要存的数据。时间是毫秒时间戳，没填的存 null（页面上不显示那一项） */
@@ -335,8 +354,11 @@ const actions = {
     const plan = member ? await findById('plans', openid) : null;
     const reminders = await db.collection('reminders').where({ openid: openid, sent: false }).limit(100).get();
     const signups = await db.collection('signups').where({ openid: openid }).limit(100).get();
+    const news = await newsDoc(openid);
     return {
       member: memberView(member),
+      // 订阅了新活动通知、还没收到：活动页上的按钮显示「已订阅」。收到一条之后要再点一次才有下一条
+      news: !!news && news.sent === false,
       // 运营在后台设的公告，打开小程序时弹一次
       notice: noticeView(await readNotice()),
       plan: plan ? { input: plan.input, savedAt: ms(plan.savedAt) } : null,
@@ -437,7 +459,33 @@ const actions = {
       all.push(...res.data);
       if (res.data.length < 100) break;
     }
-    return { events: all.map(adminEventView) };
+    // newsWaiting：现在点「通知」能发给多少人
+    return { events: all.map(adminEventView), newsWaiting: await newsWaiting() };
+  },
+
+  /**
+   * 把一场活动通知给订阅了「新活动通知」的人。这里只是登记，真正的发送由 remind 云函数分批做（每 5 分钟一次）。
+   * 每场活动只能通知一次：订阅消息一次授权只有一条额度，重复通知会把大家的额度白白用掉。
+   * 只通知登记这一刻之前订阅的人；之后才订阅的人已经能在活动页看到这场活动，留着额度等下一场。
+   */
+  async adminNotifyEvent(event, openid) {
+    await requireAdmin(openid);
+    const id = String(event.id || '');
+    const e = await findById('events', id);
+    if (!e) throw fail('not_found');
+    if (e.status !== 'published') throw fail('not_published');
+    if (ms(e.date) && ms(e.date) < Date.now()) throw fail('event_ended');
+    if (e.notifyStatus) throw fail('notified');
+    // 上一场的通知还在发：现在订阅着的人马上要被那一场用掉，这时再登记一场，实际发不到几个人，还白用掉这场的一次机会
+    const busy = await db.collection('events').where({ status: 'published', notifyStatus: 'pending' }).count();
+    if (busy.total) throw fail('notify_busy');
+    const waiting = await newsWaiting();
+    if (!waiting) throw fail('no_subscribers');
+    // 条件更新：两位管理员同时点，只有一个登记得上
+    const res = await db.collection('events').where({ _id: id, notifyStatus: _.exists(false) })
+      .update({ data: { notifyStatus: 'pending', notifyAt: db.serverDate(), notifyBy: openid, notifySent: 0, notifyFailed: 0 } });
+    if (!res.stats.updated) throw fail('notified');
+    return { event: adminEventView(await findById('events', id)), waiting: waiting };
   },
 
   /** 新建或修改活动。带 id 是修改，不带是新建 */
@@ -576,6 +624,23 @@ const actions = {
       data: { openid: openid, eventId: e._id, templateId: String(event.templateId), sent: false, createdAt: db.serverDate() }
     });
     return { eventId: e._id };
+  },
+
+  /**
+   * 「有新活动通知我」：用户授权了一次性订阅消息之后登记。运营在后台点「通知」时，由 remind 云函数给每人发一条。
+   * 每人只有一条记录（_id 是 openid）：一次授权只有一条额度，收到一条之后要再点一次才有下一条。
+   */
+  async subscribeNews(event, openid) {
+    if (!event.templateId) throw fail('missing_template');
+    const data = { openid: openid, templateId: String(event.templateId), sent: false, status: 'waiting', subscribedAt: db.serverDate() };
+    try {
+      await db.collection('news_subs').doc(openid).set({ data: data });
+    } catch (e) {
+      // 集合还没建：建好再写
+      await db.createCollection('news_subs');
+      await db.collection('news_subs').doc(openid).set({ data: data });
+    }
+    return { news: true };
   },
 
   /**

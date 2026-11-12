@@ -7,6 +7,12 @@ module.exports = {
     "title": "敬请期待",
     "image": "assets/photos/web/trail-sunset.jpg", "graphic": "assets/graphics/ridge-line.svg"
   },
+  "news": {
+    "_note": "活动页「即将开始」最下面的一行：订阅新活动通知。设计稿里没有，是加这个功能时补的。",
+    "title": "有新活动通知我",
+    "body": "点一次，有新活动时提醒你一次。",
+    "action": "通知我", "actionDone": "已订阅"
+  },
   "upcoming": [
     {
       "style": "poster", "type": "赛事", "tag": "会员优先报名",

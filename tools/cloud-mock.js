@@ -14,7 +14,7 @@ function createCloud() {
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
@@ -32,6 +32,7 @@ function createCloud() {
       if (!isOp(c)) return val(v) === val(c);
       if (c.$op === 'gte') return v != null && val(v) >= val(c.v);
       if (c.$op === 'lt') return v != null && val(v) < val(c.v);
+      if (c.$op === 'lte') return v != null && val(v) <= val(c.v);
       if (c.$op === 'exists') return (v !== undefined) === c.v;
       throw new Error('替身不支持的查询指令：' + c.$op);
     });
@@ -95,6 +96,7 @@ function createCloud() {
     command: {
       gte: (v) => ({ $op: 'gte', v: v }),
       lt: (v) => ({ $op: 'lt', v: v }),
+      lte: (v) => ({ $op: 'lte', v: v }),
       exists: (v) => ({ $op: 'exists', v: v }),
       inc: (v) => ({ $op: 'inc', v: v })
     },

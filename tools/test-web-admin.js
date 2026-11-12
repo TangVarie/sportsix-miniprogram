@@ -228,6 +228,26 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.click('#drawer-close');
     slowSave = 0;
 
+    // ----- 新活动通知：没人订阅时点了有提示；有人订阅时确认后登记，按钮换成进度 -----
+    const raceRow = () => page.locator('#ev-rows tr', { hasText: '上海半程马拉松' });
+    eq(await page.textContent('#ev-subs'), '0 人订阅了新活动通知', '活动页上写着有多少人订阅');
+    eq(await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('通知', { exact: true }).count(), 0, '已经结束的活动没有通知按钮');
+    await raceRow().getByText('通知', { exact: true }).click();
+    await expectToast('还没有人订阅新活动通知', '没人订阅时点通知有提示');
+    cloud.state.openid = 'user-b';
+    await cloud.run(() => api.main({ action: 'subscribeNews', templateId: 'tmpl' }));
+    cloud.state.openid = '';
+    await page.click('[data-tab="events"]');
+    await page.waitForFunction(() => document.getElementById('ev-subs').textContent.indexOf('1 人') === 0);
+    let confirmText = '';
+    page.once('dialog', (d) => { confirmText = d.message(); d.accept(); });
+    await raceRow().getByText('通知', { exact: true }).click();
+    await expectToast('已安排，几分钟内发出', '登记通知');
+    ok(confirmText.includes('1 人') && confirmText.includes('只能通知一次'), '确认框里写清楚发给多少人、只能通知一次');
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('#ev-rows tr'), (tr) => tr.textContent.includes('上海半程马拉松') && tr.textContent.includes('通知发送中')));
+    eq(await raceRow().getByText('通知', { exact: true }).count(), 0, '通知过的活动不再有通知按钮');
+    eq(cloud.col('events').find((e) => e._id === 'race').notifyStatus, 'pending', '云端登记上了');
+
     // ----- 公告：现在的公告没读到之前不能改也不能存，不然会拿空表单把线上的公告清掉 -----
     await as('user-a', 'adminSaveNotice', { notice: { title: '原来的公告', content: '原来的内容', enabled: true } });
     const noticeState = () => page.evaluate(() => [document.getElementById('notice-save').disabled, document.getElementById('notice-title').disabled,

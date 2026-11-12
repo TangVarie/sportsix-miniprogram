@@ -9,6 +9,13 @@ const { baseData, go, navTone, headerTone, shareCard, TABS, tick } = require('..
 
 const toast = (title) => wx.showToast({ title: title, icon: 'none' });
 
+/** 新活动通知发到哪一步了：没通知过是空的 */
+function notifyText(n) {
+  if (!n) return '';
+  if (n.status !== 'done') return copy.events.notifyPending;
+  return copy.events.notifyDone.replace('[人数]', n.sent) + (n.failed ? '，' + copy.events.notifyFailed.replace('[人数]', n.failed) : '');
+}
+
 /** 活动 → 列表里一行的显示数据。已上架但日期已经过去的算「已结束」 */
 function eventRow(e) {
   const published = e.status === 'published';
@@ -20,7 +27,10 @@ function eventRow(e) {
     state: state,
     stateText: copy.events.status[state],
     meta: [e.type, format.moment(e.date), e.city].filter(Boolean).join(' · '),
-    signups: copy.events.signups.replace('[人数]', e.signupCount || 0) + (e.quota ? ' / ' + e.quota : '')
+    signups: copy.events.signups.replace('[人数]', e.signupCount || 0) + (e.quota ? ' / ' + e.quota : ''),
+    // 新活动通知：上架着、还没开始、没通知过的活动可以通知一次
+    canNotify: state === 'published' && !e.notify && e.date > Date.now(),
+    notifyText: notifyText(e.notify)
   };
 }
 
@@ -47,6 +57,9 @@ Page({
     loading: true,
     busy: false,
     events: [],
+    // 现在有多少人订阅着新活动通知
+    newsWaiting: 0,
+    subscribersText: '',
     notice: { title: '', content: '', enabled: false },
     noticeLoaded: false,
     query: '',
@@ -98,8 +111,13 @@ Page({
   /* ---------- 活动 ---------- */
 
   loadEvents() {
-    return admin.listEvents()
-      .then((list) => this.setData({ events: list.map(eventRow), loading: false }))
+    return admin.eventsOverview()
+      .then((d) => this.setData({
+        events: d.events.map(eventRow),
+        newsWaiting: d.newsWaiting,
+        subscribersText: copy.events.subscribers.replace('[人数]', d.newsWaiting),
+        loading: false
+      }))
       .catch((e) => { this.setData({ loading: false }); toast(admin.errorText(e)); });
   },
 
@@ -125,6 +143,25 @@ Page({
       })
       .catch((err) => toast(admin.errorText(err)))
       .then(() => this.setData({ busy: false }));
+  },
+
+  /** 把这场活动通知给订阅了新活动通知的人：先弹一次确认，写清楚发给多少人 */
+  onNotify(e) {
+    if (this.data.busy) return;
+    const id = e.currentTarget.dataset.id;
+    if (!this.data.newsWaiting) { toast(copy.errors.no_subscribers); return; }
+    wx.showModal({
+      title: copy.events.notifyConfirmTitle,
+      content: copy.events.notifyConfirm.replace('[人数]', this.data.newsWaiting),
+      success: (res) => {
+        if (!res.confirm) return;
+        this.setData({ busy: true });
+        admin.notifyEvent(id)
+          .then(() => { toast(copy.events.notifyQueued); return this.loadEvents(); })
+          .catch((err) => { toast(admin.errorText(err)); return this.loadEvents(); })
+          .then(() => this.setData({ busy: false }));
+      }
+    });
   },
 
   /* ---------- 公告 ---------- */

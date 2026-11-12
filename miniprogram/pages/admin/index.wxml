@@ -16,6 +16,7 @@
       <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
     </view>
     <view wx:elif="{{events.length}}" class="ad-list">
+      <view class="ad-hint">{{subscribersText}}</view>
       <view wx:for="{{events}}" wx:key="id" class="ad-event">
         <view class="ad-event__top">
           <text class="ad-event__title">{{item.title}}</text>
@@ -23,9 +24,11 @@
         </view>
         <text class="ad-event__meta">{{item.meta}}</text>
         <text class="ad-event__meta">{{item.signups}}</text>
+        <text wx:if="{{item.notifyText}}" class="ad-event__meta">{{item.notifyText}}</text>
         <view class="ad-event__btns">
           <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onEdit">{{copy.events.edit}}</view>
           <view class="ad-mini {{item.published ? '' : 'ad-mini--on'}} sx-pressable" hover-class="sx-press" data-id="{{item.id}}" data-status="{{item.published ? 'draft' : 'published'}}" bindtap="onStatus">{{item.published ? copy.events.unpublish : copy.events.publish}}</view>
+          <view wx:if="{{item.canNotify}}" class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onNotify">{{copy.events.notify}}</view>
         </view>
       </view>
     </view>

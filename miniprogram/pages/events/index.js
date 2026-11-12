@@ -11,6 +11,9 @@ Page({
     // 第一次从云端取活动、还没返回
     loading: false,
     empty: events.getEmpty(),
+    // 「有新活动通知我」那一行的文字，和现在是不是已经订阅
+    news: events.getNews(),
+    newsOn: false,
     upcoming: [],
     past: []
   }),
@@ -56,7 +59,17 @@ Page({
   render() {
     const upcoming = events.listUpcoming().map((e) => Object.assign({}, e, { reminded: events.hasReminder(e.id) }));
     // 没有活动时「即将开始」里显示「敬请期待」
-    this.setData({ upcoming: upcoming, hasUpcoming: upcoming.length > 0 });
+    this.setData({ upcoming: upcoming, hasUpcoming: upcoming.length > 0, newsOn: events.hasNews() });
+  },
+
+  /** 订阅新活动通知。已经订阅着的时候不再弹授权 */
+  onNews() {
+    if (this.data.newsOn || this.subscribing) return;
+    this.subscribing = true;
+    events.subscribeNews().then((ok) => {
+      this.subscribing = false;
+      if (ok) this.setData({ newsOn: true });
+    });
   },
 
   onTab(e) {
