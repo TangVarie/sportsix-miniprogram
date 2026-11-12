@@ -227,6 +227,7 @@
           <label class="switch"><input id="notice-enabled" type="checkbox"><span class="switch__track"></span><span>打开小程序时弹出</span></label>
           <p class="hint">保存后，每位用户下次打开小程序时弹一次。改了再保存，会再弹一次。关掉开关再保存，就不再弹。</p>
           <button id="notice-save" class="btn" type="submit" style="margin-top: 18px">保存</button>
+          <p id="notice-hint" class="hint" style="margin-top: 10px" hidden></p>
         </form>
         <div class="preview grid-bg">
           <div class="preview__label">用户看到的样子</div>
@@ -435,30 +436,44 @@
 
   /** 调接口。成功 resolve 接口返回的 data；失败 reject 一个带 code 的 Error。登录过期时回到登录页 */
   function call(action, data) {
+    var mine = session;
     return sdk().then(function (c) {
       return c.callFunction({ name: 'api', data: Object.assign({ action: action, webToken: token }, data) });
     }).then(function (res) {
+      // 请求发出去以后已经退出过或过期过：这个结果属于上一次登录，不能再动现在的页面，
+      // 也不能因为旧凭证过期把刚登录的人踢出去。返回一个不会有结果的 Promise，后面的处理都不会跑
+      if (mine !== session) return new Promise(function () {});
       var r = res && res.result;
       if (r && r.ok) return r.data;
       var code = (r && r.code) || 'network';
       if (code === 'web_expired') { setToken(''); showLogin(ERRORS.web_expired); }
       throw Object.assign(new Error(code), { code: code });
     }, function (e) {
+      if (mine !== session) return new Promise(function () {});
       throw Object.assign(e instanceof Error ? e : new Error('network'), { code: (e && e.code) || 'network' });
     });
   }
 
   /* ---------- 登录 ---------- */
+  // 每退出或过期一次加一。请求回来时这个数变了，说明它是上一次登录期间发的
+  var session = 0;
   /** 退出或登录过期：上一次登录期间取到的内容都不算数，下次登录重新取 */
   function resetSession() {
-    loaded = {};
+    session += 1; // 还没回来的请求从这一刻起都不作数，见 call()
     events = [];
     coverUrls = {};
     $('ev-rows').textContent = '';
+    saving = 0;
+    notice = { ready: false, loading: false, failed: false, saving: false };
     $('notice-title').value = '';
     $('notice-content').value = '';
     $('notice-enabled').checked = false;
     previewNotice();
+    syncNotice();
+    finding = false;
+    adjusting = false;
+    $('find-submit').disabled = false;
+    $('adj-submit').disabled = false;
     $('find-query').value = '';
     showMember(null);
   }
@@ -508,14 +523,13 @@
 
   /* ---------- 切换分区 ---------- */
   var TABS = ['events', 'notice', 'points'];
-  var loaded = {};
   function switchTab(tab) {
     TABS.forEach(function (t) { $('tab-' + t).hidden = t !== tab; });
     Array.prototype.forEach.call($('nav').children, function (b) {
       b.className = 'nav__item' + (b.getAttribute('data-tab') === tab ? ' nav__item--on' : '');
     });
     if (tab === 'events') loadEvents();
-    if (tab === 'notice' && !loaded.notice) loadNotice();
+    if (tab === 'notice' && !notice.ready) loadNotice();
   }
   $('nav').addEventListener('click', function (e) {
     var tab = e.target.getAttribute && e.target.getAttribute('data-tab');
@@ -536,8 +550,12 @@
     return cover.indexOf('cloud://') === 0 ? (coverUrls[cover] || '') : cover;
   }
 
+  var listSeq = 0;
   function loadEvents() {
+    // 连着读了几次（切分区、保存、上下架）时，先发的可能后到：只用最后发出的那次的结果
+    var mine = ++listSeq;
     return call('adminEvents').then(function (d) {
+      if (mine !== listSeq) return null;
       events = d.events || [];
       renderEvents();
       var need = events.map(function (e) { return e.cover; }).filter(function (c) { return c && c.indexOf('cloud://') === 0 && !coverUrls[c]; });
@@ -625,6 +643,9 @@
   // 每打开或关上一次表单就换一个号。头图传完回来时号变了，说明那个表单已经不在了，结果作废
   var editor = 0;
   var uploading = false;
+  var saving = 0; // 正在保存的那个表单的号，0 是没有在保存
+  /** 保存按钮：头图在传或者这个表单正在保存时不能点 */
+  function syncSave() { $('drawer-save').disabled = uploading || saving === editor; }
 
   function setType(type) {
     form.type = type;
@@ -706,7 +727,7 @@
   function setUploading(on) {
     uploading = on;
     $('f-cover-pick').disabled = on;
-    $('drawer-save').disabled = on;
+    syncSave();
     if (on) $('f-cover-pick').textContent = '正在上传';
   }
   $('f-cover-pick').addEventListener('click', function () { $('f-cover-file').click(); });
@@ -736,6 +757,7 @@
   $('drawer').addEventListener('submit', function (e) {
     e.preventDefault();
     if (uploading) { toast('头图还在上传，等一下再保存', true); return; }
+    if (saving === editor) return; // 这个表单已经在保存了，不重复提交（新建的活动重复提交会建出两个）
     var quota = parseInt($('f-quota').value, 10);
     var event = { type: form.type, quota: quota > 0 ? quota : null, cover: form.cover, status: $('f-published').checked ? 'published' : 'draft' };
     TEXT_FIELDS.forEach(function (k) { event[k] = $('f-' + k).value; });
@@ -744,9 +766,9 @@
     // 先在这里拦一下必填项，省一次来回；云函数里还会再检查
     if (!event.title.trim()) { toast(ERRORS.missing_title, true); $('f-title').focus(); return; }
     if (!event.date) { toast(ERRORS.missing_date, true); $('f-date').focus(); return; }
-    var btn = $('drawer-save');
     var mine = editor; // 这次保存属于现在打开的这个表单
-    btn.disabled = true;
+    saving = mine;
+    syncSave();
     call('adminSaveEvent', { id: form.id, event: event }).then(function () {
       toast('已保存');
       // 存完时这个表单已经关了、又开了别的活动：不能把正在填的那个表单关掉
@@ -754,7 +776,7 @@
       return loadEvents();
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
       // 按钮的状态只归当时那个表单管；换了表单以后，按钮由新表单自己管
-      .then(function () { if (mine === editor) btn.disabled = uploading; });
+      .then(function () { if (saving === mine) saving = 0; syncSave(); });
   });
 
   /* ---------- 公告 ---------- */
@@ -762,32 +784,58 @@
     $('pv-title').textContent = $('notice-title').value.trim() || '公告';
     $('pv-content').textContent = $('notice-content').value.trim() || '（内容）';
   }
+  // ready：现在的公告已经读到并填进表单了。没读到之前表单是空的，这时保存会把线上的公告清掉，所以不让改也不让存
+  var notice = { ready: false, loading: false, failed: false, saving: false };
+  function syncNotice() {
+    var off = !notice.ready;
+    $('notice-title').disabled = off;
+    $('notice-content').disabled = off;
+    $('notice-enabled').disabled = off;
+    $('notice-save').disabled = off || notice.saving;
+    var hint = $('notice-hint');
+    hint.hidden = notice.ready;
+    hint.textContent = notice.failed ? '没读到现在的公告，点左边的「公告」再读一次' : '正在读取现在的公告';
+  }
   function loadNotice() {
+    if (notice.loading) return;
+    notice.loading = true;
+    notice.failed = false;
+    syncNotice();
     call('adminNotice').then(function (d) {
-      loaded.notice = true;
       $('notice-title').value = d.notice.title;
       $('notice-content').value = d.notice.content;
       $('notice-enabled').checked = d.notice.enabled;
       previewNotice();
-    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); });
+      notice.ready = true;
+    }).catch(function (e) {
+      notice.failed = true;
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    }).then(function () { notice.loading = false; syncNotice(); });
   }
   $('notice-title').addEventListener('input', previewNotice);
   $('notice-content').addEventListener('input', previewNotice);
   $('notice-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var btn = $('notice-save');
-    btn.disabled = true;
+    if (!notice.ready || notice.saving) return;
+    notice.saving = true;
+    syncNotice();
     call('adminSaveNotice', { notice: { title: $('notice-title').value, content: $('notice-content').value, enabled: $('notice-enabled').checked } })
       .then(function () { toast('公告已保存'); })
       .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { btn.disabled = false; });
+      .then(function () { notice.saving = false; syncNotice(); });
   });
   previewNotice();
+  syncNotice();
 
   /* ---------- 积分 ---------- */
   var member = null;
   var sign = 1;
-  function showMember(m) {
+  // 每查一次会员换一个号。调整积分的结果回来时号变了，说明页面上已经是另一次查找的结果了
+  var selection = 0;
+  var finding = false;
+  var adjusting = false;
+  function nameOf(m) { return (m.nickname || 'SPORTSIX 会员') + '（' + m.memberNo + '）'; }
+  function renderMember(m) {
     member = m;
     $('adjust-form').hidden = !m;
     if (!m) return;
@@ -796,16 +844,23 @@
     $('m-phone').textContent = m.phoneMasked || '';
     $('m-points').textContent = String(m.points || 0);
   }
+  /** 换成另一位会员（或清空）：填到一半的数量和原因一起清掉 */
+  function showMember(m) {
+    selection += 1;
+    renderMember(m);
+    $('adj-amount').value = '';
+    $('adj-reason').value = '';
+  }
   $('find-form').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (finding) return;
+    finding = true;
     var btn = $('find-submit');
     btn.disabled = true;
     call('adminFindMember', { query: $('find-query').value }).then(function (d) {
       showMember(d.member);
-      $('adj-amount').value = '';
-      $('adj-reason').value = '';
     }).catch(function (err) { showMember(null); if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { btn.disabled = false; });
+      .then(function () { finding = false; btn.disabled = false; });
   });
   $('sign-seg').addEventListener('click', function (e) {
     var s = e.target.getAttribute && e.target.getAttribute('data-sign');
@@ -815,22 +870,29 @@
   });
   $('adjust-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!member) return;
+    if (!member || adjusting) return;
     var amount = parseInt($('adj-amount').value, 10);
     if (!(amount > 0)) { toast(ERRORS.bad_delta, true); $('adj-amount').focus(); return; }
     var reason = $('adj-reason').value.trim();
     if (!reason) { toast(ERRORS.missing_reason, true); $('adj-reason').focus(); return; }
-    var who = (member.nickname || 'SPORTSIX 会员') + '（' + member.memberNo + '）';
+    var who = nameOf(member);
     if (!window.confirm('给 ' + who + (sign > 0 ? ' 加 ' : ' 减 ') + amount + ' 积分？')) return;
     var btn = $('adj-submit');
+    var mine = selection; // 这次调整属于现在页面上的这位会员
+    adjusting = true;
     btn.disabled = true;
     call('adminAdjustPoints', { memberNo: member.memberNo, delta: sign > 0 ? amount : -amount, reason: reason }).then(function (d) {
-      showMember(d.member);
-      $('adj-amount').value = '';
-      $('adj-reason').value = '';
-      toast('已调整');
+      if (mine === selection) {
+        showMember(d.member);
+        toast('已调整');
+        return;
+      }
+      // 结果回来时页面上已经换了一次查找的结果：不动正在填的数量和原因，只说清楚刚才那笔是给谁的。
+      // 页面上要是还是同一位会员，把积分数更新一下
+      if (member && member.memberNo === d.member.memberNo) renderMember(d.member);
+      toast('已给 ' + who + ' 调整');
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { btn.disabled = false; });
+      .then(function () { adjusting = false; btn.disabled = false; });
   });
 
   /* ---------- 打开页面：有凭证就先问一下还管不管用 ---------- */

@@ -55,6 +55,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
 
   let slowUpload = 0;
   let slowSave = 0;
+  const slow = {};   // 接口名 → 拖慢多少毫秒
+  const broken = {}; // 接口名 → true 时这个接口调不通（像断网）
   const server = http.createServer((req, res) => {
     if (req.url === '/' || req.url.startsWith('/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -71,6 +73,9 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
         // 测试里要看「图还在传」的状态时，把传图的响应拖慢
         if (p.data && p.data.action === 'adminUploadCover' && slowUpload) await new Promise((r) => setTimeout(r, slowUpload));
         if (p.data && p.data.action === 'adminSaveEvent' && slowSave) await new Promise((r) => setTimeout(r, slowSave));
+        const act = p.data && p.data.action;
+        if (slow[act]) await new Promise((r) => setTimeout(r, slow[act]));
+        if (broken[act]) { res.writeHead(500); res.end('broken'); return; }
         const result = p.name === 'api' ? await cloud.run(() => api.main(p.data)) : { ok: false, code: 'unknown_function' };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -223,8 +228,25 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.click('#drawer-close');
     slowSave = 0;
 
+    // ----- 公告：现在的公告没读到之前不能改也不能存，不然会拿空表单把线上的公告清掉 -----
+    await as('user-a', 'adminSaveNotice', { notice: { title: '原来的公告', content: '原来的内容', enabled: true } });
+    const noticeState = () => page.evaluate(() => [document.getElementById('notice-save').disabled, document.getElementById('notice-title').disabled,
+      document.getElementById('notice-hint').hidden ? '' : document.getElementById('notice-hint').textContent]);
+    broken.adminNotice = true;
     await page.click('[data-tab="notice"]');
     await page.waitForSelector('#tab-notice:not([hidden])');
+    await page.waitForFunction(() => document.getElementById('notice-hint').textContent.indexOf('没读到') === 0);
+    eq(await noticeState(), [true, true, '没读到现在的公告，点左边的「公告」再读一次'], '公告没读到：不能改、不能存，并说明怎么办');
+    await page.evaluate(() => document.getElementById('notice-form').requestSubmit());
+    await new Promise((r) => setTimeout(r, 200));
+    eq((await as('user-a', 'adminNotice')).data.notice.title, '原来的公告', '没读到时硬提交也不会把线上的公告清掉');
+    broken.adminNotice = false;
+    slow.adminNotice = 500;
+    await page.click('[data-tab="notice"]');
+    eq(await noticeState(), [true, true, '正在读取现在的公告'], '公告还在读：不能改、不能存');
+    await page.waitForFunction(() => document.getElementById('notice-title').value === '原来的公告');
+    eq(await noticeState(), [false, false, ''], '读到以后表单填上现在的公告，可以改可以存');
+    slow.adminNotice = 0;
     await page.fill('#notice-title', '停机维护');
     await page.fill('#notice-content', '今晚 23 点到 24 点暂停报名。');
     eq([await page.textContent('#pv-title'), await page.textContent('#pv-content')], ['停机维护', '今晚 23 点到 24 点暂停报名。'], '右边实时预览');
@@ -257,6 +279,23 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq([log.delta, log.reason, log.by], [150, '线下活动签到', 'user-a'], '记一条积分记录，带操作的管理员');
     await shot('points');
 
+    // ----- 调整还没回来时又查了另一位会员：结果回来后不能盖掉正在填的内容 -----
+    slow.adminAdjustPoints = 600;
+    await page.fill('#adj-amount', '10');
+    await page.fill('#adj-reason', '补签到');
+    page.once('dialog', (d) => d.accept());
+    await page.click('#adj-submit');
+    await page.fill('#find-query', '13800001234');
+    await page.click('#find-submit');
+    await page.waitForFunction(() => document.getElementById('m-name').textContent === '运营小唐');
+    await page.fill('#adj-amount', '77');
+    await page.fill('#adj-reason', '填到一半');
+    await expectToast('已给 老李（' + memberB.memberNo + '） 调整', '提示里写清楚刚才那笔是给谁的');
+    eq(memberB.points, 660, '前一位会员的积分调整到了云端');
+    eq([await page.textContent('#m-name'), await page.inputValue('#adj-amount'), await page.inputValue('#adj-reason')], ['运营小唐', '77', '填到一半'], '页面上还是后来查的会员，填到一半的内容还在');
+    ok(await page.isEnabled('#adj-submit'), '调整按钮恢复可用');
+    slow.adminAdjustPoints = 0;
+
     // ----- 刷新页面还在登录状态；凭证过期后回到登录页 -----
     await page.reload();
     await page.waitForSelector('#view-app:not([hidden])');
@@ -278,6 +317,22 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     ok(true, '重新登录后公告重新取，不会拿旧内容盖掉别人的修改');
     await page.click('[data-tab="points"]');
     ok(await page.isHidden('#adjust-form'), '重新登录后上一次查到的会员不留在页面上');
+
+    // ----- 上一次登录期间发出的请求，重新登录以后才回来：不能动现在的页面，也不能把人踢出去 -----
+    slow.adminFindMember = 900;
+    await page.fill('#find-query', memberB.phone);
+    await page.click('#find-submit');
+    await page.click('#logout');
+    await page.waitForSelector('#view-login:not([hidden])');
+    await page.fill('#login-code', (await as('user-a', 'adminWebCode')).data.code);
+    await page.click('#login-submit');
+    await page.waitForSelector('#view-app:not([hidden])');
+    await page.click('[data-tab="points"]');
+    await new Promise((r) => setTimeout(r, 1300));
+    ok(await page.isVisible('#view-app'), '旧请求带着作废的凭证回来，不会把刚登录的人踢出去');
+    ok(await page.isHidden('#adjust-form'), '旧请求查到的会员不会出现在新登录的页面上');
+    ok(await page.isEnabled('#find-submit'), '查找按钮可用');
+    slow.adminFindMember = 0;
 
     // ----- 退出登录 -----
     await page.click('#logout');
