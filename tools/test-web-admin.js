@@ -54,6 +54,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
   const memberB = cloud.col('members').find((m) => m._id === 'user-b');
 
   let slowUpload = 0;
+  let slowSave = 0;
   const server = http.createServer((req, res) => {
     if (req.url === '/' || req.url.startsWith('/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -69,6 +70,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
         cloud.state.openid = '';
         // 测试里要看「图还在传」的状态时，把传图的响应拖慢
         if (p.data && p.data.action === 'adminUploadCover' && slowUpload) await new Promise((r) => setTimeout(r, slowUpload));
+        if (p.data && p.data.action === 'adminSaveEvent' && slowSave) await new Promise((r) => setTimeout(r, slowSave));
         const result = p.name === 'api' ? await cloud.run(() => api.main(p.data)) : { ok: false, code: 'unknown_function' };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -203,7 +205,24 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(cloud.col('events').find((e) => e._id === 'race').cover || '', '', '没保存的那个活动头图也没变');
     slowUpload = 0;
 
-    // ----- 公告 -----
+    // ----- 保存还没回来时关掉表单、开了别的活动：回来以后不能把正在填的表单关掉 -----
+    slowSave = 500;
+    await page.locator('#ev-rows tr', { hasText: '上海半程马拉松' }).getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    await page.fill('#f-venue', '西岸');
+    await page.click('#drawer-save');
+    await page.click('#drawer-close');
+    await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    await page.fill('#f-title', '周年抽奖（改到一半）');
+    for (let i = 0; i < 40 && cloud.col('events').find((e) => e._id === 'race').venue !== '西岸'; i += 1) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 400)); // 等网页收到结果、处理完
+    eq(cloud.col('events').find((e) => e._id === 'race').venue, '西岸', '前一个活动的修改写到云端');
+    ok(await page.isVisible('#drawer'), '正在填的表单没有被关掉');
+    eq([await page.inputValue('#f-title'), await page.isEnabled('#drawer-save')], ['周年抽奖（改到一半）', true], '填到一半的内容还在，保存按钮可用');
+    await page.click('#drawer-close');
+    slowSave = 0;
+
     await page.click('[data-tab="notice"]');
     await page.waitForSelector('#tab-notice:not([hidden])');
     await page.fill('#notice-title', '停机维护');

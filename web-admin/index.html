@@ -745,13 +745,16 @@
     if (!event.title.trim()) { toast(ERRORS.missing_title, true); $('f-title').focus(); return; }
     if (!event.date) { toast(ERRORS.missing_date, true); $('f-date').focus(); return; }
     var btn = $('drawer-save');
+    var mine = editor; // 这次保存属于现在打开的这个表单
     btn.disabled = true;
     call('adminSaveEvent', { id: form.id, event: event }).then(function () {
       toast('已保存');
-      closeDrawer();
+      // 存完时这个表单已经关了、又开了别的活动：不能把正在填的那个表单关掉
+      if (mine === editor) closeDrawer();
       return loadEvents();
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { btn.disabled = uploading; });
+      // 按钮的状态只归当时那个表单管；换了表单以后，按钮由新表单自己管
+      .then(function () { if (mine === editor) btn.disabled = uploading; });
   });
 
   /* ---------- 公告 ---------- */
