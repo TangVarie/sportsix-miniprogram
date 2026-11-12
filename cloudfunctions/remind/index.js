@@ -79,32 +79,44 @@ exports.main = async () => {
 };
 
 /**
- * 新活动通知。运营点「通知」时，api 云函数在活动上记了 notifyStatus: 'pending'，并把当时订阅着的人划给了这场活动
- * （订阅记录 news_subs 每人一条，_id 是 openid，eventId 是划给了哪场，sent: false 表示还没发）。
- * 这里把划给这场活动的人逐个发完，再把活动记成 'done'。一次执行发不完的，下一次接着发。
+ * 新活动通知。运营点「通知」时，api 云函数在活动上记了 notifyStatus: 'pending' 和这次登记的编号 notifyId，
+ * 并把当时订阅着的人划给了这次登记（订阅记录 news_subs 每人一条，_id 是 openid，job 是划给了哪次登记，
+ * sent: false 表示还没发）。这里把划给这次登记的人逐个发完，再把活动记成 'done'。一次执行发不完的，下一次接着发。
  *
- * - 发送前先用条件更新领取（还没发、而且还划在这场活动名下才领得到），所以两次执行重叠时同一个人不会收到两条，
+ * 下面每一步都只认登记的编号：一场活动的登记被撤掉、后来又重新登记，是两个编号，
+ * 慢了一步的旧操作碰不到新的登记，也碰不到划给新登记的人。
+ *
+ * - 发送前先用条件更新领取（还没发、而且还划在这次登记名下才领得到），所以两次执行重叠时同一个人不会收到两条，
  *   用户刚收到就又点了一次订阅时，新的那条也不会被这一场用掉。
  * - 查询或发送中途出错：这一场保持 'pending'，下一次执行接着发，不会当成发完。
- * - 活动下架了或日期过了：停掉这一场，还没发到的人放回去（eventId 清空），留给下一场。
- *   定时任务还没开始发就下架的，当作没通知过，重新上架后可以再通知；已经开始发的，这一场到此为止。
+ * - 活动下架了、日期过了、或者登记到一半中断了：停掉这一场，还没发到的人放回去留给下一场（见 stopNews）。
  *
  * @param budget 这次执行还能发多少条
  */
 async function sendNews(now, budget) {
   const total = { sent: 0, failed: 0 };
   let left = budget;
+  // 上一次执行停到一半的，先收尾
+  const stopping = await db.collection('events').where({ notifyStatus: 'stopping' }).limit(20).get();
+  for (const e of stopping.data) await stopNews(e, {});
+
   const jobs = await db.collection('events').where({ notifyStatus: 'pending' }).limit(20).get();
   for (const e of jobs.data) {
-    // 登记到一半（人还没划好）：等它做完。两分钟还没做完，说明那次登记中断了，收尾
+    const job = e.notifyId;
+    if (!job) continue;
+    // 登记到一半（人还没划好）：等它做完。两分钟还没做完，说明那次登记中断了，停掉
     if (typeof e.notifyTotal !== 'number') {
-      if (now - (ms(e.notifyAt) || 0) > 2 * 60 * 1000) await stopNews(e, true);
+      if (now - (ms(e.notifyAt) || 0) > 2 * 60 * 1000) await stopNews(e, { notifyTotal: _.exists(false) });
       continue;
     }
-    if (e.status !== 'published' || (ms(e.date) && ms(e.date) < now)) { await stopNews(e); continue; }
-    // 记下「已经开始发了」。只有活动还上架着、还在 pending 才记得上；记不上说明刚被下架或收尾了，这次不发
+    // 「该停」的条件写进 stopNews 的更新条件里：读到之后管理员刚好把活动上架回来或改了日期，就不停
+    if (e.status !== 'published') { await stopNews(e, { status: e.status === undefined ? _.exists(false) : e.status }); continue; }
+    if (ms(e.date) && ms(e.date) < now) { await stopNews(e, { date: e.date }); continue; }
+    // 这次执行的额度用完了：这一场留到下一次，也不记「已经开始发」
+    if (left <= 0) continue;
+    // 记下「已经开始发了」。只有这次登记还在、活动还上架着才记得上；记不上说明刚被下架或停掉了，这次不发
     if (!e.notifyStarted) {
-      const started = await db.collection('events').where({ _id: e._id, status: 'published', notifyStatus: 'pending' }).update({ data: { notifyStarted: true } });
+      const started = await db.collection('events').where({ _id: e._id, notifyId: job, status: 'published', notifyStatus: 'pending' }).update({ data: { notifyStarted: true } });
       if (!started.stats.updated) continue;
     }
 
@@ -113,14 +125,14 @@ async function sendNews(now, budget) {
     let finished = false;
     try {
       while (left > 0) {
-        // 每取一批先看一眼活动：中途被下架了就停，剩下的由下一次执行收尾
+        // 每取一批先看一眼活动：中途被下架或停掉了就不发了，剩下的由下一次执行收尾
         const cur = (await db.collection('events').where({ _id: e._id }).limit(1).get()).data[0];
-        if (!cur || cur.status !== 'published' || cur.notifyStatus !== 'pending') break;
-        const pending = await db.collection('news_subs').where({ eventId: e._id, sent: false }).limit(PAGE).get();
+        if (!cur || cur.notifyId !== job || cur.status !== 'published' || cur.notifyStatus !== 'pending') break;
+        const pending = await db.collection('news_subs').where({ job: job, sent: false }).limit(PAGE).get();
         if (!pending.data.length) { finished = true; break; }
         for (const r of pending.data) {
           if (left <= 0) break;
-          const claim = await db.collection('news_subs').where({ _id: r._id, sent: false, eventId: e._id })
+          const claim = await db.collection('news_subs').where({ _id: r._id, sent: false, job: job })
             .update({ data: { sent: true, status: 'sending', claimedAt: db.serverDate() } });
           if (!claim.stats.updated) continue;
           left -= 1;
@@ -141,8 +153,8 @@ async function sendNews(now, budget) {
             failed += 1;
             console.error('news', r._id, error);
           }
-          // 这期间用户又点了一次订阅的话，记录已经是新的一条（status 回到 'waiting'），不去动它
-          await db.collection('news_subs').where({ _id: r._id, status: 'sending', eventId: e._id })
+          // 这期间用户又点了一次订阅的话，记录已经是新的一条（status 回到 'waiting'，job 是空的），不去动它
+          await db.collection('news_subs').where({ _id: r._id, status: 'sending', job: job })
             .update({ data: { status: error ? 'failed' : 'sent', sentAt: db.serverDate(), error: error } });
         }
       }
@@ -150,9 +162,9 @@ async function sendNews(now, budget) {
       // 数据库一时出错：不算发完，已经发出去的人数照常记，下一次执行接着发
       console.error('sendNews', e._id, err);
     }
-    const data = { notifySent: _.inc(sent), notifyFailed: _.inc(failed) };
-    if (finished) Object.assign(data, { notifyStatus: 'done', notifyDoneAt: db.serverDate() });
-    await db.collection('events').doc(e._id).update({ data: data });
+    await db.collection('events').where({ _id: e._id, notifyId: job }).update({ data: { notifySent: _.inc(sent), notifyFailed: _.inc(failed) } });
+    // 发完：只有这次登记还在 pending 才记成 done（中途被停掉的由 stopNews 收尾）
+    if (finished) await db.collection('events').where({ _id: e._id, notifyId: job, notifyStatus: 'pending' }).update({ data: { notifyStatus: 'done', notifyDoneAt: db.serverDate() } });
     total.sent += sent;
     total.failed += failed;
   }
@@ -160,17 +172,29 @@ async function sendNews(now, budget) {
 }
 
 /**
- * 停掉一场活动的通知：还没发到的人放回去；还没开始发的当作没通知过，已经开始的记成发完。
- * interrupted 为真是登记到一半中断的那种（人还没划好），直接当作没通知过。
+ * 停掉一次登记：还没发到的人放回去；还没开始发的当作没通知过（以后可以再通知），已经开始的记成发完。
+ *
+ * 分三步，每一步都带着这次登记的编号：
+ * 1. 把登记从 'pending' 改成 'stopping'。只有它确实还该停才改得上：why 是「该停」的条件
+ *    （比如 { status: 'draft' }），所以管理员刚好把活动上架回来的话，这里改不上，什么都不做。
+ *    改上以后「开始发」那一步就记不上了（它要求 'pending'），两边不会同时成立。
+ * 2. 把划给这次登记、还没发的人放回去。
+ * 3. 收尾：没开始发过的撤掉登记，开始过的记成 'done'。
+ * 第 1 步之后中断了也没关系：活动停在 'stopping'，下一次执行从第 2 步接着做。
  */
-async function stopNews(e, interrupted) {
-  await db.collection('news_subs').where({ eventId: e._id, sent: false }).update({ data: { eventId: '' } });
-  const gone = { notifyStatus: _.remove(), notifyAt: _.remove(), notifyBy: _.remove(), notifySent: _.remove(), notifyFailed: _.remove(), notifyTotal: _.remove() };
-  // 当作没通知过：只限活动现在没上架、而且还没开始发。和「开始发」那一步的条件（上架着）互斥，两边不会同时成立
-  const cond = interrupted
-    ? { _id: e._id, notifyStatus: 'pending', notifyTotal: _.exists(false) }
-    : { _id: e._id, status: 'draft', notifyStatus: 'pending', notifyStarted: _.exists(false) };
-  const reset = await db.collection('events').where(cond).update({ data: gone });
+async function stopNews(e, why) {
+  const job = e.notifyId;
+  const events = db.collection('events');
+  if (e.notifyStatus === 'pending') {
+    const own = await events.where(Object.assign({ _id: e._id, notifyId: job, notifyStatus: 'pending' }, why)).update({ data: { notifyStatus: 'stopping' } });
+    if (!own.stats.updated) return;
+  }
+  await db.collection('news_subs').where({ job: job, sent: false }).update({ data: { eventId: '', job: '' } });
+  const gone = {
+    notifyStatus: _.remove(), notifyId: _.remove(), notifyAt: _.remove(), notifyBy: _.remove(),
+    notifySent: _.remove(), notifyFailed: _.remove(), notifyTotal: _.remove()
+  };
+  const reset = await events.where({ _id: e._id, notifyId: job, notifyStatus: 'stopping', notifyStarted: _.exists(false) }).update({ data: gone });
   if (reset.stats.updated) return;
-  await db.collection('events').where({ _id: e._id, notifyStatus: 'pending' }).update({ data: { notifyStatus: 'done', notifyDoneAt: db.serverDate() } });
+  await events.where({ _id: e._id, notifyId: job, notifyStatus: 'stopping' }).update({ data: { notifyStatus: 'done', notifyDoneAt: db.serverDate() } });
 }

@@ -16,6 +16,7 @@ function createCloud() {
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
     getError: null,    // (集合名) => true 时这次查询抛错（模拟数据库一时出错）
     onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
+    updateError: null, // (集合名) => true 时这次更新做成之后再抛错（模拟结果没传回来）
     absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
@@ -66,6 +67,7 @@ function createCloud() {
         if (state.onUpdate) await state.onUpdate(name, cond || {});
         const list = col(name).filter((d) => match(d, cond || {}));
         list.forEach((d) => apply(d, o.data));
+        if (state.updateError && state.updateError(name)) throw new Error('response lost');
         return { stats: { updated: list.length } };
       },
       async add(o) {

@@ -610,7 +610,7 @@ async function newsTests() {
   // 人多的时候分几次发：一次执行最多 300 条，剩下的下次接着发；两次执行重叠也不会给同一个人发两条
   await call('adminSaveEvent', { event: { type: '赛事', title: '大活动', status: 'published', date: cloud.state.now + 20 * DAY } });
   const big = cloud.col('events').find((e) => e.title === '大活动')._id;
-  for (let i = 0; i < 320; i++) cloud.col('news_subs').push({ _id: 'n' + i, openid: 'n' + i, templateId: 'tmpl', sent: false, status: 'waiting', eventId: '', subscribedAt: new Date(cloud.state.now - HOUR) });
+  for (let i = 0; i < 320; i++) cloud.col('news_subs').push({ _id: 'n' + i, openid: 'n' + i, templateId: 'tmpl', sent: false, status: 'waiting', eventId: '', job: '', subscribedAt: new Date(cloud.state.now - HOUR) });
   await call('adminNotifyEvent', { id: big });
   cloud.state.sent.length = 0;
   r = await tick();
@@ -629,15 +629,75 @@ async function newsTests() {
   cloud.state.sent.length = 0;
   await tick();
   const c = cloud.col('news_subs').find((s) => s._id === 'user-c');
-  eq([cloud.state.sent.length, event(soon).notifyStatus, c.sent, c.eventId], [0, 'done', false, ''], '活动已经过了就不发了，人放回去，额度留给下一场');
+  eq([cloud.state.sent.length, event(soon).notifyStatus, c.sent, c.eventId], [0, undefined, false, ''], '活动已经过了就不发了，登记撤掉，人放回去，额度留给下一场');
+  eq((await call('adminNotifyEvent', { id: soon })).code, 'event_ended', '过了日期的活动不能再通知');
+  c.sent = true; // 后面的用例从没人订阅开始
 
   // 登记到一半中断了（活动记上了、人还没划好）：两分钟后收尾，当作没通知过
-  cloud.col('events').push({ _id: 'half', type: '赛事', title: '登记到一半', status: 'published', date: new Date(cloud.state.now + 5 * DAY), notifyStatus: 'pending', notifyAt: new Date(cloud.state.now), notifySent: 0, notifyFailed: 0 });
+  cloud.col('events').push({ _id: 'half', type: '赛事', title: '登记到一半', status: 'published', date: new Date(cloud.state.now + 5 * DAY), notifyStatus: 'pending', notifyId: 'half-job', notifyAt: new Date(cloud.state.now), notifySent: 0, notifyFailed: 0 });
   await tick();
   eq(event('half').notifyStatus, 'pending', '刚登记、人还没划好：先等着');
   cloud.state.now += 3 * 60 * 1000;
   await tick();
   eq(event('half').notifyStatus, undefined, '两分钟还没划好：当作没通知过，以后还能通知');
+
+  // 划人那一步其实做成了、但结果没传回来：登记先留着，两分钟后把人放回去并撤掉登记，之后可以重新通知
+  cloud.col('events').push({ _id: 'lostack', type: '赛事', title: '结果没传回来', status: 'published', date: new Date(cloud.state.now + 6 * DAY) });
+  const sub1 = () => cloud.col('news_subs').find((s) => s._id === 'q1');
+  await as('q1', 'subscribeNews', { templateId: 'tmpl' });
+  cloud.state.updateError = (name) => name === 'news_subs';
+  r = await call('adminNotifyEvent', { id: 'lostack' });
+  cloud.state.updateError = null;
+  eq([r.code, event('lostack').notifyStatus, event('lostack').notifyTotal, sub1().eventId], ['server_error', 'pending', undefined, 'lostack'], '划人时出错：登记留着等收尾，人暂时在这场名下');
+  cloud.state.sent.length = 0;
+  await tick();
+  eq([cloud.state.sent.length, event('lostack').notifyStatus], [0, 'pending'], '人数还没写上：不发，先等着');
+  cloud.state.now += 3 * 60 * 1000;
+  await tick();
+  eq([event('lostack').notifyStatus, sub1().eventId, sub1().job, sub1().sent], [undefined, '', '', false], '两分钟后收尾：撤掉登记，人放回去，没有卡住');
+  ok((await call('adminNotifyEvent', { id: 'lostack' })).ok, '之后可以重新通知');
+  eq((await tick()).newsSent, 1, '重新通知后照常发出');
+
+  // 这次执行的额度被报名提醒用完了：新活动通知一条没发，不能记成「已经开始发」
+  cloud.col('events').push({ _id: 'openrace', type: '赛事', title: '报名开放', status: 'published', date: new Date(cloud.state.now + 8 * DAY), signupStart: new Date(cloud.state.now - HOUR) });
+  for (let i = 0; i < 300; i++) cloud.col('reminders').push({ _id: 'r' + i + '_openrace', openid: 'r' + i, eventId: 'openrace', templateId: 'tmpl', sent: false });
+  cloud.col('events').push({ _id: 'nobudget', type: '赛事', title: '额度用完', status: 'published', date: new Date(cloud.state.now + 7 * DAY) });
+  await as('q1', 'subscribeNews', { templateId: 'tmpl' });
+  await call('adminNotifyEvent', { id: 'nobudget' });
+  r = await tick();
+  eq([r.sent, r.newsSent, event('nobudget').notifyStarted], [300, 0, undefined], '额度用完：新活动通知没发，也没记成开始发');
+  await call('adminSetEventStatus', { id: 'nobudget', status: 'draft' });
+  await tick();
+  eq([event('nobudget').notifyStatus, sub1().eventId], [undefined, ''], '这时下架：当作没通知过，重新上架后还能通知');
+
+  // 停到一半中断了（活动已经标成正在停，人还没放回去）：下一次执行接着收尾
+  await call('adminSetEventStatus', { id: 'nobudget', status: 'published' });
+  await call('adminNotifyEvent', { id: 'nobudget' });
+  event('nobudget').notifyStatus = 'stopping';
+  cloud.state.sent.length = 0;
+  await tick();
+  eq([event('nobudget').notifyStatus, sub1().eventId, cloud.state.sent.length], [undefined, '', 0], '停到一半的接着收尾：人放回去，登记撤掉');
+
+  // 两次执行重叠，都看到同一场下架了的活动：前一次收尾后，管理员把它上架回来并重新通知；
+  // 慢了一步的那次收尾认的是旧的登记编号，不能把新的登记停掉，也不能把划给新登记的人放走
+  await call('adminNotifyEvent', { id: 'nobudget' });
+  const firstJob = event('nobudget').notifyId;
+  await call('adminSetEventStatus', { id: 'nobudget', status: 'draft' });
+  let stops = 0;
+  cloud.state.onUpdate = async (name, cond) => {
+    if (!(name === 'events' && cond._id === 'nobudget' && cond.notifyStatus === 'pending' && cond.status === 'draft' && ++stops === 2)) return;
+    cloud.state.onUpdate = null;
+    // 慢的那次停在这里：等前一次收尾完，管理员上架并重新通知
+    for (let i = 0; i < 50 && event('nobudget').notifyStatus !== undefined; i++) await new Promise((res) => setImmediate(res));
+    await call('adminSetEventStatus', { id: 'nobudget', status: 'published' });
+    await call('adminNotifyEvent', { id: 'nobudget' });
+  };
+  cloud.state.sent.length = 0;
+  await cloud.run(() => Promise.all([remind.main(), remind.main()]));
+  cloud.state.onUpdate = null;
+  ok(event('nobudget').notifyId && event('nobudget').notifyId !== firstJob, '重新通知是一次新的登记');
+  eq([stops, event('nobudget').notifyStatus, sub1().eventId, sub1().job === event('nobudget').notifyId], [2, 'pending', 'nobudget', true], '旧登记的收尾碰不到新的登记，划好的人还在');
+  eq([(await tick()).newsSent, event('nobudget').notifyStatus, event('nobudget').notifySent], [1, 'done', 1], '新的登记照常发完');
 }
 
 async function remindTests() {
