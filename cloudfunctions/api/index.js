@@ -173,16 +173,15 @@ function eventData(input) {
 }
 
 /**
- * 把活动的已报名人数改成报名记录的实际条数。改完再数一遍，这期间又有人报名的话再改一次。
- * 名额就是拿这个数去卡的，所以给活动加名额限制（或改名额）时要先对准。
+ * 活动的已报名人数比报名记录的条数少时，补到和记录一样多（以前不限名额时报的名没记数，属于这种情况）。
+ * 只往上补，不往下减：有人正在报名时，人数已经加了一、报名记录还没写进去，这时人数比记录多一个是正常的，
+ * 要是按记录条数改回去，就把他占的名额抹掉了，名额会多放出去一个。
+ * 人数偏多的情况（报名中途出错多占了名额）不在这里处理，最坏是空出一个名额，不会超额。
  */
-async function reconcileSignupCount(eventId) {
-  for (let i = 0; i < 3; i++) {
-    const n = (await db.collection('signups').where({ eventId: eventId }).count()).total;
-    await db.collection('events').doc(eventId).update({ data: { signupCount: n } });
-    if ((await db.collection('signups').where({ eventId: eventId }).count()).total === n) return n;
-  }
-  return null;
+async function raiseSignupCount(eventId) {
+  await db.collection('events').where({ _id: eventId, signupCount: _.exists(false) }).update({ data: { signupCount: 0 } });
+  const n = (await db.collection('signups').where({ eventId: eventId }).count()).total;
+  if (n > 0) await db.collection('events').where({ _id: eventId, signupCount: _.lt(n) }).update({ data: { signupCount: n } });
 }
 
 /** 公告。集合还没建时当作没有 */
@@ -361,8 +360,8 @@ const actions = {
     if (id) {
       if (!(await findById('events', id))) throw fail('not_found');
       await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
-      // 有名额限制时，把已报名人数按报名记录重数一遍：以前不限名额时报的名、中途出错多占的名额，都以记录为准
-      if (data.quota) await reconcileSignupCount(id);
+      // 有名额限制时，已报名人数不能比报名记录少（以前不限名额时报的名可能没记数）
+      if (data.quota) await raiseSignupCount(id);
     } else {
       const res = await db.collection('events').add({ data: Object.assign(data, { signupCount: 0, createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
       id = res._id;

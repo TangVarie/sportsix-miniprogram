@@ -243,6 +243,14 @@ async function adminTests() {
   cloud.col('members').push({ _id: 'user-c', openid: 'user-c', phone: '13600002222', memberNo: '100900', numbered: true, points: 500, welcomeBonus: true, createdAt: new Date(now) });
   eq((await call('signup', { eventId: id })).code, 'full', '名额 1 个，已经有人报了，后面的人报不上');
   cloud.state.openid = 'user-a';
+  // 有人正在报名（人数已经加一、报名记录还没写进去）时保存活动：不能把他占的名额抹掉
+  cloud.col('signups').splice(cloud.col('signups').findIndex((s) => s.eventId === id), 1);
+  eq(cloud.col('events').find((e) => e._id === id).signupCount, 1, '人数 1，记录 0：相当于有一个人报到一半');
+  await call('adminSaveEvent', { id: id, event: { type: '赛事', title: '上海半马', date: now + 21 * DAY, status: 'published', quota: 1 } });
+  eq(cloud.col('events').find((e) => e._id === id).signupCount, 1, '保存活动不把正在报名的人占的名额抹掉');
+  cloud.state.openid = 'user-c';
+  eq((await call('signup', { eventId: id })).code, 'full', '名额还是满的');
+  cloud.state.openid = 'user-a';
   await call('adminSetEventStatus', { id: id, status: 'draft' });
 
   // 活动超过 100 场：后台分页取全，最早的一场也在
