@@ -308,6 +308,100 @@ async function adminTests() {
   ok(!JSON.stringify(r.data.logs).includes('user-a'), '记录里不带操作人');
 }
 
+/** 电脑端后台：网页没有微信身份，靠小程序里取的一次性登录码登录，之后带着凭证调后台接口 */
+async function webTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  // 网页来的调用：没有 openid
+  const web = async (action, data) => {
+    const who = cloud.state.openid;
+    cloud.state.openid = '';
+    try { return await call(action, data); } finally { cloud.state.openid = who; }
+  };
+
+  await call('register', { code: 'code-a' });
+  eq((await call('adminWebCode')).code, 'forbidden', '普通会员取不了登录码');
+  cloud.col('members').find((d) => d._id === 'user-a').admin = true;
+
+  // 没有微信身份、也没登录：什么都做不了
+  eq((await web('nope')).code, 'unknown_action', '网页调不存在的接口');
+  for (const action of ['bootstrap', 'register', 'savePlan', 'signup', 'points', 'setNickname', 'adminWebCode']) {
+    eq((await web(action, { webToken: 'x' })).code, 'no_openid', '网页不能调小程序用户的接口 ' + action);
+  }
+  for (const action of ['adminEvents', 'adminSaveEvent', 'adminNotice', 'adminAdjustPoints', 'adminUploadCover', 'webMe']) {
+    eq((await web(action)).code, 'web_expired', '没登录调不了 ' + action);
+    eq((await web(action, { webToken: 'f'.repeat(64) })).code, 'web_expired', '凭证是瞎编的调不了 ' + action);
+  }
+
+  // 登录码：8 位数字，只能用一次
+  let r = await call('adminWebCode');
+  const code = r.data.code;
+  ok(/^\d{8}$/.test(code) && r.data.expiresIn === 300, '登录码是 8 位数字，5 分钟内有效');
+  eq((await web('webLogin', { code: '00000000' === code ? '11111111' : '00000000' })).code, 'bad_code', '登录码不对');
+  eq((await web('webLogin', { code: '123' })).code, 'bad_code', '登录码位数不对');
+  r = await web('webLogin', { code: code.slice(0, 4) + ' ' + code.slice(4) });
+  const token = r.data.token;
+  ok(/^[0-9a-f]{64}$/.test(token), '登录成功拿到凭证（中间带空格也认）');
+  eq((await web('webLogin', { code: code })).code, 'bad_code', '登录码用过一次就作废');
+  const stored = JSON.stringify(cloud.col('admin_web'));
+  ok(stored.indexOf(code) < 0 && stored.indexOf(token) < 0, '库里不存登录码和凭证的原文');
+
+  // 带着凭证：能调后台接口，不能调别的
+  eq((await web('adminEvents', { webToken: token })).data.events.length, 4, '登录后能看到活动');
+  eq((await web('webMe', { webToken: token })).data.memberNo, '100001', '知道登录的是谁');
+  eq((await web('register', { webToken: token, code: 'code-b' })).code, 'no_openid', '凭证不能拿来调小程序用户的接口');
+  r = await web('adminSaveNotice', { webToken: token, notice: { title: '网页发的', content: '内容', enabled: true } });
+  eq(cloud.col('settings')[0].updatedBy, 'user-a', '网页上的操作记在这位管理员名下');
+
+  // 传头图：只收图片，有大小上限
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(64, 1)]);
+  eq((await web('adminUploadCover', { webToken: token, data: '' })).code, 'missing_file', '没有文件');
+  eq((await web('adminUploadCover', { webToken: token, data: Buffer.from('<script>alert(1)</script>').toString('base64') })).code, 'bad_file', '不是图片不收');
+  eq((await web('adminUploadCover', { webToken: token, data: Buffer.concat([png, Buffer.alloc(2 * 1024 * 1024)]).toString('base64') })).code, 'file_too_large', '超过 2MB 不收');
+  r = await web('adminUploadCover', { webToken: token, data: png.toString('base64') });
+  ok(/^cloud:\/\/mock-env\/events\/\d+-[0-9a-f]{8}\.png$/.test(r.data.fileID) && r.data.url.indexOf('https://') === 0, '图片存进云存储的 events/ 目录，返回 fileID 和预览地址');
+  ok(cloud.state.files[r.data.fileID].equals(png), '存的就是传上来的内容');
+  const fileID = r.data.fileID;
+  r = await web('adminFileUrls', { webToken: token, ids: [fileID, 'https://evil.test/x.png', 42] });
+  eq(Object.keys(r.data.urls), [fileID], '只给云存储里的文件换地址');
+  eq((await call('adminUploadCover', { data: png.toString('base64') })).ok, true, '小程序里的管理员也能用这个接口');
+
+  // 凭证过期、退出登录
+  const session = cloud.col('admin_web').find((d) => d.kind === 'session');
+  const realExpiry = session.expiresAt;
+  ok(realExpiry - cloud.state.now > 11 * 3600 * 1000 && realExpiry - cloud.state.now <= 12 * 3600 * 1000, '登录一次管 12 小时');
+  session.expiresAt = cloud.state.now - 1;
+  eq((await web('adminEvents', { webToken: token })).code, 'web_expired', '凭证过期后要重新登录');
+  session.expiresAt = realExpiry;
+  // 登录之后被撤掉管理员：凭证还在，但后台接口调不通
+  cloud.col('members').find((d) => d._id === 'user-a').admin = false;
+  eq((await web('adminEvents', { webToken: token })).code, 'forbidden', '被撤掉管理员后，已登录的网页也用不了');
+  cloud.col('members').find((d) => d._id === 'user-a').admin = true;
+  eq((await web('webLogout', { webToken: token })).ok, true, '退出登录');
+  eq((await web('adminEvents', { webToken: token })).code, 'web_expired', '退出后凭证作废');
+
+  // 登录码过期
+  const code2 = (await call('adminWebCode')).data.code;
+  cloud.col('admin_web').filter((d) => d.kind === 'code' && !d.used).forEach((d) => { d.expiresAt = cloud.state.now - 1; });
+  eq((await web('webLogin', { code: code2 })).code, 'bad_code', '登录码过了 5 分钟不能用');
+
+  // 取登录码之后被撤掉管理员：登录不了
+  const code3 = (await call('adminWebCode')).data.code;
+  cloud.col('members').find((d) => d._id === 'user-a').admin = false;
+  eq((await web('webLogin', { code: code3 })).code, 'bad_code', '取码之后被撤掉管理员，登录不了');
+  cloud.col('members').find((d) => d._id === 'user-a').admin = true;
+
+  // 输错太多次：先锁住，对的登录码也不行；过了这段时间恢复
+  cloud.col('admin_web').find((d) => d._id === 'guard').fails = 0;
+  const code4 = (await call('adminWebCode')).data.code;
+  for (let i = 0; i < 10; i++) eq((await web('webLogin', { code: '9999999' + (i % 10) === code4 ? '00000000' : '9999999' + (i % 10) })).code, 'bad_code', '第 ' + (i + 1) + ' 次输错');
+  eq((await web('webLogin', { code: code4 })).code, 'locked', '10 分钟内输错 10 次就锁住，对的登录码也不行');
+  cloud.col('admin_web').find((d) => d._id === 'guard').windowStart = cloud.state.now - 11 * 60 * 1000;
+  ok((await web('webLogin', { code: code4 })).ok, '过了 10 分钟恢复');
+}
+
 async function signupFailureTests() {
   const cloud = createCloud();
   seed(cloud);
@@ -635,6 +729,14 @@ async function clientTests() {
   eq(other.points, beforePoints + 150, '积分加到云端');
   eq(p.data.member.points, String(beforePoints + 150), '页面上的积分跟着更新');
 
+  // 电脑端：取一个登录码，显示成 1234 5678
+  p = e3.openPage('pages/admin/index', {});
+  e3.tap('onTab', { key: 'web' });
+  p.onWebCode();
+  await tick();
+  ok(/^\d{4} \d{4}$/.test(p.data.webCode), '取到登录码，中间空一格好认');
+  ok(cloud.col('admin_web').some((d) => d.kind === 'code' && d.used === false && d.openid === cloud.state.openid), '登录码记在这位管理员名下');
+
   // 新建活动：必填项没填有提示；填好保存后写到云端
   p = e3.openPage('pages/admin-event/index', {});
   p.onSave();
@@ -763,6 +865,7 @@ async function fontTests() {
   await fontTests();
   await functionTests();
   await adminTests();
+  await webTests();
   await signupFailureTests();
   await remindTests();
   await clientTests();

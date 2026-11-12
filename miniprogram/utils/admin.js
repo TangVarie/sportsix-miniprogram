@@ -32,6 +32,11 @@ function adjustPoints(memberNo, delta, reason) {
   return cloud.call('adminAdjustPoints', { memberNo: memberNo, delta: delta, reason: reason }).then((d) => d.member);
 }
 
+/** 取电脑端后台的登录码：{ code, expiresIn }。8 位数字，5 分钟内有效，只能用一次 */
+function webCode() {
+  return cloud.call('adminWebCode');
+}
+
 /** 把活动头图传到云存储，resolve 文件的 fileID（cloud://...），活动的 cover 字段存它 */
 function uploadCover(tempPath) {
   const ext = (/\.(\w+)$/.exec(tempPath) || [])[1] || 'jpg';
@@ -64,4 +69,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };

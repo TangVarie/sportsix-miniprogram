@@ -14,7 +14,8 @@ function createCloud() {
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
-    absent: { counters: true, point_logs: true, settings: true }   // 还没建的集合：读写会报错，createCollection 之后才能用
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true },
+    files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
   const col = (name) => {
@@ -111,6 +112,14 @@ function createCloud() {
     init() {},
     database: () => db,
     getWXContext: () => ({ OPENID: state.openid, ENV: 'mock-env' }),
+    async uploadFile(o) {
+      const fileID = 'cloud://mock-env/' + o.cloudPath;
+      state.files[fileID] = o.fileContent;
+      return { fileID: fileID };
+    },
+    async getTempFileURL(o) {
+      return { fileList: o.fileList.map((id) => (state.files[id] ? { fileID: id, tempFileURL: 'https://files.test/' + id.replace('cloud://mock-env/', ''), status: 0 } : { fileID: id, tempFileURL: '', status: 1 })) };
+    },
     openapi: {
       phonenumber: {
         async getPhoneNumber(o) {

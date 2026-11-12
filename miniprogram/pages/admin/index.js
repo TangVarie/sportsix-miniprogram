@@ -4,6 +4,7 @@ const store = require('../../utils/store.js');
 const admin = require('../../utils/admin.js');
 const events = require('../../utils/events.js');
 const format = require('../../utils/format.js');
+const config = require('../../config.js');
 const { baseData, go, navTone, headerTone, shareCard, TABS, tick } = require('../../utils/page.js');
 
 const toast = (title) => wx.showToast({ title: title, icon: 'none' });
@@ -52,7 +53,10 @@ Page({
     member: null,
     sign: 1,
     amount: '',
-    reason: ''
+    reason: '',
+    // 电脑端后台的网址和刚取到的登录码（显示成 1234 5678）
+    webUrl: config.webAdminUrl || '',
+    webCode: ''
   }),
 
   onLoad() {
@@ -171,6 +175,22 @@ Page({
 
   onPointsInput(e) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
+  },
+
+  /* ---------- 电脑端 ---------- */
+
+  /** 取一个登录码，填到电脑上的网页里登录 */
+  onWebCode() {
+    if (this.data.busy) return;
+    this.setData({ busy: true });
+    admin.webCode()
+      .then((r) => this.setData({ webCode: r.code.slice(0, 4) + ' ' + r.code.slice(4) }))
+      .catch((e) => toast(admin.errorText(e)))
+      .then(() => this.setData({ busy: false }));
+  },
+
+  onCopyUrl() {
+    wx.setClipboardData({ data: this.data.webUrl, success: () => toast(copy.web.copied) });
   },
 
   /** 加减积分：先弹一次确认，写清楚给谁、加还是减、多少 */

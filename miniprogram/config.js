@@ -20,5 +20,9 @@ module.exports = {
   cloudEnv: 'cloud1-d1g1u97accc6092f6',
   subscribeTemplateId: 'APVCkWz7HLHIurWipctjacSf6Ii9nKuLuNuv7JsqrmQ',
   sampleEvents: false,
-  groupReady: false
+  groupReady: false,
+
+  // 电脑端运营后台的网址：开通云开发的「静态网站」并上传 web-admin/ 之后，把默认域名填在这里。
+  // 只用来显示在小程序的「运营后台 → 电脑端」里，方便复制到电脑上打开。
+  webAdminUrl: ''
 };

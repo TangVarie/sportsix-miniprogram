@@ -68,12 +68,15 @@ miniprogram/
 cloudfunctions/
   api/                           云函数：会员、活动、报名、提醒、补给计划的接口
   remind/                        定时云函数：报名开放后发订阅消息
+web-admin/
+  index.html                     电脑端运营后台：一个网页，传到云开发的静态网站上用。文字直接写在这个文件里
 tools/
   sync-content.js                改了 reference/content/*.json 之后跑 npm run content
   serve-assets.js                npm run assets：把根目录 assets/ 当 CDN，默认 http://127.0.0.1:8787
   pack-assets.js                 npm run cdn：把用到的资源挑到 out/cdn/assets/，用来上传到云存储
   preview/                       本地预览和设计稿对照，见 tools/preview/README.md
   cloud-mock.js  test-cloud.js   wx-server-sdk 的内存替身和云开发测试
+  test-web-admin.js              npm run test:web：用浏览器打开电脑端后台，接到替身上走一遍（需要 Playwright）
 ```
 
 ### 文案和资源
@@ -118,6 +121,7 @@ tools/
 - 会员、报名、提醒、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 - 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。
+- 电脑端后台（`web-admin/index.html`）没有微信身份，调的也是 `api`。新加的后台接口要让网页能用，把名字加进 `api/index.js` 的 `WEB_ACTIONS`；不在这个名单里的接口，没有微信身份一律调不通，不要为了省事放宽。改了网页跑 `npm run test:web`。
 
 ### 只有真机和审核才会暴露的事
 
