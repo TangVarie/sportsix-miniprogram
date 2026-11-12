@@ -1,5 +1,5 @@
 /**
- * 活动数据和「提醒我」。
+ * 活动数据、「提醒我」和「有新活动通知我」。
  *
  * - 往期（past）是打进包里的真实赛事。
  * - 即将开始：config.sampleEvents 为 true 时用 content 里三种卡片样式的占位示例；
@@ -157,4 +157,32 @@ function remind(eventId) {
   });
 }
 
-module.exports = { listUpcoming, isFirstLoad, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup };
+/** 活动页最下面「有新活动通知我」那一行的文字 */
+function getNews() {
+  return content.news;
+}
+
+/**
+ * 「有新活动通知我」：和「提醒我」一样是一次性订阅消息，点一次换一条，所以必须由点击直接触发。
+ * 运营在后台对某场活动点「通知」时发出；收到一条之后按钮回到没订阅的样子，要再点一次。
+ * @returns {Promise<boolean>} 是否订阅上了
+ */
+function subscribeNews() {
+  const tmpl = config.subscribeTemplateId;
+  if (!tmpl) return store.subscribeNews().then(() => true);
+  return new Promise((resolve) => {
+    wx.requestSubscribeMessage({
+      tmplIds: [tmpl],
+      success: (res) => {
+        if (res[tmpl] !== 'accept') { toast(messages.news.declined); resolve(false); return; }
+        store.subscribeNews(tmpl).then(() => resolve(true)).catch(() => { toast(messages.news.failed); resolve(false); });
+      },
+      fail: () => { toast(messages.news.declined); resolve(false); }
+    });
+  });
+}
+
+module.exports = {
+  listUpcoming, isFirstLoad, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
+  getNews, subscribeNews, hasNews: store.hasNews
+};

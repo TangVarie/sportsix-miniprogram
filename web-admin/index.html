@@ -197,7 +197,10 @@
     <!-- 活动 -->
     <section id="tab-events" hidden>
       <div class="head">
-        <h1 class="head__title">活动</h1>
+        <div>
+          <h1 class="head__title">活动</h1>
+          <p id="ev-subs" class="hint" style="margin-top: 4px"></p>
+        </div>
         <div class="head__tools">
           <input id="ev-search" class="input" style="width: 200px" placeholder="按名称找" aria-label="按名称找">
           <select id="ev-filter" class="select" style="width: 120px" aria-label="按状态筛选">
@@ -391,6 +394,10 @@
     missing_title: '请填写名称',
     missing_date: '请选择活动时间',
     bad_signup_time: '报名结束要晚于报名开始',
+    not_published: '活动上架后才能通知',
+    event_ended: '活动已经结束了',
+    notified: '这场活动已经通知过了',
+    no_subscribers: '还没有人订阅新活动通知',
     missing_content: '请填写公告内容',
     missing_query: '请填写手机号或会员编号',
     bad_delta: '请填写数量',
@@ -461,8 +468,10 @@
   function resetSession() {
     session += 1; // 还没回来的请求从这一刻起都不作数，见 call()
     events = [];
+    newsWaiting = 0;
     coverUrls = {};
     $('ev-rows').textContent = '';
+    $('ev-subs').textContent = '';
     saving = 0;
     notice = { ready: false, loading: false, failed: false, saving: false };
     $('notice-title').value = '';
@@ -538,7 +547,14 @@
 
   /* ---------- 活动 ---------- */
   var events = [];
+  var newsWaiting = 0; // 现在有多少人订阅着新活动通知
   var coverUrls = {}; // 云存储的 fileID → 能在网页上显示的地址
+  /** 新活动通知发到哪一步了：没通知过是空的 */
+  function notifyText(n) {
+    if (!n) return '';
+    if (n.status !== 'done') return '通知发送中';
+    return '已通知 ' + n.sent + ' 人' + (n.failed ? '，' + n.failed + ' 人没发到' : '');
+  }
   var STATE_TEXT = { published: '已上架', draft: '未上架', ended: '已结束' };
   function stateOf(e) {
     if (e.status !== 'published') return 'draft';
@@ -557,6 +573,8 @@
     return call('adminEvents').then(function (d) {
       if (mine !== listSeq) return null;
       events = d.events || [];
+      newsWaiting = d.newsWaiting || 0;
+      $('ev-subs').textContent = newsWaiting + ' 人订阅了新活动通知';
       renderEvents();
       var need = events.map(function (e) { return e.cover; }).filter(function (c) { return c && c.indexOf('cloud://') === 0 && !coverUrls[c]; });
       if (!need.length) return null;
@@ -607,7 +625,9 @@
       }
       tr.appendChild(signup);
       tr.appendChild(el('td', '', (e.signupCount || 0) + (e.quota ? ' / ' + e.quota : '')));
-      var st = el('td'); st.appendChild(el('span', 'chip chip--' + state, STATE_TEXT[state])); tr.appendChild(st);
+      var st = el('td'); st.appendChild(el('span', 'chip chip--' + state, STATE_TEXT[state]));
+      if (e.notify) st.appendChild(el('div', 'cell-sub', notifyText(e.notify)));
+      tr.appendChild(st);
 
       var ops = el('td');
       var wrap = el('div', 'ops');
@@ -624,7 +644,27 @@
           return loadEvents();
         }).catch(function (err) { toggle.disabled = false; if (err.code !== 'web_expired') toast(errorText(err), true); });
       });
-      wrap.appendChild(edit); wrap.appendChild(toggle); ops.appendChild(wrap);
+      wrap.appendChild(edit); wrap.appendChild(toggle);
+      // 新活动通知：上架着、还没开始、没通知过的活动可以通知一次
+      if (state === 'published' && !e.notify && e.date > Date.now()) {
+        var notify = el('button', 'btn btn--line btn--small', '通知');
+        notify.type = 'button';
+        notify.title = '通知订阅了新活动通知的人';
+        notify.addEventListener('click', function () {
+          if (!newsWaiting) { toast(ERRORS.no_subscribers, true); return; }
+          if (!window.confirm('现在有 ' + newsWaiting + ' 人订阅了新活动通知。确认后每人收到一条微信提醒，「' + e.title + '」只能通知一次。')) return;
+          notify.disabled = true;
+          call('adminNotifyEvent', { id: e.id }).then(function () {
+            toast('已安排，几分钟内发出');
+            return loadEvents();
+          }).catch(function (err) {
+            notify.disabled = false;
+            if (err.code !== 'web_expired') { toast(errorText(err), true); loadEvents(); }
+          });
+        });
+        wrap.appendChild(notify);
+      }
+      ops.appendChild(wrap);
       tr.appendChild(ops);
       body.appendChild(tr);
     });

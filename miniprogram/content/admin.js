@@ -34,7 +34,15 @@ module.exports = {
     },
     "signups": "已报名 [人数] 人",
     "published": "已上架，小程序里能看到了",
-    "unpublished": "已下架"
+    "unpublished": "已下架",
+    "subscribers": "[人数] 人订阅了新活动通知",
+    "notify": "通知订阅的人",
+    "notifyConfirmTitle": "通知订阅的人",
+    "notifyConfirm": "现在有 [人数] 人订阅了新活动通知。确认后每人收到一条微信提醒，这场活动只能通知一次。",
+    "notifyQueued": "已安排，几分钟内发出",
+    "notifyPending": "通知发送中",
+    "notifyDone": "已通知 [人数] 人",
+    "notifyFailed": "[人数] 人没发到"
   },
   "form": {
     "titleNew": "新建活动",
@@ -120,6 +128,10 @@ module.exports = {
     "missing_title": "请填写名称",
     "missing_date": "请选择活动时间",
     "bad_signup_time": "报名结束要晚于报名开始",
+    "not_published": "活动上架后才能通知",
+    "event_ended": "活动已经结束了",
+    "notified": "这场活动已经通知过了",
+    "no_subscribers": "还没有人订阅新活动通知",
     "missing_content": "请填写公告内容",
     "missing_query": "请填写手机号或会员编号",
     "bad_delta": "请填写数量",

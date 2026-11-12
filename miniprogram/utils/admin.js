@@ -9,6 +9,14 @@ const content = require('../content/admin.js');
 function listEvents() {
   return cloud.call('adminEvents').then((d) => d.events || []);
 }
+/** 活动页用：全部活动，加上现在有多少人订阅着新活动通知（newsWaiting） */
+function eventsOverview() {
+  return cloud.call('adminEvents').then((d) => ({ events: d.events || [], newsWaiting: d.newsWaiting || 0 }));
+}
+/** 把这场活动通知给订阅了新活动通知的人。只是登记，几分钟内由定时任务发出；每场活动只能通知一次 */
+function notifyEvent(id) {
+  return cloud.call('adminNotifyEvent', { id: id });
+}
 /** 新建（id 为空）或修改活动 */
 function saveEvent(id, event) {
   return cloud.call('adminSaveEvent', { id: id || '', event: event }).then((d) => d.event);
@@ -69,4 +77,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };

@@ -15,8 +15,10 @@ const FIELDS = {
   place: 'thing8'      // 活动地点
 };
 
-/** 温馨提示的内容 */
+/** 温馨提示的内容：报名开放的提醒 */
 const TIP = '报名已开放';
+/** 温馨提示的内容：新活动通知 */
+const TIP_NEW = '新活动上线';
 /** 活动没有填城市和场地时，活动地点一栏写这个（thing 类字段不能为空） */
 const PLACE_FALLBACK = '详见活动详情';
 /** thing 类字段不超过 20 个字 */
@@ -38,20 +40,21 @@ module.exports = {
   /** developer 开发版、trial 体验版、formal 正式版 */
   miniprogramState: 'formal',
   /**
-   * 模板内容。opensAt 是报名开放的时间（毫秒）。
+   * 模板内容。opensAt 是报名开放的时间（毫秒），tip 是温馨提示一栏的字（不传就是「报名已开放」）。
    * 活动没填日期时，开始时间用报名开放的时间；没填报名截止时间时，截止时间用活动开始的时间。
    */
-  data: (event, opensAt) => {
+  data: (event, opensAt, tip) => {
     const startsAt = ms(event.date) || opensAt;
     const deadline = ms(event.signupEnd) || startsAt;
     const place = [event.city, event.venue].filter(Boolean).join(' ');
     return {
       [FIELDS.title]: { value: thing(event.title || '') },
       [FIELDS.startsAt]: { value: formatTime(startsAt) },
-      [FIELDS.tip]: { value: TIP },
+      [FIELDS.tip]: { value: thing(tip || TIP) },
       [FIELDS.deadline]: { value: formatTime(deadline) },
       [FIELDS.place]: { value: thing(place || PLACE_FALLBACK) }
     };
   },
+  TIP_NEW: TIP_NEW,
   formatTime: formatTime
 };

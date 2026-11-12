@@ -42,6 +42,13 @@
 .ev-remind--done { background: #F5F5F5; color: #5E6170; animation: sxPop .3s ease-out; }
 .ev-remind__icon { display: block; width: 35rpx; height: 35rpx; }
 
+/* 订阅新活动通知：一行说明加一个按钮。设计稿里没有，描边同照片卡，按钮同「提醒我」 */
+.ev-news { display: flex; align-items: center; gap: 23rpx; padding: 27rpx 31rpx; border-radius: 31rpx; border: 1px solid #E6E6E7; }
+.ev-news__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.ev-news__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.ev-news__body { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ev-news__btn { flex-shrink: 0; }
+
 /* 加载中的占位块，高度同照片卡和行卡 */
 .ev-skeleton { height: 185rpx; border-radius: 31rpx; }
 .ev-skeleton--tall { height: 539rpx; }
