@@ -130,7 +130,6 @@
     "not_published": "活动上架后才能通知",
     "event_ended": "活动已经结束了",
     "notified": "这场活动已经通知过了",
-    "notify_busy": "上一场活动的通知还没发完，过几分钟再试",
     "no_subscribers": "还没有人订阅新活动通知",
     "missing_content": "请填写公告内容",
     "missing_query": "请填写手机号或会员编号",

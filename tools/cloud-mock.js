@@ -14,6 +14,8 @@ function createCloud() {
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
+    getError: null,    // (集合名) => true 时这次查询抛错（模拟数据库一时出错）
+    onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
     absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
@@ -41,6 +43,7 @@ function createCloud() {
     Object.keys(data).forEach((k) => {
       const d = data[k];
       if (isOp(d) && d.$op === 'inc') doc[k] = (doc[k] || 0) + d.v;
+      else if (isOp(d) && d.$op === 'remove') delete doc[k];
       else doc[k] = d;
     });
   }
@@ -53,12 +56,14 @@ function createCloud() {
       limit: (n) => query(name, cond, order, n, offset),
       skip: (n) => query(name, cond, order, max, n),
       async get() {
+        if (state.getError && state.getError(name)) throw new Error('database timeout');
         let list = col(name).filter((d) => match(d, cond || {}));
         if (order) list = list.slice().sort((a, b) => (val(a[order.field]) - val(b[order.field])) * (order.dir === 'desc' ? -1 : 1));
         return { data: list.slice(offset || 0, (offset || 0) + (max || 20)).map(copy) };
       },
       async count() { return { total: col(name).filter((d) => match(d, cond || {})).length }; },
       async update(o) {
+        if (state.onUpdate) await state.onUpdate(name, cond || {});
         const list = col(name).filter((d) => match(d, cond || {}));
         list.forEach((d) => apply(d, o.data));
         return { stats: { updated: list.length } };
@@ -98,7 +103,8 @@ function createCloud() {
       lt: (v) => ({ $op: 'lt', v: v }),
       lte: (v) => ({ $op: 'lte', v: v }),
       exists: (v) => ({ $op: 'exists', v: v }),
-      inc: (v) => ({ $op: 'inc', v: v })
+      inc: (v) => ({ $op: 'inc', v: v }),
+      remove: () => ({ $op: 'remove' })
     },
     serverDate: () => new Date(state.now),
     async createCollection(name) {

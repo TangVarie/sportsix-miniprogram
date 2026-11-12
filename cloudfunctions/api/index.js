@@ -247,9 +247,9 @@ function adminEventView(e) {
 async function newsDoc(openid) {
   try { return await findById('news_subs', openid); } catch (e) { return null; }
 }
-/** 现在有多少人订阅着、还没收到通知。集合还没建时是 0 */
+/** 现在点「通知」能发给多少人：订阅着、还没划给哪场活动的。集合还没建时是 0 */
 async function newsWaiting() {
-  try { return (await db.collection('news_subs').where({ sent: false }).count()).total; } catch (e) { return 0; }
+  try { return (await db.collection('news_subs').where({ sent: false, eventId: '' }).count()).total; } catch (e) { return 0; }
 }
 
 /** 把后台表单交上来的活动整理成要存的数据。时间是毫秒时间戳，没填的存 null（页面上不显示那一项） */
@@ -466,7 +466,10 @@ const actions = {
   /**
    * 把一场活动通知给订阅了「新活动通知」的人。这里只是登记，真正的发送由 remind 云函数分批做（每 5 分钟一次）。
    * 每场活动只能通知一次：订阅消息一次授权只有一条额度，重复通知会把大家的额度白白用掉。
-   * 只通知登记这一刻之前订阅的人；之后才订阅的人已经能在活动页看到这场活动，留着额度等下一场。
+   *
+   * 登记的同时，把现在订阅着、还没划给别的活动的人划给这场活动（订阅记录上写 eventId）。
+   * 这一步是一条更新语句，每条订阅记录只会被划给一场活动：两位管理员同时通知两场活动时，人不会被发两遍；
+   * 一个人都没划到的那一场会撤回登记，机会还在。之后才订阅的人不在这场里，额度留给下一场。
    */
   async adminNotifyEvent(event, openid) {
     await requireAdmin(openid);
@@ -476,16 +479,29 @@ const actions = {
     if (e.status !== 'published') throw fail('not_published');
     if (ms(e.date) && ms(e.date) < Date.now()) throw fail('event_ended');
     if (e.notifyStatus) throw fail('notified');
-    // 上一场的通知还在发：现在订阅着的人马上要被那一场用掉，这时再登记一场，实际发不到几个人，还白用掉这场的一次机会
-    const busy = await db.collection('events').where({ status: 'published', notifyStatus: 'pending' }).count();
-    if (busy.total) throw fail('notify_busy');
-    const waiting = await newsWaiting();
-    if (!waiting) throw fail('no_subscribers');
-    // 条件更新：两位管理员同时点，只有一个登记得上
+    if (!(await newsWaiting())) throw fail('no_subscribers');
+    // 条件更新：两位管理员同时点同一场，只有一个登记得上
     const res = await db.collection('events').where({ _id: id, notifyStatus: _.exists(false) })
       .update({ data: { notifyStatus: 'pending', notifyAt: db.serverDate(), notifyBy: openid, notifySent: 0, notifyFailed: 0 } });
     if (!res.stats.updated) throw fail('notified');
-    return { event: adminEventView(await findById('events', id)), waiting: waiting };
+    // 撤回登记：只有还没划好人（没有 notifyTotal）的登记才撤
+    const undo = () => db.collection('events').where({ _id: id, notifyStatus: 'pending', notifyTotal: _.exists(false) })
+      .update({ data: { notifyStatus: _.remove(), notifyAt: _.remove(), notifyBy: _.remove(), notifySent: _.remove(), notifyFailed: _.remove() } });
+    let total = 0;
+    try {
+      total = (await db.collection('news_subs').where({ sent: false, eventId: '' }).update({ data: { eventId: id } })).stats.updated;
+    } catch (err) {
+      await undo();
+      throw err;
+    }
+    if (!total) {
+      // 刚才还有人订阅，这一刻被另一场活动的通知划走了
+      await undo();
+      throw fail('no_subscribers');
+    }
+    // notifyTotal 写上以后，remind 才开始发这一场
+    await db.collection('events').doc(id).update({ data: { notifyTotal: total } });
+    return { event: adminEventView(await findById('events', id)), waiting: total };
   },
 
   /** 新建或修改活动。带 id 是修改，不带是新建 */
@@ -629,10 +645,14 @@ const actions = {
   /**
    * 「有新活动通知我」：用户授权了一次性订阅消息之后登记。运营在后台点「通知」时，由 remind 云函数给每人发一条。
    * 每人只有一条记录（_id 是 openid）：一次授权只有一条额度，收到一条之后要再点一次才有下一条。
+   * eventId 是这条订阅划给了哪场活动，空的是还没划（见 adminNotifyEvent）。
    */
   async subscribeNews(event, openid) {
     if (!event.templateId) throw fail('missing_template');
-    const data = { openid: openid, templateId: String(event.templateId), sent: false, status: 'waiting', subscribedAt: db.serverDate() };
+    // 已经订阅着、还没收到：原样留着。重写一遍会把它从已经划好的那场活动里拿出来
+    const existing = await newsDoc(openid);
+    if (existing && existing.sent === false) return { news: true };
+    const data = { openid: openid, templateId: String(event.templateId), sent: false, status: 'waiting', eventId: '', subscribedAt: db.serverDate() };
     try {
       await db.collection('news_subs').doc(openid).set({ data: data });
     } catch (e) {

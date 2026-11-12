@@ -57,7 +57,7 @@ cloudfunctions/
 | `events` 活动 | 自动 | 见下 |
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
-| `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（发的是哪场活动）、`claimedAt`、`sentAt`、`error`。云函数自动建 |
+| `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动，空的是还没划）、`claimedAt`、`sentAt`、`error`。云函数自动建 |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 | `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
 | `admin_web` 电脑端登录 | 摘要 | 登录码（`c_` 开头）、登录凭证（`s_` 开头）。云函数自动建 |
@@ -179,10 +179,12 @@ npm run test:web
 要知道的几件事：
 
 - **点一次只管一条**。这是微信一次性订阅消息的规则。收到一条之后，用户那边的按钮回到「通知我」，要再点一次才有下一条。所以后台显示的订阅人数会随着每次通知减少。
-- **每场活动只能通知一次**。重复通知会把大家的额度白白用掉。上一场的通知还没发完时，不能再通知另一场，等几分钟。
-- **只发给点「通知」那一刻之前订阅的人**。之后才订阅的人已经能在活动页看到这场活动，额度留给下一场。
+- **每场活动只能通知一次**。重复通知会把大家的额度白白用掉。
+- **发给点「通知」那一刻订阅着的人**。点的时候就把这些人划给这场活动（订阅记录上的 `eventId`），每个人只会划给一场。之后才订阅的人已经能在活动页看到这场活动，额度留给下一场。上一场刚把人划走、还没有新的人订阅时，下一场会提示「还没有人订阅新活动通知」，这场的机会还在。
 - **不是马上发出**。点「通知」只是在活动上登记（`notifyStatus: 'pending'`），由 `remind` 云函数每 5 分钟发一批，一次最多 300 条，人多时分几次发完。发完活动上记成 `done`，后台显示「已通知 N 人」。发不出去的（用户关了订阅消息等）记在 `notifyFailed` 里，不重试。
-- 登记之后把活动下架，就先不发；重新上架后接着发。活动日期过了还没发完的，不再发。
+- 登记之后把活动下架，定时任务下一次执行时（5 分钟内）会停掉这场通知，没发到的人放回去留给下一场。那时还没开始发的，当作没通知过，重新上架后可以再通知；已经发出去一部分的，这场到此为止。下架后很快又上架回来、定时任务还没跑到的，照常发。
+- 活动日期过了还没发完的，不再发，没发到的人同样放回去。
+- 发送中途数据库出错，这场保持发送中，下一次执行接着发。
 - 内容只能是活动信息。微信运营规范不允许用订阅消息发营销内容，也不允许发和用户订阅时理解的不一样的东西。
 
 这个功能要重新上传 `api` 和 `remind` 两个云函数。
