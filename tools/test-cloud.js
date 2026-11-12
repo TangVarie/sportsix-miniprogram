@@ -658,6 +658,27 @@ async function newsTests() {
   ok((await call('adminNotifyEvent', { id: 'lostack' })).ok, '之后可以重新通知');
   eq((await tick()).newsSent, 1, '重新通知后照常发出');
 
+  // 同一个人的两个订阅请求同时进来（比如两台手机）：先到的写好并被划给了一场活动，
+  // 后到的照着自己读到的旧样子写，不能把他从那场活动里挤出去
+  for (const [who, seedDoc, title] of [['twin1', null, '同时订阅甲'], ['twin2', { _id: 'twin2', openid: 'twin2', templateId: 'tmpl', sent: true, status: 'sent', eventId: 'race', job: 'old' }, '同时订阅乙']]) {
+    if (seedDoc) cloud.col('news_subs').push(seedDoc);
+    await call('adminSaveEvent', { event: { type: '赛事', title: title, status: 'published', date: cloud.state.now + 9 * DAY } });
+    const ev = cloud.col('events').find((x) => x.title === title)._id;
+    cloud.state.afterGet = async (name, cond) => {
+      if (!(name === 'news_subs' && cond._id === who)) return;
+      cloud.state.afterGet = null;
+      // 后到的请求已经读完（读到的是「没有记录」或「已经发过」），这时先到的请求写好了，管理员也点了通知
+      await as(who, 'subscribeNews', { templateId: 'tmpl' });
+      ok((await as('user-a', 'adminNotifyEvent', { id: ev })).ok, '管理员点了通知');
+    };
+    ok((await as(who, 'subscribeNews', { templateId: 'tmpl' })).ok, '后到的订阅请求照常成功');
+    cloud.state.afterGet = null;
+    const rec = cloud.col('news_subs').find((s) => s._id === who);
+    eq([rec.sent, rec.eventId, rec.job === event(ev).notifyId], [false, ev, true], (seedDoc ? '已经发过的记录' : '还没有记录') + '：后到的请求没有把他从划好的活动里挤出去');
+    cloud.state.sent.length = 0;
+    eq([(await tick()).newsSent, sentTo(), event(ev).notifyStatus], [1, [who], 'done'], '这场活动照常发给他');
+  }
+
   // 这次执行的额度被报名提醒用完了：新活动通知一条没发，不能记成「已经开始发」
   cloud.col('events').push({ _id: 'openrace', type: '赛事', title: '报名开放', status: 'published', date: new Date(cloud.state.now + 8 * DAY), signupStart: new Date(cloud.state.now - HOUR) });
   for (let i = 0; i < 300; i++) cloud.col('reminders').push({ _id: 'r' + i + '_openrace', openid: 'r' + i, eventId: 'openrace', templateId: 'tmpl', sent: false });

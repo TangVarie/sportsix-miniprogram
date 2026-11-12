@@ -649,17 +649,28 @@ const actions = {
    */
   async subscribeNews(event, openid) {
     if (!event.templateId) throw fail('missing_template');
-    // 已经订阅着、还没收到：原样留着。重写一遍会把它从已经划好的那场活动里拿出来
-    const existing = await newsDoc(openid);
-    if (existing && existing.sent === false) return { news: true };
     const data = { openid: openid, templateId: String(event.templateId), sent: false, status: 'waiting', eventId: '', job: '', subscribedAt: db.serverDate() };
-    try {
-      await db.collection('news_subs').doc(openid).set({ data: data });
-    } catch (e) {
-      // 集合还没建：建好再写
-      await db.createCollection('news_subs');
-      await db.collection('news_subs').doc(openid).set({ data: data });
+    const subs = db.collection('news_subs');
+    // 写的时候不能照着刚才读到的样子直接盖上去：同一个人的两个请求同时进来（比如两台手机），
+    // 先到的那个写好之后可能已经被划给了某场活动，后到的再盖一遍就把他从那场里挤出去了。所以：
+    // - 还没有记录：新增。记录已经在了会新增失败，转到下面按已有记录处理；
+    // - 有记录：只有它是「已经发过」的才改回「订阅着」。已经订阅着的原样留着。
+    if (!(await newsDoc(openid))) {
+      const add = () => subs.add({ data: Object.assign({ _id: openid }, data) });
+      try {
+        await add();
+        return { news: true };
+      } catch (e) {
+        // 集合还没建（建好再加一次），或者同一个人的另一个请求刚加好这条记录
+        try { await db.createCollection('news_subs'); } catch (e2) { /* 集合已经有了 */ }
+        try { await add(); return { news: true }; } catch (e3) { /* 记录已经在了 */ }
+      }
     }
+    await subs.where({ _id: openid, sent: true })
+      .update({ data: Object.assign({}, data, { claimedAt: _.remove(), sentAt: _.remove(), error: _.remove() }) });
+    // 到这里应该是订阅着的；不是的话说明上面哪一步没写成
+    const now = await findById('news_subs', openid);
+    if (!now || now.sent !== false) throw fail('server_error');
     return { news: true };
   },
 
