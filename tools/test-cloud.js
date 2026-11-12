@@ -229,6 +229,28 @@ async function adminTests() {
   r = await call('adminSetEventStatus', { id: id, status: 'draft' });
   eq((await call('events')).data.events.some((e) => e.id === id), false, '下架后小程序里不显示');
 
+  // 不限名额的活动也记已报名人数；之后加上名额限制，已经报的人算在里面，不会超额
+  await call('adminSaveEvent', { id: id, event: { type: '赛事', title: '上海半马', date: now + 21 * DAY, status: 'published', quota: null } });
+  cloud.col('events').find((e) => e._id === id).signupCount = 0;
+  eq((await call('signup', { eventId: id })).data.already, false, '不限名额时报名');
+  eq(cloud.col('events').find((e) => e._id === id).signupCount, 1, '不限名额的活动也记已报名人数');
+  eq((await call('adminEvents')).data.events.find((e) => e.id === id).signupCount, 1, '后台看到已报名 1 人');
+  // 以前报的名没记数（老数据）：加名额限制时按报名记录重数
+  cloud.col('events').find((e) => e._id === id).signupCount = 0;
+  r = await call('adminSaveEvent', { id: id, event: { type: '赛事', title: '上海半马', date: now + 21 * DAY, status: 'published', quota: 1 } });
+  eq(r.data.event.signupCount, 1, '加名额限制时，已报名人数按报名记录对准');
+  cloud.state.openid = 'user-c';
+  cloud.col('members').push({ _id: 'user-c', openid: 'user-c', phone: '13600002222', memberNo: '100900', numbered: true, points: 500, welcomeBonus: true, createdAt: new Date(now) });
+  eq((await call('signup', { eventId: id })).code, 'full', '名额 1 个，已经有人报了，后面的人报不上');
+  cloud.state.openid = 'user-a';
+  await call('adminSetEventStatus', { id: id, status: 'draft' });
+
+  // 活动超过 100 场：后台分页取全，最早的一场也在
+  for (let i = 0; i < 130; i++) cloud.col('events').push({ _id: 'bulk' + i, type: '赛事', title: '批量 ' + i, status: 'draft', date: new Date(now - (i + 1) * DAY) });
+  r = await call('adminEvents');
+  ok(r.data.events.length >= 134 && r.data.events.some((e) => e.id === 'bulk129'), '活动超过 100 场时后台也能列全');
+  cloud.state.data.events = cloud.col('events').filter((e) => !/^bulk/.test(e._id));
+
   // 公告：没设过时是空的；保存后所有人打开小程序都能拿到；关掉就没有
   eq((await call('adminNotice')).data.notice, { title: '', content: '', enabled: false }, '没设过公告');
   eq((await call('adminSaveNotice', { notice: { enabled: true } })).code, 'missing_content', '开着的公告要有内容');
@@ -637,6 +659,19 @@ async function clientTests() {
   const seenBefore = callsOf(e4, 'showModal').length;
   e4.app.showNotice();
   eq(callsOf(e4, 'showModal').length, seenBefore, '同一条公告不弹第二次');
+
+  // 小程序一直没关：回到前台时隔够 5 分钟会再同步，新发的公告这时弹出来
+  me.admin = true;
+  cloud.state.now += 60 * 1000; // 替身的时钟不会自己走，往后拨一分钟，这次保存才是新的一版
+  await cloud.run(() => api.main({ action: 'adminSaveNotice', notice: { title: '新公告', content: '回到前台时看到的', enabled: true } }));
+  const shownBefore = callsOf(e4, 'showModal').length;
+  e4.app.onShow();
+  await tick();
+  eq(callsOf(e4, 'showModal').length, shownBefore, '刚同步过，回到前台不重复取');
+  e4.app.lastSync = Date.now() - 6 * 60 * 1000;
+  e4.app.onShow();
+  await tick();
+  eq(callsOf(e4, 'showModal').slice(-1)[0].args.title, '新公告', '隔了一阵回到前台，新公告弹出来');
   me.admin = false;
 }
 

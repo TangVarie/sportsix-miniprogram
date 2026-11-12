@@ -113,7 +113,7 @@ cloudfunctions/
 
 活动没有提供的项，页面上不显示，不会留方括号占位。
 
-**报名规则目前的做法**：报名要先是会员；从 `memberSignupStart`（没填就用 `signupStart`）到 `signupEnd` 之间可以报；有 `quota` 时不超额；同一个人同一场只算一次。名额是先占后写报名记录，中途出错时 `signupCount` 只会偏多不会偏少，最坏情况是空出一个名额，不会超额。会员优先报名提前多久、试用装和抽奖怎么领怎么开（`docs/04-open-items.md`）定了以后，改 `api/index.js` 的 `signup`。
+**报名规则目前的做法**：报名要先是会员；从 `memberSignupStart`（没填就用 `signupStart`）到 `signupEnd` 之间可以报；有 `quota` 时不超额；同一个人同一场只算一次。已报名人数 `signupCount` 不管限不限名额都记，名额是先占后写报名记录，中途出错时只会偏多不会偏少，最坏情况是空出一个名额，不会超额。在运营后台保存带名额的活动时，会按报名记录把这个数重新对准。会员优先报名提前多久、试用装和抽奖怎么领怎么开（`docs/04-open-items.md`）定了以后，改 `api/index.js` 的 `signup`。
 
 ## 订阅消息的字段
 

@@ -172,6 +172,19 @@ function eventData(input) {
   return data;
 }
 
+/**
+ * 把活动的已报名人数改成报名记录的实际条数。改完再数一遍，这期间又有人报名的话再改一次。
+ * 名额就是拿这个数去卡的，所以给活动加名额限制（或改名额）时要先对准。
+ */
+async function reconcileSignupCount(eventId) {
+  for (let i = 0; i < 3; i++) {
+    const n = (await db.collection('signups').where({ eventId: eventId }).count()).total;
+    await db.collection('events').doc(eventId).update({ data: { signupCount: n } });
+    if ((await db.collection('signups').where({ eventId: eventId }).count()).total === n) return n;
+  }
+  return null;
+}
+
 /** 公告。集合还没建时当作没有 */
 async function readNotice() {
   try { return await findById('settings', 'notice'); } catch (e) { return null; }
@@ -330,8 +343,14 @@ const actions = {
   /** 全部活动，含没上架的和已经过期的，新的在前 */
   async adminEvents(event, openid) {
     await requireAdmin(openid);
-    const res = await db.collection('events').orderBy('date', 'desc').limit(100).get();
-    return { events: res.data.map(adminEventView) };
+    // 一次最多取 100 条，活动多了就接着往后取，取全为止（上限 2000 场）
+    const all = [];
+    for (let page = 0; page < 20; page++) {
+      const res = await db.collection('events').orderBy('date', 'desc').skip(page * 100).limit(100).get();
+      all.push(...res.data);
+      if (res.data.length < 100) break;
+    }
+    return { events: all.map(adminEventView) };
   },
 
   /** 新建或修改活动。带 id 是修改，不带是新建 */
@@ -342,6 +361,8 @@ const actions = {
     if (id) {
       if (!(await findById('events', id))) throw fail('not_found');
       await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+      // 有名额限制时，把已报名人数按报名记录重数一遍：以前不限名额时报的名、中途出错多占的名额，都以记录为准
+      if (data.quota) await reconcileSignupCount(id);
     } else {
       const res = await db.collection('events').add({ data: Object.assign(data, { signupCount: 0, createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
       id = res._id;
@@ -438,11 +459,14 @@ const actions = {
     const id = openid + '_' + e._id;
     if (await findById('signups', id)) return { eventId: e._id, already: true };
 
+    // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
+    if (typeof e.signupCount !== 'number') await db.collection('events').where({ _id: e._id, signupCount: _.exists(false) }).update({ data: { signupCount: 0 } });
     if (typeof e.quota === 'number') {
-      if (typeof e.signupCount !== 'number') await db.collection('events').where({ _id: e._id, signupCount: _.exists(false) }).update({ data: { signupCount: 0 } });
       // 条件更新：只有还没满时才加一，避免并发超额
       const res = await db.collection('events').where({ _id: e._id, signupCount: _.lt(e.quota) }).update({ data: { signupCount: _.inc(1) } });
       if (!res.stats.updated) throw fail('full');
+    } else {
+      await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(1) } });
     }
     // 报名记录带上本次请求的标记，写入出错时靠它分清是哪种情况
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -453,7 +477,7 @@ const actions = {
       // 记录在，而且是这次请求写的：写入其实成功了，只是响应丢了。名额已经占上，不能退。
       if (existing && existing.token === token) return { eventId: e._id, already: false };
       // 记录在，但是别的请求写的（同一个人并发点了两次），或者确实没写进去：把这次多占的名额还回去
-      if (typeof e.quota === 'number') await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(-1) } });
+      await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(-1) } });
       if (existing) return { eventId: e._id, already: true };
       throw err;
     }
