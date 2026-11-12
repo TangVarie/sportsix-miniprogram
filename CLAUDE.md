@@ -59,9 +59,10 @@ miniprogram/
   app.js  app.json  app.wxss     全局样式：styles/tokens.wxss 加几个原子类和动效类
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
-  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）
+  pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）、
+                                 admin 和 admin-event（运营后台，只有管理员能进）
   components/<组件>/index.*      member-cta、dual-carb 等
-  utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、fuel-plan.js（原样复制，不改）
+  utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、admin.js（运营后台的接口）、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
   assets/icons/                  图标随包；另补了 chevron-*、back-* 两组箭头
 cloudfunctions/
@@ -100,7 +101,7 @@ tools/
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
 - 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」只开了首页和产品页（`onShareTimeline` 加页面 json 里的 `singlePage`），其他页面依赖跳转或云开发，单页模式下用不了。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('doc', { type: 'agreement' | 'privacy' })`。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('admin')`、`go('admin-event', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 
@@ -116,6 +117,7 @@ tools/
 - 小程序端只调一个云函数 `api`（`utils/cloud.js` 的 `call(action, data)`），数据库集合不对小程序端开放。加接口时在 `cloudfunctions/api/index.js` 的 `actions` 里加，并在 `tools/test-cloud.js` 里补用例。
 - 会员、报名、提醒、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
+- 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。
 
 ### 只有真机和审核才会暴露的事
 

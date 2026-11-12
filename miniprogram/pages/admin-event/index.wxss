@@ -1,0 +1,52 @@
+/* 活动的新建和编辑（设计稿里没有）：样式和运营后台首页一致 */
+.ae-header { position: relative; height: calc(254rpx + var(--sx-safe-top)); color: #FFFFFF; }
+.ae-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; height: 85rpx; padding: 0 15rpx;
+}
+.ae-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.ae-header__title { position: absolute; left: 38rpx; bottom: 46rpx; font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+
+.ae-body { padding: 15rpx 38rpx calc(77rpx + env(safe-area-inset-bottom)); }
+.ae-card { margin-top: 23rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.ae-card__title { margin-bottom: 23rpx; font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.ae-field { margin-bottom: 27rpx; }
+.ae-field--last { margin-bottom: 0; }
+.ae-label { display: block; font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+.ae-hint { margin-top: 12rpx; font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ae-input { box-sizing: border-box; height: 92rpx; margin-top: 12rpx; padding: 0 27rpx; border-radius: 23rpx; background: #FFFFFF; font-size: 29rpx; color: #010439; }
+.ae-textarea { box-sizing: border-box; width: 100%; height: 360rpx; margin-top: 12rpx; padding: 23rpx 27rpx; border-radius: 23rpx; background: #FFFFFF; font-size: 29rpx; line-height: 44rpx; color: #010439; }
+.ae-ph { color: #9A9CA8; }
+
+/* 类型三选一 */
+.ae-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; margin-top: 12rpx; }
+.ae-seg__btn { display: flex; align-items: center; justify-content: center; height: 85rpx; border-radius: 19rpx; background: #FFFFFF; font-size: 25rpx; font-weight: 700; color: #14141E; }
+.ae-seg__btn--on { background: #010439; color: #FFFFFF; }
+
+/* 日期 + 时间 */
+.ae-time { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; }
+.ae-time__picker { flex: 1; min-width: 0; }
+.ae-pick { display: flex; align-items: center; box-sizing: border-box; height: 92rpx; padding: 0 27rpx; border-radius: 23rpx; background: #FFFFFF; font-size: 29rpx; color: #010439; }
+.ae-pick--empty { color: #9A9CA8; }
+.ae-time__clear { flex-shrink: 0; padding: 0 12rpx; font-size: 25rpx; line-height: 92rpx; color: #061A70; }
+
+/* 头图 */
+.ae-cover { display: block; width: 100%; height: 300rpx; margin-top: 12rpx; border-radius: 23rpx; background: #E6E6E7; }
+.ae-cover-btns { display: flex; gap: 15rpx; margin-top: 15rpx; }
+.ae-mini {
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 69rpx; padding: 0 38rpx; border-radius: 35rpx;
+  background: #FFFFFF; border: 1px solid #C9CEE8; font-size: 25rpx; font-weight: 700; color: #010439;
+}
+
+/* 开关 */
+.ae-switch-row { display: flex; align-items: center; justify-content: space-between; min-height: 58rpx; }
+.ae-switch { position: relative; width: 100rpx; height: 58rpx; border-radius: 29rpx; background: #C9CEE8; transition: background .2s; }
+.ae-switch--on { background: #010439; }
+.ae-switch__dot { position: absolute; left: 6rpx; top: 6rpx; width: 46rpx; height: 46rpx; border-radius: 23rpx; background: #FFFFFF; transition: transform .2s; }
+.ae-switch--on .ae-switch__dot { transform: translateX(42rpx); background: #C2E541; }
+
+.ae-btn {
+  display: flex; align-items: center; justify-content: center; height: 104rpx; margin-top: 38rpx; border-radius: 52rpx;
+  background: #C2E541; color: #010439; font-size: 31rpx; font-weight: 900;
+}
+.ae-btn--busy { opacity: .5; }

@@ -1,0 +1,110 @@
+<!-- 一行「日期 + 时间」的选择。field 是字段名，v 是 { date, time }，clearable 为真时右边有「清除」 -->
+<template name="ae-time">
+  <view class="ae-time">
+    <picker class="ae-time__picker" mode="date" value="{{v.date}}" data-field="{{field}}" data-part="date" bindchange="onTime">
+      <view class="ae-pick {{v.date ? '' : 'ae-pick--empty'}}">{{v.date || ph.date}}</view>
+    </picker>
+    <picker class="ae-time__picker" mode="time" value="{{v.time}}" data-field="{{field}}" data-part="time" bindchange="onTime">
+      <view class="ae-pick {{v.time ? '' : 'ae-pick--empty'}}">{{v.time || ph.time}}</view>
+    </picker>
+    <view wx:if="{{clearable && v.date}}" class="ae-time__clear" data-field="{{field}}" bindtap="onTimeClear">{{clear}}</view>
+  </view>
+</template>
+
+<view class="page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="ae-header sx-grid-bg">
+    <view class="ae-back" bindtap="onBack">
+      <image class="ae-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="ae-header__title">{{id ? copy.titleEdit : copy.titleNew}}</view>
+  </view>
+
+  <view class="ae-body">
+    <!-- 基本信息 -->
+    <view class="ae-card">
+      <view class="ae-card__title">{{copy.groups.basic}}</view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.type}}</text>
+        <view class="ae-seg">
+          <view wx:for="{{types}}" wx:key="*this" class="ae-seg__btn sx-pressable {{form.type === item ? 'ae-seg__btn--on' : ''}}" hover-class="sx-press" data-type="{{item}}" bindtap="onType">{{item}}</view>
+        </view>
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.title}}</text>
+        <input class="ae-input" value="{{form.title}}" maxlength="40" placeholder="{{copy.placeholders.title}}" placeholder-class="ae-ph" data-field="title" bindinput="onInput" />
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.date}}</text>
+        <template is="ae-time" data="{{field: 'date', v: times.date, ph: copy.placeholders, clear: copy.clear, clearable: false}}" />
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.city}}</text>
+        <input class="ae-input" value="{{form.city}}" maxlength="20" placeholder="{{copy.placeholders.city}}" placeholder-class="ae-ph" data-field="city" bindinput="onInput" />
+      </view>
+      <view class="ae-field ae-field--last">
+        <text class="ae-label">{{copy.labels.venue}}</text>
+        <input class="ae-input" value="{{form.venue}}" maxlength="40" placeholder="{{copy.placeholders.venue}}" placeholder-class="ae-ph" data-field="venue" bindinput="onInput" />
+      </view>
+    </view>
+
+    <!-- 报名 -->
+    <view class="ae-card">
+      <view class="ae-card__title">{{copy.groups.signup}}</view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.signupStart}}</text>
+        <template is="ae-time" data="{{field: 'signupStart', v: times.signupStart, ph: copy.placeholders, clear: copy.clear, clearable: true}}" />
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.signupEnd}}</text>
+        <template is="ae-time" data="{{field: 'signupEnd', v: times.signupEnd, ph: copy.placeholders, clear: copy.clear, clearable: true}}" />
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.memberSignupStart}}</text>
+        <template is="ae-time" data="{{field: 'memberSignupStart', v: times.memberSignupStart, ph: copy.placeholders, clear: copy.clear, clearable: true}}" />
+        <view class="ae-hint">{{copy.hints.memberSignupStart}}</view>
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.quota}}</text>
+        <input class="ae-input" value="{{form.quota}}" type="number" maxlength="6" placeholder="{{copy.placeholders.quota}}" placeholder-class="ae-ph" data-field="quota" bindinput="onInput" />
+      </view>
+      <view class="ae-field {{form.type === '抽奖' ? '' : 'ae-field--last'}}">
+        <text class="ae-label">{{copy.labels.quotaText}}</text>
+        <input class="ae-input" value="{{form.quotaText}}" maxlength="20" placeholder="{{copy.placeholders.quotaText}}" placeholder-class="ae-ph" data-field="quotaText" bindinput="onInput" />
+      </view>
+      <!-- 开奖时间只有抽奖用得上 -->
+      <view wx:if="{{form.type === '抽奖'}}" class="ae-field ae-field--last">
+        <text class="ae-label">{{copy.labels.drawAt}}</text>
+        <template is="ae-time" data="{{field: 'drawAt', v: times.drawAt, ph: copy.placeholders, clear: copy.clear, clearable: true}}" />
+      </view>
+    </view>
+
+    <!-- 头图和介绍 -->
+    <view class="ae-card">
+      <view class="ae-card__title">{{copy.groups.more}}</view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.cover}}</text>
+        <image wx:if="{{form.cover}}" class="ae-cover" src="{{form.cover}}" mode="aspectFill" />
+        <view class="ae-cover-btns">
+          <view class="ae-mini sx-pressable" hover-class="sx-press" bindtap="onCover">{{uploading ? copy.uploading : (form.cover ? copy.changeCover : copy.chooseCover)}}</view>
+          <view wx:if="{{form.cover}}" class="ae-mini sx-pressable" hover-class="sx-press" bindtap="onCoverClear">{{copy.clear}}</view>
+        </view>
+        <view class="ae-hint">{{copy.hints.cover}}</view>
+      </view>
+      <view class="ae-field ae-field--last">
+        <text class="ae-label">{{copy.labels.intro}}</text>
+        <textarea class="ae-textarea" value="{{form.intro}}" maxlength="1000" placeholder="{{copy.placeholders.intro}}" placeholder-class="ae-ph" data-field="intro" bindinput="onInput" />
+      </view>
+    </view>
+
+    <!-- 上架 -->
+    <view class="ae-card">
+      <view class="ae-switch-row" bindtap="onPublishToggle">
+        <text class="ae-label">{{copy.labels.status}}</text>
+        <view class="ae-switch {{form.published ? 'ae-switch--on' : ''}}"><view class="ae-switch__dot"></view></view>
+      </view>
+      <view class="ae-hint">{{copy.hints.status}}</view>
+    </view>
+
+    <view class="ae-btn sx-pressable {{busy ? 'ae-btn--busy' : ''}}" hover-class="sx-press" bindtap="onSave">{{copy.save}}</view>
+  </view>
+</view>

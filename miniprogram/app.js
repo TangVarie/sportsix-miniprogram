@@ -2,6 +2,7 @@ const config = require('./config.js');
 const { loadFonts } = require('./utils/fonts.js');
 const store = require('./utils/store.js');
 const messages = require('./content/messages.js');
+const adminCopy = require('./content/admin.js');
 
 App({
   globalData: {
@@ -30,7 +31,7 @@ App({
     // 数字和英文用的 Barlow Condensed（utils/fonts.js）
     loadFonts();
     // 配了云环境时，用云端的会员、计划、提醒、报名覆盖本机缓存；完成后页面会收到通知重读
-    store.sync();
+    this.refresh();
     this.watchUpdate();
   },
 
@@ -49,6 +50,34 @@ App({
         });
       });
     } catch (e) { /* 取不到更新管理器不影响使用 */ }
+  },
+
+  /**
+   * 小程序从后台回到前台：隔了一阵子就再同步一次，新发的公告这时候就能弹出来。
+   * 不然常用的人一直是「热启动」，要等到下一次冷启动才看得到公告。
+   */
+  onShow() {
+    if (this.globalData.singlePage || !this.lastSync) return;
+    if (Date.now() - this.lastSync > 5 * 60 * 1000) this.refresh();
+  },
+
+  /** 用云端数据覆盖本机缓存，顺带取公告 */
+  refresh() {
+    this.lastSync = Date.now();
+    return store.sync().then(() => this.showNotice());
+  },
+
+  /** 运营在后台设了公告：打开小程序时弹一次。同一条公告在这台手机上不弹第二次 */
+  showNotice() {
+    const n = store.unseenNotice();
+    if (!n) return;
+    wx.showModal({
+      title: n.title || adminCopy.notice.defaultTitle,
+      content: n.content,
+      showCancel: false,
+      confirmText: adminCopy.notice.confirm,
+      success: () => store.markNoticeSeen(n.version)
+    });
   },
 
   /** 要打开的页面不存在（比如别人转发的是旧版本里的页面）：回到首页，不留一张「页面不存在」 */

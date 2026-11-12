@@ -7,7 +7,9 @@
     "pages/product/index",
     "pages/event-detail/index",
     "pages/doc/index",
-    "pages/points/index"
+    "pages/points/index",
+    "pages/admin/index",
+    "pages/admin-event/index"
   ],
   "window": {
     "navigationStyle": "custom",

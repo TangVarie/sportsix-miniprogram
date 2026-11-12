@@ -8,7 +8,10 @@
  */
 const cloud = require('./cloud.js');
 
-const KEY = { member: 'sx_member', reminders: 'sx_reminders', signups: 'sx_signups', plan: 'sx_plan', pending: 'sx_pending_plan' };
+const KEY = { member: 'sx_member', reminders: 'sx_reminders', signups: 'sx_signups', plan: 'sx_plan', pending: 'sx_pending_plan', noticeSeen: 'sx_notice_seen' };
+
+// 运营在后台设的公告，随启动同步拿到。只放在内存里：每次打开小程序都重新取
+let notice = null;
 
 function read(key, fallback) {
   try {
@@ -56,9 +59,22 @@ function sync(retries) {
     write(KEY.plan, d.plan);
     write(KEY.reminders, d.reminders || []);
     write(KEY.signups, d.signups || []);
+    notice = d.notice || null;
     emit();
     return true;
   }).catch(() => false); // 取不到时先用上次的缓存
+}
+
+/**
+ * 还没给这位用户弹过的公告：{ version, title, content }，没有就是 null。
+ * 每保存一次公告是一个新版本，同一个版本在同一台手机上只弹一次。
+ */
+function unseenNotice() {
+  if (!notice) return null;
+  return read(KEY.noticeSeen, 0) === notice.version ? null : notice;
+}
+function markNoticeSeen(version) {
+  write(KEY.noticeSeen, version);
 }
 
 /** 会员：未注册返回 null。云开发下是 { nickname, phoneMasked, memberNo, points, createdAt } */
@@ -160,7 +176,7 @@ function getPendingPlan() { return read(KEY.pending, null); }
 function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
-  sync, onChange,
+  sync, onChange, unseenNotice, markNoticeSeen,
   getMember, isMember, register, setNickname, fetchPoints,
   getReminders, hasReminder, addReminder,
   getSignups, hasSignup, signup,

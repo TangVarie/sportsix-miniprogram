@@ -1,0 +1,82 @@
+<view class="page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="ad-header sx-grid-bg">
+    <view class="ad-back" bindtap="onBack">
+      <image class="ad-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="ad-header__title">{{copy.title}}</view>
+    <view class="ad-tabs">
+      <view wx:for="{{copy.tabs}}" wx:key="key" class="ad-tab sx-pressable {{tab === item.key ? 'ad-tab--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onTab">{{item.text}}</view>
+    </view>
+  </view>
+
+  <!-- 活动：新建、编辑、上下架 -->
+  <view wx:if="{{tab === 'events'}}" class="ad-body">
+    <view class="ad-btn ad-btn--line sx-pressable" hover-class="sx-press" bindtap="onCreate">{{copy.events.create}}</view>
+    <view wx:if="{{loading}}">
+      <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
+    </view>
+    <view wx:elif="{{events.length}}" class="ad-list">
+      <view wx:for="{{events}}" wx:key="id" class="ad-event">
+        <view class="ad-event__top">
+          <text class="ad-event__title">{{item.title}}</text>
+          <text class="ad-chip ad-chip--{{item.state}}">{{item.stateText}}</text>
+        </view>
+        <text class="ad-event__meta">{{item.meta}}</text>
+        <text class="ad-event__meta">{{item.signups}}</text>
+        <view class="ad-event__btns">
+          <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onEdit">{{copy.events.edit}}</view>
+          <view class="ad-mini {{item.published ? '' : 'ad-mini--on'}} sx-pressable" hover-class="sx-press" data-id="{{item.id}}" data-status="{{item.published ? 'draft' : 'published'}}" bindtap="onStatus">{{item.published ? copy.events.unpublish : copy.events.publish}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="ad-empty">{{copy.events.empty}}</view>
+  </view>
+
+  <!-- 公告：打开小程序时弹一次 -->
+  <view wx:if="{{tab === 'notice'}}" class="ad-body">
+    <view class="ad-card">
+      <view class="ad-field">
+        <text class="ad-label">{{copy.notice.labels.title}}</text>
+        <input class="ad-input" value="{{notice.title}}" maxlength="20" placeholder="{{copy.notice.placeholders.title}}" placeholder-class="ad-ph" data-field="title" bindinput="onNoticeInput" />
+      </view>
+      <view class="ad-field">
+        <text class="ad-label">{{copy.notice.labels.content}}</text>
+        <textarea class="ad-textarea" value="{{notice.content}}" maxlength="200" placeholder="{{copy.notice.placeholders.content}}" placeholder-class="ad-ph" data-field="content" bindinput="onNoticeInput" />
+      </view>
+      <view class="ad-switch-row" bindtap="onNoticeToggle">
+        <text class="ad-label">{{copy.notice.labels.enabled}}</text>
+        <view class="ad-switch {{notice.enabled ? 'ad-switch--on' : ''}}"><view class="ad-switch__dot"></view></view>
+      </view>
+    </view>
+    <view class="ad-hint">{{copy.notice.hint}}</view>
+    <view class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onNoticeSave">{{copy.notice.save}}</view>
+  </view>
+
+  <!-- 积分：找到会员，加减积分并记一笔 -->
+  <view wx:if="{{tab === 'points'}}" class="ad-body">
+    <view class="ad-search">
+      <input class="ad-input ad-search__input" value="{{query}}" type="number" maxlength="20" placeholder="{{copy.points.queryPlaceholder}}" placeholder-class="ad-ph" confirm-type="search" bindinput="onQueryInput" bindconfirm="onFind" />
+      <view class="ad-search__btn sx-pressable" hover-class="sx-press" bindtap="onFind">{{copy.points.find}}</view>
+    </view>
+    <view wx:if="{{member}}" class="ad-card">
+      <view class="ad-member">
+        <view class="ad-member__text">
+          <text class="ad-member__name">{{member.name}}</text>
+          <text class="ad-member__meta">{{member.noText}}</text>
+          <text class="ad-member__meta">{{member.phoneMasked}}</text>
+        </view>
+        <view class="ad-member__points">
+          <text class="ad-member__points-label">{{copy.points.current}}</text>
+          <text class="ad-member__points-num sx-num">{{member.points}}</text>
+        </view>
+      </view>
+      <view class="ad-sign">
+        <view class="ad-sign__btn sx-pressable {{sign > 0 ? 'ad-sign__btn--on' : ''}}" hover-class="sx-press" data-sign="1" bindtap="onSign">{{copy.points.add}}</view>
+        <view class="ad-sign__btn sx-pressable {{sign < 0 ? 'ad-sign__btn--on' : ''}}" hover-class="sx-press" data-sign="-1" bindtap="onSign">{{copy.points.sub}}</view>
+      </view>
+      <input class="ad-input ad-gap" value="{{amount}}" type="number" maxlength="6" placeholder="{{copy.points.amountPlaceholder}}" placeholder-class="ad-ph" data-field="amount" bindinput="onPointsInput" />
+      <input class="ad-input ad-gap" value="{{reason}}" maxlength="30" placeholder="{{copy.points.reasonPlaceholder}}" placeholder-class="ad-ph" data-field="reason" bindinput="onPointsInput" />
+    </view>
+    <view wx:if="{{member}}" class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onAdjust">{{copy.points.submit}}</view>
+  </view>
+</view>
