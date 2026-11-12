@@ -53,6 +53,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
   cloud.col('members').find((m) => m._id === 'user-a').admin = true;
   const memberB = cloud.col('members').find((m) => m._id === 'user-b');
 
+  let slowUpload = 0;
   const server = http.createServer((req, res) => {
     if (req.url === '/' || req.url.startsWith('/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -66,6 +67,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
         const p = JSON.parse(body);
         // 网页来的调用没有微信身份
         cloud.state.openid = '';
+        // 测试里要看「图还在传」的状态时，把传图的响应拖慢
+        if (p.data && p.data.action === 'adminUploadCover' && slowUpload) await new Promise((r) => setTimeout(r, slowUpload));
         const result = p.name === 'api' ? await cloud.run(() => api.main(p.data)) : { ok: false, code: 'unknown_function' };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -102,14 +105,15 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await shot('login');
     await page.fill('#login-code', '1234');
     await page.click('#login-submit');
-    eq(await page.textContent('#login-error'), '登录码是 8 位数字', '位数不对当场提示');
-    await page.fill('#login-code', '00000000');
+    eq(await page.textContent('#login-error'), '登录码是 12 位数字', '位数不对当场提示');
+    await page.fill('#login-code', '000000000000');
+    eq(await page.inputValue('#login-code'), '0000 0000 0000', '输入时四位一组');
     await page.click('#login-submit');
     await page.waitForFunction(() => document.getElementById('login-error').textContent.length > 0);
     eq(await page.textContent('#login-error'), '登录码不对，或者已经过期', '登录码不对');
 
     const code = (await as('user-a', 'adminWebCode')).data.code;
-    await page.fill('#login-code', code.slice(0, 4) + ' ' + code.slice(4));
+    await page.fill('#login-code', code);
     await page.click('#login-submit');
     await page.waitForSelector('#view-app:not([hidden])');
     eq(await page.evaluate(() => window.__cloudOptions), { identityless: true, resourceAppid: 'wx224e462fe4941de6', resourceEnv: 'cloud1-d1g1u97accc6092f6' }, '以未登录模式连小程序的云环境');
@@ -177,6 +181,28 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForFunction(() => Array.from(document.querySelectorAll('#ev-rows tr')).some((r) => r.textContent.includes('杭州西湖越野赛') && r.textContent.includes('未上架')));
     eq(cloud.col('events').find((e) => e._id === made._id).status, 'draft', '下架写到云端');
 
+    // ----- 头图还在传的时候：不能保存；关掉表单再开别的活动，这张图不会安到别的活动上 -----
+    slowUpload = 500;
+    const filesBefore = Object.keys(cloud.state.files).length;
+    await page.locator('#ev-rows tr', { hasText: '上海半程马拉松' }).getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    await page.setInputFiles('#f-cover-file', { name: 'cover.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+    await page.waitForFunction(() => document.getElementById('f-cover-pick').textContent === '正在上传');
+    ok(await page.isDisabled('#drawer-save'), '头图还在传的时候不能保存');
+    await page.click('#drawer-close');
+    await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    ok(await page.isEnabled('#drawer-save'), '换了一个活动，保存按钮可用');
+    await page.waitForFunction((n) => true, null);
+    await new Promise((r) => setTimeout(r, 900));
+    eq(Object.keys(cloud.state.files).length, filesBefore + 1, '那张图确实传完了');
+    eq(await page.textContent('#f-cover-pick'), '选择图片', '上一个活动传的图没有安到这个活动上');
+    await page.click('#drawer-save');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    eq(cloud.col('events').find((e) => e._id === 'old').cover || '', '', '保存后这个活动还是没有头图');
+    eq(cloud.col('events').find((e) => e._id === 'race').cover || '', '', '没保存的那个活动头图也没变');
+    slowUpload = 0;
+
     // ----- 公告 -----
     await page.click('[data-tab="notice"]');
     await page.waitForSelector('#tab-notice:not([hidden])');
@@ -222,11 +248,19 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(await page.textContent('#login-error'), '登录过期了，请重新登录', '凭证过期后回到登录页');
     eq(await page.evaluate(() => localStorage.getItem('sx_admin_token')), null, '过期的凭证从浏览器里清掉');
 
-    // ----- 退出登录 -----
+    // ----- 重新登录后，公告是重新取的，不是上一次登录时看到的那份 -----
+    cloud.col('settings').find((d) => d._id === 'notice').title = '别的管理员改过的标题';
     const code2 = (await as('user-a', 'adminWebCode')).data.code;
     await page.fill('#login-code', code2);
     await page.click('#login-submit');
     await page.waitForSelector('#view-app:not([hidden])');
+    await page.click('[data-tab="notice"]');
+    await page.waitForFunction(() => document.getElementById('notice-title').value === '别的管理员改过的标题');
+    ok(true, '重新登录后公告重新取，不会拿旧内容盖掉别人的修改');
+    await page.click('[data-tab="points"]');
+    ok(await page.isHidden('#adjust-form'), '重新登录后上一次查到的会员不留在页面上');
+
+    // ----- 退出登录 -----
     await page.click('#logout');
     await page.waitForSelector('#view-login:not([hidden])');
     ok(cloud.col('admin_web').filter((d) => d.kind === 'session').every((d) => d.expiresAt === 0), '退出登录后凭证在云端作废');

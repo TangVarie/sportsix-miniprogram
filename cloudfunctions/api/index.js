@@ -13,7 +13,7 @@
  *   point_logs 积分记录  每次加减积分记一条；第一次用到时云函数自己建这个集合
  *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
  *
- *   admin_web  电脑端后台的登录码、登录凭证、输错次数；第一次用到时云函数自己建这个集合
+ *   admin_web  电脑端后台的登录码、登录凭证；第一次用到时云函数自己建这个集合
  *
  * 运营后台的接口（admin 开头）只给管理员用：会员记录上有 admin: true，在云开发控制台里手动加。
  *
@@ -142,11 +142,14 @@ const cleanNickname = (v) => cleanText(v, NICKNAME_MAX);
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 /** 登录码 5 分钟内有效，只能用一次 */
 const WEB_CODE_TTL = 5 * 60 * 1000;
+/**
+ * 登录码 12 位数字。网页没有微信身份，分不清谁是谁，所以没法「输错几次就锁」：
+ * 那样任何人乱输几次就能把所有管理员挡在外面。改成靠位数防猜：一万亿种里只有刚取的那一个是对的，
+ * 又只管 5 分钟，就算每秒猜上千次也基本猜不中。输错不记数、不写库，乱输的人什么都改变不了。
+ */
+const WEB_CODE_DIGITS = 12;
 /** 登录一次管 12 小时 */
 const WEB_SESSION_TTL = 12 * 3600 * 1000;
-/** 10 分钟内输错 10 次，就先不让登录，过了这 10 分钟再试 */
-const WEB_FAIL_LIMIT = 10;
-const WEB_FAIL_WINDOW = 10 * 60 * 1000;
 /** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
 const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotice', 'adminSaveNotice',
   'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
@@ -165,19 +168,25 @@ async function webSet(id, data) {
   }
 }
 
+/** 随机的 n 位数字。每一位从随机字节里取，250 以上的字节丢掉，这样十个数字出现的机会一样 */
+function randomDigits(n) {
+  let out = '';
+  while (out.length < n) {
+    const bytes = crypto.randomBytes(n * 2);
+    for (let i = 0; i < bytes.length && out.length < n; i++) if (bytes[i] < 250) out += String(bytes[i] % 10);
+  }
+  return out;
+}
+
 /**
  * 网页用登录码换登录凭证。登录码和凭证在库里都只存摘要，库里的数据被人看到也登录不了。
- * 输错太多次会锁一阵子：登录码是 8 位数字，5 分钟内有效，这样靠猜是猜不中的。
+ * 输错了只是登录不上，不记数也不写库（原因见 WEB_CODE_DIGITS 的说明）。
  */
 async function webLogin(event) {
   const now = Date.now();
-  const guard = await webDoc('guard');
-  const inWindow = !!guard && now - guard.windowStart < WEB_FAIL_WINDOW;
-  if (inWindow && guard.fails >= WEB_FAIL_LIMIT) throw fail('locked');
-
   const code = String(event.code == null ? '' : event.code).replace(/\D/g, '');
   const id = 'c_' + sha(code);
-  const doc = code.length === 8 ? await webDoc(id) : null;
+  const doc = code.length === WEB_CODE_DIGITS ? await webDoc(id) : null;
   let ok = !!doc && doc.kind === 'code' && doc.used === false && doc.expiresAt > now;
   if (ok) {
     // 条件更新：同一个登录码被两个请求同时拿来用，只有一个能成
@@ -186,10 +195,7 @@ async function webLogin(event) {
   }
   // 取登录码之后被撤掉管理员的，也登录不了
   const member = ok ? await findById('members', doc.openid) : null;
-  if (!ok || !member || member.admin !== true) {
-    await webSet('guard', inWindow ? { windowStart: guard.windowStart, fails: guard.fails + 1 } : { windowStart: now, fails: 1 });
-    throw fail('bad_code');
-  }
+  if (!ok || !member || member.admin !== true) throw fail('bad_code');
   const token = crypto.randomBytes(32).toString('hex');
   await webSet('s_' + sha(token), { kind: 'session', openid: doc.openid, expiresAt: now + WEB_SESSION_TTL, createdAt: db.serverDate() });
   return { token: token, expiresAt: now + WEB_SESSION_TTL, name: member.nickname || '' };
@@ -484,10 +490,10 @@ const actions = {
     return { notice: { title: data.title, content: data.content, enabled: data.enabled } };
   },
 
-  /** 小程序里取电脑端后台的登录码：8 位数字，5 分钟内有效，只能用一次 */
+  /** 小程序里取电脑端后台的登录码：12 位数字，5 分钟内有效，只能用一次 */
   async adminWebCode(event, openid) {
     await requireAdmin(openid);
-    const code = String(parseInt(crypto.randomBytes(4).toString('hex'), 16) % 100000000).padStart(8, '0');
+    const code = randomDigits(WEB_CODE_DIGITS);
     await webSet('c_' + sha(code), { kind: 'code', openid: openid, used: false, expiresAt: Date.now() + WEB_CODE_TTL, createdAt: db.serverDate() });
     return { code: code, expiresIn: WEB_CODE_TTL / 1000 };
   },

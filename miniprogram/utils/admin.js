@@ -32,7 +32,7 @@ function adjustPoints(memberNo, delta, reason) {
   return cloud.call('adminAdjustPoints', { memberNo: memberNo, delta: delta, reason: reason }).then((d) => d.member);
 }
 
-/** 取电脑端后台的登录码：{ code, expiresIn }。8 位数字，5 分钟内有效，只能用一次 */
+/** 取电脑端后台的登录码：{ code, expiresIn }。12 位数字，5 分钟内有效，只能用一次 */
 function webCode() {
   return cloud.call('adminWebCode');
 }

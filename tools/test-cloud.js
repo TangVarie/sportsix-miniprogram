@@ -335,13 +335,14 @@ async function webTests() {
     eq((await web(action, { webToken: 'f'.repeat(64) })).code, 'web_expired', '凭证是瞎编的调不了 ' + action);
   }
 
-  // 登录码：8 位数字，只能用一次
+  // 登录码：12 位数字，只能用一次
   let r = await call('adminWebCode');
   const code = r.data.code;
-  ok(/^\d{8}$/.test(code) && r.data.expiresIn === 300, '登录码是 8 位数字，5 分钟内有效');
-  eq((await web('webLogin', { code: '00000000' === code ? '11111111' : '00000000' })).code, 'bad_code', '登录码不对');
+  ok(/^\d{12}$/.test(code) && r.data.expiresIn === 300, '登录码是 12 位数字，5 分钟内有效');
+  eq((await web('webLogin', { code: '000000000000' === code ? '111111111111' : '000000000000' })).code, 'bad_code', '登录码不对');
+  eq((await web('webLogin', { code: code.slice(0, 8) })).code, 'bad_code', '只输了前 8 位');
   eq((await web('webLogin', { code: '123' })).code, 'bad_code', '登录码位数不对');
-  r = await web('webLogin', { code: code.slice(0, 4) + ' ' + code.slice(4) });
+  r = await web('webLogin', { code: code.slice(0, 4) + ' ' + code.slice(4, 8) + ' ' + code.slice(8) });
   const token = r.data.token;
   ok(/^[0-9a-f]{64}$/.test(token), '登录成功拿到凭证（中间带空格也认）');
   eq((await web('webLogin', { code: code })).code, 'bad_code', '登录码用过一次就作废');
@@ -393,13 +394,22 @@ async function webTests() {
   eq((await web('webLogin', { code: code3 })).code, 'bad_code', '取码之后被撤掉管理员，登录不了');
   cloud.col('members').find((d) => d._id === 'user-a').admin = true;
 
-  // 输错太多次：先锁住，对的登录码也不行；过了这段时间恢复
-  cloud.col('admin_web').find((d) => d._id === 'guard').fails = 0;
+  // 乱输多少次都不影响别人登录：网页没有微信身份，分不清谁是谁，要是「输错几次就锁」，
+  // 任何人乱输几次就能把管理员挡在外面。输错也不往库里写东西
   const code4 = (await call('adminWebCode')).data.code;
-  for (let i = 0; i < 10; i++) eq((await web('webLogin', { code: '9999999' + (i % 10) === code4 ? '00000000' : '9999999' + (i % 10) })).code, 'bad_code', '第 ' + (i + 1) + ' 次输错');
-  eq((await web('webLogin', { code: code4 })).code, 'locked', '10 分钟内输错 10 次就锁住，对的登录码也不行');
-  cloud.col('admin_web').find((d) => d._id === 'guard').windowStart = cloud.state.now - 11 * 60 * 1000;
-  ok((await web('webLogin', { code: code4 })).ok, '过了 10 分钟恢复');
+  const before = JSON.stringify(cloud.col('admin_web'));
+  for (let i = 0; i < 50; i++) {
+    const wrong = String(100000000000 + i);
+    eq((await web('webLogin', { code: wrong === code4 ? '999999999999' : wrong })).code, 'bad_code', '第 ' + (i + 1) + ' 次乱输');
+  }
+  eq(JSON.stringify(cloud.col('admin_web')), before, '乱输不往库里写任何东西');
+  ok((await web('webLogin', { code: code4 })).ok, '别人乱输了 50 次，管理员照样能用自己的登录码登录');
+
+  // 登录码每一位都是随机的：取 200 个，没有重复，十个数字都出现过
+  const many = [];
+  for (let i = 0; i < 200; i++) many.push((await call('adminWebCode')).data.code);
+  eq(new Set(many).size, 200, '登录码不重复');
+  eq(new Set(many.join('').split('')).size, 10, '十个数字都会出现');
 }
 
 async function signupFailureTests() {
@@ -729,12 +739,12 @@ async function clientTests() {
   eq(other.points, beforePoints + 150, '积分加到云端');
   eq(p.data.member.points, String(beforePoints + 150), '页面上的积分跟着更新');
 
-  // 电脑端：取一个登录码，显示成 1234 5678
+  // 电脑端：取一个登录码，显示成 1234 5678 9012
   p = e3.openPage('pages/admin/index', {});
   e3.tap('onTab', { key: 'web' });
   p.onWebCode();
   await tick();
-  ok(/^\d{4} \d{4}$/.test(p.data.webCode), '取到登录码，中间空一格好认');
+  ok(/^\d{4} \d{4} \d{4}$/.test(p.data.webCode), '取到登录码，四位一组好认');
   ok(cloud.col('admin_web').some((d) => d.kind === 'code' && d.used === false && d.openid === cloud.state.openid), '登录码记在这位管理员名下');
 
   // 新建活动：必填项没填有提示；填好保存后写到云端

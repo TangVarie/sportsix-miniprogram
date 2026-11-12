@@ -11,7 +11,7 @@
 
   它怎么工作：
   - 用微信云开发的 Web SDK 以「未登录模式」调云函数 api（和小程序调的是同一个）。
-  - 登录：管理员在小程序「我的 → 运营后台 → 电脑端」里取一个 8 位登录码，填到这里换一个登录凭证，
+  - 登录：管理员在小程序「我的 → 运营后台 → 电脑端」里取一个 12 位登录码，填到这里换一个登录凭证，
     之后每次调用都带着它。凭证存在这台电脑的浏览器里，12 小时后过期。
   - 能做的事和小程序里的运营后台一样：活动、公告、积分。权限在云函数里检查。
 
@@ -44,7 +44,7 @@
   .login__card { width: 400px; max-width: 100%; padding: 36px 32px 32px; border-radius: 18px; background: var(--white); color: var(--text); }
   .login__eyebrow { font-size: 12px; line-height: 18px; font-weight: 700; font-style: italic; letter-spacing: 1px; color: var(--blue); }
   .login__title { margin: 4px 0 20px; font-size: 26px; line-height: 34px; font-weight: 900; color: var(--navy); }
-  .login__code { width: 100%; height: 56px; padding: 0 16px; border: 2px solid var(--line); border-radius: 12px; font-size: 26px; font-weight: 700; letter-spacing: 6px; text-align: center; outline: none; }
+  .login__code { width: 100%; height: 56px; padding: 0 12px; border: 2px solid var(--line); border-radius: 12px; font-size: 24px; font-weight: 700; letter-spacing: 3px; text-align: center; outline: none; }
   .login__code:focus { border-color: var(--navy); }
   .login__hint { margin: 14px 0 0; font-size: 13px; line-height: 20px; color: var(--sub); }
   .login__error { min-height: 20px; margin: 10px 0 0; font-size: 13px; line-height: 20px; color: var(--danger); }
@@ -168,8 +168,8 @@
   <form id="login-form" class="login__card" autocomplete="off">
     <div class="login__eyebrow">SPORTSIX</div>
     <h1 class="login__title">运营后台</h1>
-    <input id="login-code" class="login__code" inputmode="numeric" maxlength="9" placeholder="登录码" aria-label="登录码">
-    <p class="login__hint">打开小程序，进「我的 → 运营后台 → 电脑端」，点「获取登录码」，把 8 位数字填在这里。登录码 5 分钟内有效，只能用一次。</p>
+    <input id="login-code" class="login__code" inputmode="numeric" maxlength="16" placeholder="登录码" aria-label="登录码">
+    <p class="login__hint">打开小程序，进「我的 → 运营后台 → 电脑端」，点「获取登录码」，把 12 位数字填在这里。登录码 5 分钟内有效，只能用一次。</p>
     <p id="login-error" class="login__error" role="alert"></p>
     <button id="login-submit" class="btn btn--block" type="submit">登录</button>
   </form>
@@ -399,7 +399,6 @@
     bad_file: '只能用 JPG、PNG、WebP 图片',
     file_too_large: '图片太大了',
     bad_code: '登录码不对，或者已经过期',
-    locked: '输错次数太多，请 10 分钟后再试',
     web_expired: '登录过期了，请重新登录',
     sdk: '连不上云开发，请检查网络后刷新页面',
     network: '网络异常，请稍后再试'
@@ -450,8 +449,23 @@
   }
 
   /* ---------- 登录 ---------- */
+  /** 退出或登录过期：上一次登录期间取到的内容都不算数，下次登录重新取 */
+  function resetSession() {
+    loaded = {};
+    events = [];
+    coverUrls = {};
+    $('ev-rows').textContent = '';
+    $('notice-title').value = '';
+    $('notice-content').value = '';
+    $('notice-enabled').checked = false;
+    previewNotice();
+    $('find-query').value = '';
+    showMember(null);
+  }
+
   function showLogin(message) {
     closeDrawer();
+    resetSession();
     $('view-app').hidden = true;
     $('view-login').hidden = false;
     $('login-error').textContent = message || '';
@@ -465,10 +479,15 @@
     switchTab('events');
   }
 
+  // 输入时四位一组，好对着手机核对
+  $('login-code').addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
+  });
+
   $('login-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var code = $('login-code').value.replace(/\D/g, '');
-    if (code.length !== 8) { $('login-error').textContent = '登录码是 8 位数字'; return; }
+    if (code.length !== 12) { $('login-error').textContent = '登录码是 12 位数字'; return; }
     var btn = $('login-submit');
     btn.disabled = true;
     $('login-error').textContent = '';
@@ -603,6 +622,9 @@
   var TIME_FIELDS = ['date', 'signupStart', 'signupEnd', 'memberSignupStart', 'drawAt'];
   var TEXT_FIELDS = ['title', 'city', 'venue', 'quotaText', 'intro'];
   var form = { id: '', type: '赛事', cover: '' };
+  // 每打开或关上一次表单就换一个号。头图传完回来时号变了，说明那个表单已经不在了，结果作废
+  var editor = 0;
+  var uploading = false;
 
   function setType(type) {
     form.type = type;
@@ -624,6 +646,8 @@
   }
 
   function openDrawer(e) {
+    editor += 1;
+    setUploading(false);
     form.id = e ? e.id : '';
     $('drawer-title').textContent = e ? '编辑活动' : '新建活动';
     setType(e ? e.type : '赛事');
@@ -637,6 +661,7 @@
     $('f-title').focus();
   }
   function closeDrawer() {
+    editor += 1;
     $('drawer-mask').hidden = true;
     $('drawer').hidden = true;
   }
@@ -677,28 +702,40 @@
       img.src = url;
     });
   }
+  /** 头图正在上传时不能保存（不然存下去的还是旧图），也不能再选一张 */
+  function setUploading(on) {
+    uploading = on;
+    $('f-cover-pick').disabled = on;
+    $('drawer-save').disabled = on;
+    if (on) $('f-cover-pick').textContent = '正在上传';
+  }
   $('f-cover-pick').addEventListener('click', function () { $('f-cover-file').click(); });
   $('f-cover-clear').addEventListener('click', function () { setCover(''); });
   $('f-cover-file').addEventListener('change', function () {
     var file = this.files && this.files[0];
     this.value = '';
     if (!file) return;
-    var pick = $('f-cover-pick');
-    pick.disabled = true;
-    pick.textContent = '正在上传';
+    var mine = editor; // 这次上传属于现在打开的这个表单
+    setUploading(true);
     compress(file).then(function (data) {
       return call('adminUploadCover', { data: data });
     }).then(function (r) {
       if (r.url) coverUrls[r.fileID] = r.url;
+      // 传完时表单已经关了或换成别的活动了：这张图不能安到别的活动上
+      if (mine !== editor) return;
+      setUploading(false);
       setCover(r.fileID, r.url);
     }).catch(function (e) {
+      if (mine !== editor) return;
+      setUploading(false);
       setCover(form.cover);
       if (e.code !== 'web_expired') toast(errorText(e), true);
-    }).then(function () { pick.disabled = false; });
+    });
   });
 
   $('drawer').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (uploading) { toast('头图还在上传，等一下再保存', true); return; }
     var quota = parseInt($('f-quota').value, 10);
     var event = { type: form.type, quota: quota > 0 ? quota : null, cover: form.cover, status: $('f-published').checked ? 'published' : 'draft' };
     TEXT_FIELDS.forEach(function (k) { event[k] = $('f-' + k).value; });
@@ -714,7 +751,7 @@
       closeDrawer();
       return loadEvents();
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { btn.disabled = false; });
+      .then(function () { btn.disabled = uploading; });
   });
 
   /* ---------- 公告 ---------- */

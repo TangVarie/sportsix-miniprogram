@@ -81,5 +81,5 @@
 .ad-web__url { margin-top: 31rpx; padding-top: 27rpx; border-top: 1px solid #E6E6E7; }
 .ad-web__url-text { display: block; margin-top: 8rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; word-break: break-all; }
 .ad-web__code-card { display: flex; flex-direction: column; align-items: center; gap: 12rpx; margin-top: 23rpx; padding: 46rpx 31rpx; border-radius: 31rpx; color: #FFFFFF; }
-.ad-web__code { font-size: 115rpx; line-height: 123rpx; letter-spacing: 8rpx; color: #C2E541; }
+.ad-web__code { font-size: 77rpx; line-height: 92rpx; letter-spacing: 4rpx; color: #C2E541; white-space: nowrap; }
 .ad-web__code-hint { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; text-align: center; }

@@ -54,7 +54,7 @@ Page({
     sign: 1,
     amount: '',
     reason: '',
-    // 电脑端后台的网址和刚取到的登录码（显示成 1234 5678）
+    // 电脑端后台的网址和刚取到的登录码（显示成 1234 5678 9012）
     webUrl: config.webAdminUrl || '',
     webCode: ''
   }),
@@ -184,7 +184,7 @@ Page({
     if (this.data.busy) return;
     this.setData({ busy: true });
     admin.webCode()
-      .then((r) => this.setData({ webCode: r.code.slice(0, 4) + ' ' + r.code.slice(4) }))
+      .then((r) => this.setData({ webCode: r.code.replace(/(\d{4})(?=\d)/g, '$1 ') }))
       .catch((e) => toast(admin.errorText(e)))
       .then(() => this.setData({ busy: false }));
   },
