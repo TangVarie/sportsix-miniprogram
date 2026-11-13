@@ -35,6 +35,58 @@
     <view wx:else class="ad-empty">{{copy.events.empty}}</view>
   </view>
 
+  <!-- 往期：活动页「往期」里的赞助赛事 -->
+  <view wx:if="{{tab === 'past' && !pastForm}}" class="ad-body">
+    <view class="ad-btn ad-btn--line sx-pressable" hover-class="sx-press" bindtap="onPastCreate">{{copy.past.create}}</view>
+    <view class="ad-hint">{{copy.past.hint}}</view>
+    <view wx:if="{{!pastLoaded}}">
+      <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
+    </view>
+    <view wx:elif="{{past.length}}" class="ad-list">
+      <view wx:for="{{past}}" wx:key="id" class="ad-past">
+        <image class="ad-past__img" src="{{item.src}}" mode="aspectFill" />
+        <view class="ad-past__text">
+          <text class="ad-past__year sx-num-700">{{item.year}}</text>
+          <text class="ad-event__title">{{item.name}}</text>
+          <text wx:if="{{item.nameEn}}" class="ad-event__meta">{{item.nameEn}}</text>
+          <view class="ad-event__btns">
+            <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onPastEdit">{{copy.past.edit}}</view>
+            <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onPastDelete">{{copy.past.delete}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="ad-empty">{{copy.past.empty}}</view>
+  </view>
+
+  <!-- 往期：新加或编辑一场 -->
+  <view wx:if="{{tab === 'past' && pastForm}}" class="ad-body">
+    <view class="ad-form-title">{{pastForm.id ? copy.past.titleEdit : copy.past.titleNew}}</view>
+    <view class="ad-card">
+      <view class="ad-field">
+        <text class="ad-label">{{copy.past.labels.year}}</text>
+        <input class="ad-input" value="{{pastForm.year}}" type="number" maxlength="4" placeholder="{{copy.past.placeholders.year}}" placeholder-class="ad-ph" data-field="year" bindinput="onPastInput" />
+      </view>
+      <view class="ad-field">
+        <text class="ad-label">{{copy.past.labels.name}}</text>
+        <input class="ad-input" value="{{pastForm.name}}" maxlength="30" placeholder="{{copy.past.placeholders.name}}" placeholder-class="ad-ph" data-field="name" bindinput="onPastInput" />
+      </view>
+      <view class="ad-field">
+        <text class="ad-label">{{copy.past.labels.nameEn}}</text>
+        <input class="ad-input" value="{{pastForm.nameEn}}" maxlength="60" placeholder="{{copy.past.placeholders.nameEn}}" placeholder-class="ad-ph" data-field="nameEn" bindinput="onPastInput" />
+      </view>
+      <view>
+        <text class="ad-label">{{copy.past.labels.image}}</text>
+        <image wx:if="{{pastForm.src}}" class="ad-past__preview" src="{{pastForm.src}}" mode="aspectFill" />
+        <view class="ad-past__pick">
+          <view class="ad-mini sx-pressable" hover-class="sx-press" bindtap="onPastImage">{{uploading ? copy.past.uploading : (pastForm.image ? copy.past.changeImage : copy.past.chooseImage)}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="ad-btn sx-pressable {{busy || uploading ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onPastSave">{{copy.past.save}}</view>
+    <view class="ad-btn ad-btn--line ad-btn--second sx-pressable" hover-class="sx-press" bindtap="onPastCancel">{{copy.past.cancel}}</view>
+  </view>
+
   <!-- 公告：打开小程序时弹一次 -->
   <view wx:if="{{tab === 'notice'}}" class="ad-body">
     <view class="ad-card">

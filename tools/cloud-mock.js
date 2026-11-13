@@ -18,7 +18,7 @@ function createCloud() {
     afterGet: null,    // (集合名, 条件) => Promise：查询结果已经取好、还没交出去时先等它，用来模拟「读到的已经是旧的」
     onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
     updateError: null, // (集合名) => true 时这次更新做成之后再抛错（模拟结果没传回来）
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
@@ -91,6 +91,12 @@ function createCloud() {
           const doc = Object.assign({ _id: id }, o.data);
           if (i >= 0) list[i] = doc; else list.push(doc);
           return { _id: id };
+        },
+        async remove() {
+          const list = col(name);
+          const i = list.findIndex((d) => d._id === id);
+          if (i >= 0) list.splice(i, 1);
+          return { stats: { removed: i >= 0 ? 1 : 0 } };
         },
         async update(o) {
           const doc = col(name).find((d) => d._id === id);

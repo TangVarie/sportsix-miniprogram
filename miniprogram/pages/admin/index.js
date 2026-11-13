@@ -6,6 +6,7 @@ const events = require('../../utils/events.js');
 const format = require('../../utils/format.js');
 const config = require('../../config.js');
 const { baseData, go, navTone, headerTone, shareCard, TABS, tick } = require('../../utils/page.js');
+const { assetUrl } = require('../../utils/assets.js');
 
 const toast = (title) => wx.showToast({ title: title, icon: 'none' });
 
@@ -34,6 +35,11 @@ function eventRow(e) {
   };
 }
 
+/** 往期赛事 → 列表里一行的显示数据。照片是 assets/ 路径的换成地址，云存储的 fileID 直接能显示 */
+function pastRow(p) {
+  return { id: p.id, year: p.year, name: p.name, nameEn: p.nameEn, image: p.image, src: assetUrl(p.image) };
+}
+
 /** 查到的会员 → 卡片上的显示数据 */
 function memberCard(m) {
   return {
@@ -60,6 +66,11 @@ Page({
     // 现在有多少人订阅着新活动通知
     newsWaiting: 0,
     subscribersText: '',
+    // 往期的赞助赛事。pastForm 不是 null 时显示表单（新加或编辑），否则显示列表
+    past: [],
+    pastLoaded: false,
+    pastForm: null,
+    uploading: false,
     notice: { title: '', content: '', enabled: false },
     noticeLoaded: false,
     query: '',
@@ -106,6 +117,7 @@ Page({
     tick();
     this.setData({ tab: tab });
     if (tab === 'notice' && !this.data.noticeLoaded) this.loadNotice();
+    if (tab === 'past' && !this.data.pastLoaded) this.loadPast();
   },
 
   /* ---------- 活动 ---------- */
@@ -159,6 +171,91 @@ Page({
         admin.notifyEvent(id)
           .then(() => { toast(copy.events.notifyQueued); return this.loadEvents(); })
           .catch((err) => { toast(admin.errorText(err)); return this.loadEvents(); })
+          .then(() => this.setData({ busy: false }));
+      }
+    });
+  },
+
+  /* ---------- 往期的赞助赛事 ---------- */
+
+  loadPast() {
+    // 每次读取或保存、删除都占一个号。读取回来时号变了，说明这期间列表已经被更新的结果换过了，这份旧的不用
+    const mine = this.pastSeq = (this.pastSeq || 0) + 1;
+    return admin.listPast()
+      .then((list) => { if (mine === this.pastSeq) this.setData({ past: list.map(pastRow), pastLoaded: true }); })
+      .catch((e) => toast(admin.errorText(e)));
+  },
+
+  /** 保存或删除成功后拿到的新列表：后台的列表和小程序活动页的缓存一起更新 */
+  pastChanged(list) {
+    this.pastSeq = (this.pastSeq || 0) + 1;
+    this.setData({ past: list.map(pastRow), pastLoaded: true });
+    events.refreshPast();
+  },
+
+  onPastCreate() {
+    this.setData({ pastForm: { id: '', year: String(new Date().getFullYear()), name: '', nameEn: '', image: '', src: '' } });
+  },
+
+  onPastEdit(e) {
+    const p = this.data.past.find((x) => x.id === e.currentTarget.dataset.id);
+    if (p) this.setData({ pastForm: Object.assign({}, p) });
+  },
+
+  onPastCancel() {
+    if (this.data.busy || this.data.uploading) return;
+    this.setData({ pastForm: null });
+  },
+
+  onPastInput(e) {
+    this.setData({ ['pastForm.' + e.currentTarget.dataset.field]: e.detail.value });
+  },
+
+  /** 选一张照片传到云存储，赛事存的是它的 fileID */
+  onPastImage() {
+    if (this.data.uploading || !this.data.pastForm) return;
+    wx.chooseMedia({
+      count: 1, mediaType: ['image'], sizeType: ['compressed'],
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file || !this.data.pastForm) return;
+        this.setData({ uploading: true });
+        admin.uploadCover(file.tempFilePath)
+          .then((fileID) => { if (this.data.pastForm) this.setData({ 'pastForm.image': fileID, 'pastForm.src': fileID }); })
+          .catch(() => toast(copy.errors.upload))
+          .then(() => this.setData({ uploading: false }));
+      }
+    });
+  },
+
+  onPastSave() {
+    const f = this.data.pastForm;
+    if (!f || this.data.busy || this.data.uploading) return;
+    // 先在本机拦一下，省一次来回；云函数里还会再检查
+    if (!/^(19|20)\d{2}$/.test(String(f.year).trim())) { toast(copy.errors.bad_year); return; }
+    if (!String(f.name || '').trim()) { toast(copy.errors.missing_name); return; }
+    if (!f.image) { toast(copy.errors.missing_image); return; }
+    this.setData({ busy: true });
+    admin.savePast(f.id, { year: String(f.year).trim(), name: f.name, nameEn: f.nameEn, image: f.image })
+      .then((list) => { this.pastChanged(list); this.setData({ pastForm: null }); toast(copy.past.saved); })
+      .catch((e) => toast(admin.errorText(e)))
+      .then(() => this.setData({ busy: false }));
+  },
+
+  /** 删除前弹一次确认，写清楚删的是哪一场 */
+  onPastDelete(e) {
+    if (this.data.busy) return;
+    const p = this.data.past.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!p) return;
+    wx.showModal({
+      title: copy.past.deleteTitle,
+      content: copy.past.deleteConfirm.replace('[名称]', p.name),
+      success: (res) => {
+        if (!res.confirm) return;
+        this.setData({ busy: true });
+        admin.deletePast(p.id)
+          .then((list) => { this.pastChanged(list); toast(copy.past.deleted); })
+          .catch((err) => { toast(admin.errorText(err)); return this.loadPast(); })
           .then(() => this.setData({ busy: false }));
       }
     });

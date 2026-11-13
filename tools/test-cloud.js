@@ -183,7 +183,7 @@ async function adminTests() {
   const DAY = 24 * 3600 * 1000;
 
   // 不是会员、是会员但不是管理员：都不能用
-  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints']) {
+  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints']) {
     eq((await call(action, {})).code, 'forbidden', '没注册不能用 ' + action);
   }
   await call('register', { code: 'code-a' });
@@ -327,7 +327,7 @@ async function webTests() {
 
   // 没有微信身份、也没登录：什么都做不了
   eq((await web('nope')).code, 'unknown_action', '网页调不存在的接口');
-  for (const action of ['bootstrap', 'register', 'savePlan', 'signup', 'points', 'setNickname', 'subscribeNews', 'adminWebCode']) {
+  for (const action of ['bootstrap', 'register', 'savePlan', 'signup', 'points', 'setNickname', 'subscribeNews', 'pastEvents', 'adminWebCode']) {
     eq((await web(action, { webToken: 'x' })).code, 'no_openid', '网页不能调小程序用户的接口 ' + action);
   }
   for (const action of ['adminEvents', 'adminSaveEvent', 'adminNotice', 'adminAdjustPoints', 'adminUploadCover', 'webMe']) {
@@ -437,6 +437,79 @@ async function signupFailureTests() {
 }
 
 /** 定时提醒：两次执行重叠不重复发；活动很多时不漏 */
+/** 往期的赞助赛事：存在云端，运营在后台增删改，不用重新发版 */
+async function pastTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const packaged = require('../reference/content/events.json').past;
+
+  // 第一次读时放初始的几场，中途有一条没写成：这次报错，不交出残缺的列表；下一次接着补齐
+  cloud.state.addFails = 'before';
+  let r = await call('pastEvents');
+  eq(r.code, 'server_error', '初始的几场没放齐：报错，不返回残缺的列表');
+  r = await call('pastEvents');
+  eq([r.ok, r.data.past.length], [true, 4], '下一次读接着补齐');
+
+  // 两个请求重叠：慢的那个读到的还是「集合是空的」，这期间另一个请求放好了初始的几场、管理员删掉了其中一场。
+  // 慢的那个接着往下补的时候，不能把删掉的那场放回来
+  {
+    const c2 = createCloud();
+    seed(c2);
+    const api2 = c2.load('api');
+    const call2 = (action, data) => c2.run(() => api2.main(Object.assign({ action: action }, data)));
+    await call2('register', { code: 'code-a' });
+    c2.col('members').find((d) => d._id === 'user-a').admin = true;
+    c2.state.afterGet = async (name) => {
+      if (name !== 'past_events') return;
+      c2.state.afterGet = null;
+      await call2('pastEvents');
+      ok((await call2('adminDeletePast', { id: 'seed-1' })).ok, '另一个请求放好初始的几场，管理员删掉一场');
+    };
+    const slowRead = await call2('pastEvents');
+    c2.state.afterGet = null;
+    eq([slowRead.ok, slowRead.data.past.map((x) => x.id)], [true, ['seed-2', 'seed-3', 'seed-4']], '慢的那个请求没有把删掉的那场放回来');
+    eq((await call2('pastEvents')).data.past.length, 3, '之后再读也没有回来');
+    eq((await call2('adminSavePast', { id: 'seed-1', item: { year: '2026', name: '改名', image: 'cloud://x/a.jpg' } })).code, 'not_found', '删掉的不能再改');
+  }
+
+  // 之后再读：就是包里原有的那几场
+  r = await call('pastEvents');
+  eq(r.data.past.map((p) => [p.year, p.name, p.nameEn, p.image]), packaged.map((p) => [p.year, p.name, p.nameEn, p.image]), '第一次读到的就是包里原有的那几场，顺序一样');
+  ok(r.data.past.every((p) => p.id), '每场带 id');
+
+  await call('register', { code: 'code-a' });
+  eq((await call('adminSavePast', { item: { year: '2027', name: '新赛事', image: 'cloud://x/a.jpg' } })).code, 'forbidden', '普通会员不能改');
+  cloud.col('members').find((d) => d._id === 'user-a').admin = true;
+
+  eq((await call('adminSavePast', { item: { year: '27', name: '新赛事', image: 'cloud://x/a.jpg' } })).code, 'bad_year', '年份要四位数');
+  eq((await call('adminSavePast', { item: { year: '2027', name: ' ', image: 'cloud://x/a.jpg' } })).code, 'missing_name', '要有名称');
+  eq((await call('adminSavePast', { item: { year: '2027', name: '新赛事', image: '' } })).code, 'missing_image', '要有照片');
+  eq((await call('adminSavePast', { id: 'nope', item: { year: '2027', name: '新赛事', image: 'cloud://x/a.jpg' } })).code, 'not_found', '改不存在的');
+
+  r = await call('adminSavePast', { item: { year: '2027', name: '首尔马拉松', nameEn: 'Seoul Marathon', image: 'cloud://x/seoul.jpg' } });
+  eq(r.data.past[0].name, '首尔马拉松', '年份新的排最前');
+  cloud.state.now += 1000;
+  r = await call('adminSavePast', { item: { year: '2026', name: '济州越野', nameEn: '', image: 'cloud://x/jeju.jpg' } });
+  eq(r.data.past.map((p) => p.name).slice(0, 3), ['首尔马拉松', '济州越野', '韩国汉江跑步节'], '同一年里新加的排在前面');
+  const jeju = r.data.past[1].id;
+  r = await call('adminSavePast', { id: jeju, item: { year: '2026', name: '济州越野赛', nameEn: 'Jeju Trail', image: 'cloud://x/jeju2.jpg' } });
+  eq([r.data.past[1].name, r.data.past[1].nameEn, r.data.past[1].image, r.data.past.length], ['济州越野赛', 'Jeju Trail', 'cloud://x/jeju2.jpg', 6], '修改不换位置、不多出一条');
+
+  r = await call('adminDeletePast', { id: 'seed-1' });
+  ok(!r.data.past.some((p) => p.name === '韩国汉江跑步节') && r.data.past.length === 5, '删掉一场');
+  eq((await call('adminDeletePast', { id: 'seed-1' })).code, 'not_found', '删不存在的');
+  // 读取一时出错：不能把删掉的那场当成「还没建集合」又放回来
+  let broke = false;
+  cloud.state.getError = (name) => { if (name === 'past_events' && !broke) { broke = true; return true; } return false; };
+  r = await call('pastEvents');
+  cloud.state.getError = null;
+  ok(r.ok && r.data.past.length === 5 && !r.data.past.some((p) => p.id === 'seed-1'), '读取出错后重读，删掉的没有回来');
+  cloud.state.openid = 'user-b';
+  eq((await call('pastEvents')).data.past.length, 5, '没注册的用户也能看往期');
+}
+
 /** 新活动通知：用户点一次订阅，运营在后台对某场活动点「通知」，定时任务给每人发一条 */
 async function newsTests() {
   const cloud = createCloud();
@@ -1039,6 +1112,64 @@ async function clientTests() {
   await p.loadEvents();
   eq(rowOf('race').notifyText, '已通知 1 人', '发完以后显示通知了多少人');
 
+  // 往期的赞助赛事：列出来、加一场、改、删，活动页跟着变
+  e3.tap('onTab', { key: 'past' });
+  await tick();
+  eq([p.data.past.length, p.data.past[0].name, /^https?:.*2026-hangang-running-festival\.jpg$/.test(p.data.past[0].src)], [4, '韩国汉江跑步节', true], '后台列出往期赛事，包里原有的照片换成了地址');
+  p.onPastCreate();
+  p.onPastInput({ currentTarget: { dataset: { field: 'name' } }, detail: { value: '首尔马拉松' } });
+  p.onPastInput({ currentTarget: { dataset: { field: 'year' } }, detail: { value: '2027' } });
+  p.onPastSave();
+  eq(callsOf(e3, 'showToast').slice(-1)[0].args.title, '请选择照片', '没选照片不能保存');
+  e3.wx.chooseMedia = (o) => o.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/a.jpg' }] });
+  e3.wx.cloud.uploadFile = (o) => Promise.resolve({ fileID: 'cloud://test-env/' + o.cloudPath });
+  p.onPastImage();
+  await tick();
+  ok(/^cloud:\/\/test-env\/events\//.test(p.data.pastForm.image) && !p.data.uploading, '照片传到云存储');
+  p.onPastSave();
+  await tick();
+  eq([p.data.pastForm, p.data.past.length, p.data.past[0].name, callsOf(e3, 'showToast').slice(-1)[0].args.title], [null, 5, '首尔马拉松', '已保存'], '保存后回到列表，新的一场排在最前');
+  e3.tap('onPastEdit', { id: p.data.past[0].id });
+  p.onPastInput({ currentTarget: { dataset: { field: 'nameEn' } }, detail: { value: 'Seoul Marathon' } });
+  p.onPastSave();
+  await tick();
+  eq([p.data.past.length, p.data.past[0].nameEn], [5, 'Seoul Marathon'], '编辑后列表更新');
+  // 读取列表的请求还没回来时保存了一场：晚回来的那份旧列表不能把刚保存的盖掉
+  {
+    const real = e3.wx.cloud.callFunction;
+    let held = null;
+    e3.wx.cloud.callFunction = (o) => {
+      const res = real(o);
+      if (o.data.action !== 'adminPastEvents' || held) return res;
+      // 这次读取的结果先扣住，等保存完了再放出去
+      return res.then((v) => new Promise((resolve) => { held = () => resolve(v); }));
+    };
+    p.loadPast();
+    await tick();
+    e3.tap('onPastEdit', { id: p.data.past[0].id });
+    p.onPastInput({ currentTarget: { dataset: { field: 'nameEn' } }, detail: { value: 'Seoul Marathon 2027' } });
+    p.onPastSave();
+    await tick();
+    held();
+    await tick();
+    e3.wx.cloud.callFunction = real;
+    eq(p.data.past[0].nameEn, 'Seoul Marathon 2027', '晚回来的旧列表没有盖掉刚保存的内容');
+  }
+  const plain2 = e3.wx.showModal;
+  e3.wx.showModal = (o) => { e3.wx.__calls.push({ api: 'showModal', args: o }); o.success({ confirm: true }); };
+  e3.tap('onPastDelete', { id: p.data.past[4].id });
+  await tick();
+  e3.wx.showModal = plain2;
+  ok(callsOf(e3, 'showModal').slice(-1)[0].args.content.includes('韩国自由跑') && p.data.past.length === 4, '删除前确认，删掉后列表更新');
+  {
+    const q = e3.openPage('pages/events/index', {});
+    await tick();
+    eq(q.data.past.map((x) => x.name), ['首尔马拉松', '韩国汉江跑步节', '乌兰巴托马拉松', '蔚州九峰越野赛'], '活动页的往期用的是云端的列表');
+    ok(/^cloud:\/\//.test(q.data.past[0].image) && /^https?:/.test(q.data.past[1].image), '新加的照片是云存储的文件，原有的是资源地址');
+    p = e3.openPage('pages/admin/index', {});
+    await tick();
+  }
+
   e3.tap('onTab', { key: 'notice' });
   await tick();
   p.onNoticeInput({ currentTarget: { dataset: { field: 'title' } }, detail: { value: '停机维护' } });
@@ -1209,6 +1340,7 @@ async function fontTests() {
   await signupFailureTests();
   await remindTests();
   await newsTests();
+  await pastTests();
   await clientTests();
   console.log('云开发测试通过：' + n + ' 项');
   process.exit(0);

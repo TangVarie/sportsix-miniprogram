@@ -9,6 +9,10 @@ module.exports = {
       "text": "活动"
     },
     {
+      "key": "past",
+      "text": "往期"
+    },
+    {
       "key": "notice",
       "text": "公告"
     },
@@ -43,6 +47,35 @@ module.exports = {
     "notifyPending": "通知发送中",
     "notifyDone": "已通知 [人数] 人",
     "notifyFailed": "[人数] 人没发到"
+  },
+  "past": {
+    "hint": "活动页「往期」里的赞助赛事。保存后小程序里马上能看到，不用重新发版。",
+    "create": "添加赛事",
+    "empty": "还没有往期赛事",
+    "edit": "编辑",
+    "delete": "删除",
+    "titleNew": "添加赛事",
+    "titleEdit": "编辑赛事",
+    "labels": {
+      "year": "年份",
+      "name": "名称",
+      "nameEn": "英文名或副标题",
+      "image": "照片"
+    },
+    "placeholders": {
+      "year": "比如 2027",
+      "name": "比如 首尔马拉松",
+      "nameEn": "比如 Seoul Marathon，可以不填"
+    },
+    "chooseImage": "选择照片",
+    "changeImage": "换一张",
+    "uploading": "正在上传",
+    "save": "保存",
+    "cancel": "取消",
+    "saved": "已保存",
+    "deleteTitle": "删除赛事",
+    "deleteConfirm": "把「[名称]」从往期里删掉",
+    "deleted": "已删除"
   },
   "form": {
     "titleNew": "新建活动",
@@ -132,6 +165,9 @@ module.exports = {
     "event_ended": "活动已经结束了",
     "notified": "这场活动已经通知过了",
     "no_subscribers": "还没有人订阅新活动通知",
+    "bad_year": "年份填四位数字",
+    "missing_name": "请填写名称",
+    "missing_image": "请选择照片",
     "missing_content": "请填写公告内容",
     "missing_query": "请填写手机号或会员编号",
     "bad_delta": "请填写数量",

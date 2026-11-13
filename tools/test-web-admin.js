@@ -248,6 +248,51 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(await raceRow().getByText('通知', { exact: true }).count(), 0, '通知过的活动不再有通知按钮');
     eq(cloud.col('events').find((e) => e._id === 'race').notifyStatus, 'pending', '云端登记上了');
 
+    // ----- 往期的赞助赛事：列出来、加一场、改、删 -----
+    await page.click('[data-tab="past"]');
+    await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 4);
+    eq(await page.locator('#past-rows tr').first().locator('.cell-title__name').textContent(), '韩国汉江跑步节', '列出包里原有的几场');
+    ok((await page.locator('#past-rows tr').first().locator('.thumb').evaluate((n) => n.style.backgroundImage)).includes('/assets/photos/endorsement/2026-hangang-running-festival.jpg'), '原有的照片拼上资源前缀显示');
+    await page.click('#past-new');
+    await page.fill('#p-year', '27');
+    await page.fill('#p-name', '首尔马拉松');
+    await page.click('#past-save');
+    await expectToast('年份填四位数字', '年份不对有提示');
+    await page.fill('#p-year', '2027');
+    await page.click('#past-save');
+    await expectToast('请选择照片', '没选照片有提示');
+    await page.setInputFiles('#p-file', { name: 'p.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+    await page.waitForFunction(() => document.getElementById('p-pick').textContent === '换一张');
+    await page.click('#past-save');
+    await expectToast('已保存', '加一场往期赛事');
+    await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 5 && document.getElementById('past-form').hidden);
+    const added = cloud.col('past_events').find((x) => x.name === '首尔马拉松');
+    ok(added && added.year === '2027' && /^cloud:\/\//.test(added.image), '写到云端，照片是云存储的文件');
+    eq(await page.locator('#past-rows tr').first().locator('.cell-title__name').textContent(), '首尔马拉松', '年份新的排最前');
+    await page.locator('#past-rows tr', { hasText: '首尔马拉松' }).getByText('编辑').click();
+    await page.fill('#p-nameEn', 'Seoul Marathon');
+    await page.click('#past-save');
+    await page.waitForFunction(() => document.getElementById('past-rows').textContent.includes('Seoul Marathon'));
+    eq(cloud.col('past_events').filter((x) => x.name).length, 5, '编辑不多出一条');
+    await shot('past');
+    // 保存还没回来时切走又切回来：中间那次读取先回来（读到的是旧的），保存完以后列表要是新的
+    slow.adminSavePast = 600;
+    await page.locator('#past-rows tr', { hasText: '首尔马拉松' }).getByText('编辑').click();
+    await page.fill('#p-nameEn', 'Seoul Marathon 2027');
+    await page.click('#past-save');
+    await page.click('[data-tab="events"]');
+    await page.click('[data-tab="past"]');
+    await expectToast('已保存', '慢的那次保存完成');
+    await page.waitForFunction(() => document.getElementById('past-rows').textContent.includes('Seoul Marathon 2027'));
+    ok(true, '保存期间切走又切回来，保存完以后列表是新的');
+    slow.adminSavePast = 0;
+    page.once('dialog', (d) => d.accept());
+    await page.locator('#past-rows tr', { hasText: '韩国自由跑' }).getByText('删除').click();
+    await expectToast('已删除', '删掉一场');
+    await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 4);
+    ok(cloud.col('past_events').find((x) => x.name === '韩国自由跑').deleted === true, '云端也标成删除了');
+    await page.click('[data-tab="events"]');
+
     // ----- 公告：现在的公告没读到之前不能改也不能存，不然会拿空表单把线上的公告清掉 -----
     await as('user-a', 'adminSaveNotice', { notice: { title: '原来的公告', content: '原来的内容', enabled: true } });
     const noticeState = () => page.evaluate(() => [document.getElementById('notice-save').disabled, document.getElementById('notice-title').disabled,

@@ -100,7 +100,7 @@
 
   <!-- 往期 -->
   <view wx:else class="ev-past sx-in">
-    <view wx:for="{{past}}" wx:key="name" class="ev-past__card sx-rise" style="animation-delay: {{0.05 + index * 0.05}}s">
+    <view wx:for="{{past}}" wx:key="index" class="ev-past__card sx-rise" style="animation-delay: {{0.05 + index * 0.05}}s">
       <image class="ev-past__img sx-img-fade {{loaded['past' + index] ? '' : 'sx-img-wait'}}" data-img="past{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
       <view class="ev-past__text">
         <text class="ev-past__year sx-num-700">{{item.year}}</text>
