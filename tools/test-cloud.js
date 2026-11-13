@@ -750,6 +750,13 @@ async function memberBoardTests() {
   r = (await call('adminMemberStats')).data;
   eq([r.today, r.daily[28].count], [2, 1], '按北京时间分天');
 
+  // 会员特别多（超过一遍能读的两万人）：总数和新加入的人数照样是对的，积分合计和柱状图标成没算全
+  const keep = cloud.col('members').slice();
+  for (let i = 0; i < 20001; i++) cloud.col('members').push({ _id: 'bulk' + i, openid: 'bulk' + i, points: 1, createdAt: new Date(now) });
+  r = (await call('adminMemberStats')).data;
+  eq([r.total, r.today, r.week, r.month, r.partial], [keep.length + 20001, 20003, 20006, 20007, true], '两万多人今天加入：新加入的人数没有被截断，并标出没算全');
+  cloud.state.data.members = keep;
+
   r = (await call('adminMembers')).data;
   eq([r.members.length, r.more, r.next], [30, true, 30], '名单一次 30 个');
   const li = r.members.find((m) => m.nickname === '老李');

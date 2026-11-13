@@ -474,6 +474,13 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(await page.locator('#mb-chart .chart__col').count(), 30, '图上 30 天一天一根');
     ok(await page.isVisible('#mb-more'), '名单没完时有「再看」');
     ok(!(await page.textContent('#mb-rows')).includes(memberB.phone), '名单里的手机号是打码的');
+    // 刷新途中点「再看」：不能拿旧页码接到新名单后面
+    slow.adminMembers = 500;
+    await page.click('#mb-refresh');
+    ok(await page.isDisabled('#mb-more'), '刷新期间「再看」点不了');
+    await page.waitForFunction(() => !document.getElementById('mb-more').disabled);
+    slow.adminMembers = 0;
+    eq(await page.locator('#mb-rows tr').count(), 30, '刷新完还是第一页');
     await page.click('#mb-more');
     await page.waitForFunction((n) => document.querySelectorAll('#mb-rows tr').length === n, totalMembers);
     ok(await page.isHidden('#mb-more'), '读完了就没有「再看」');

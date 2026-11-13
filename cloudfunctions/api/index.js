@@ -909,7 +909,8 @@ const actions = {
   /**
    * 会员看板上的数字：总数、今天和近 7 天、近 30 天新加入的人数、近 30 天每天加入多少、
    * 大家手里一共有多少积分、报名人次、订阅着新活动通知的人数。
-   * 天按北京时间分。会员是一页页读出来算的，最多读 STATS_PAGES 页，超出时 partial 为 true（积分合计只算了读到的这些人）。
+   * 天按北京时间分。总数和新加入的人数是直接数出来的。积分合计、填了昵称的人数、每天的柱状图是把会员一页页读出来算的，
+   * 最多读 STATS_PAGES 页，超出时 partial 为 true（这三项只算了最近加入的那些人）。
    */
   async adminMemberStats(event, openid) {
     await requireAdmin(openid);
@@ -919,7 +920,7 @@ const actions = {
     const from = today - 29 * DAY;
     const daily = [];
     for (let i = 0; i < 30; i++) daily.push({ day: from + i * DAY, count: 0 });
-    let points = 0; let read = 0; let named = 0; let week = 0; let partial = false;
+    let points = 0; let read = 0; let named = 0; let partial = false;
     for (let page = 0; ; page++) {
       if (page >= STATS_PAGES) { partial = true; break; }
       const res = await db.collection('members').orderBy('createdAt', 'desc').skip(page * STATS_PAGE_SIZE).limit(STATS_PAGE_SIZE).get();
@@ -931,16 +932,18 @@ const actions = {
         if (at === null || at < from) return;
         const i = Math.floor((dayStart(at) - from) / DAY);
         if (daily[i]) daily[i].count += 1;
-        if (at >= today - 6 * DAY) week += 1;
       });
       if (res.data.length < STATS_PAGE_SIZE) break;
     }
     const total = (await db.collection('members').count()).total;
+    // 新加入的人数直接数，不靠上面那一遍（它最多读两万人）
+    const since = async (t) => (await db.collection('members').where({ createdAt: _.gte(new Date(t)) }).count()).total;
+    const joined = { today: await since(today), week: await since(today - 6 * DAY), month: await since(from) };
     const signups = (await db.collection('signups').count()).total;
     const plans = (await db.collection('plans').count()).total;
     const news = await newsWaiting();
     return {
-      total: total, today: daily[29].count, week: week, month: daily.reduce((n, d) => n + d.count, 0),
+      total: total, today: joined.today, week: joined.week, month: joined.month,
       daily: daily, points: points, named: named, signups: signups, plans: plans, newsWaiting: news,
       partial: partial && total > read
     };

@@ -309,7 +309,7 @@
       <div class="head">
         <div>
           <h1 class="head__title">会员</h1>
-          <p id="mb-note" class="hint" style="margin-top: 4px" hidden>会员太多，积分合计只算了最近加入的一部分人</p>
+          <p id="mb-note" class="hint" style="margin-top: 4px" hidden>会员太多，积分合计、填了昵称的人数和每天的柱状图只算了最近加入的两万人</p>
         </div>
         <div class="head__tools"><button id="mb-refresh" class="btn btn--navy" type="button">刷新</button></div>
       </div>
@@ -1386,14 +1386,17 @@
   /** 读看板上的数字和名单的第一页 */
   function loadMembers() {
     var mine = ++memberSeq;
-    memberLoading = false;
+    // 刷新期间不让点「再看 30 位」：那时手里的页码还是旧名单的，接上去会漏掉一页
+    memberLoading = true;
+    $('mb-more').disabled = true;
     return Promise.all([call('adminMemberStats'), call('adminMembers', { skip: 0 })]).then(function (r) {
       if (mine !== memberSeq) return;
       renderStats(r[0]);
       members = r[1].members || [];
       memberNext = r[1].next || members.length;
       renderMembers(r[1].more);
-    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); });
+    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); })
+      .then(function () { if (mine === memberSeq) { memberLoading = false; $('mb-more').disabled = false; } });
   }
   $('mb-refresh').addEventListener('click', loadMembers);
   $('mb-more').addEventListener('click', function () {
