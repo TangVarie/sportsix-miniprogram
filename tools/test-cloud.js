@@ -764,6 +764,10 @@ async function memberBoardTests() {
   ok(!('phone' in li) && !('openid' in li) && !('_id' in li), '名单里没有完整手机号和 openid');
   ok(r.members.find((m) => m.memberNo === '100001').admin, '管理员有标记');
   ok(r.members[0].joinedAt >= r.members[29].joinedAt, '新加入的在前');
+  // 报名很多的人不会把同一页别人的场数挤掉
+  for (let i = 0; i < 1100; i++) cloud.col('signups').push({ _id: 'user-a_many' + i, openid: 'user-a', eventId: 'many' + i });
+  r = (await call('adminMembers')).data;
+  eq([r.members.find((m) => m.memberNo === '100001').signups, r.members.find((m) => m.nickname === '老李').signups], [1100, 1], '一个人报了一千多场：他和别人的场数都对');
   const second = (await call('adminMembers', { skip: r.next })).data;
   eq([second.members.length, second.more, second.next], [11, false, 41], '第二页是剩下的');
   eq(r.members.concat(second.members).map((m) => m.memberNo).filter((x, i, a) => a.indexOf(x) !== i), [], '两页不重复');

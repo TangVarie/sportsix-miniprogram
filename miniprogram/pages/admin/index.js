@@ -213,8 +213,8 @@ Page({
   /** 「调积分」：带着会员编号去积分那一栏查出来 */
   onMemberAdjust(e) {
     tick();
-    this.setData({ tab: 'points', query: e.currentTarget.dataset.no, member: null });
-    this.onFind();
+    this.setData({ tab: 'points', query: e.currentTarget.dataset.no, member: null, amount: '', reason: '' });
+    this.onFind(null, true);
   },
 
   /* ---------- 活动 ---------- */
@@ -442,13 +442,18 @@ Page({
     this.setData({ query: e.detail.value });
   },
 
-  onFind() {
-    if (this.data.busy) return;
-    this.setData({ busy: true });
+  /**
+   * 按输入框里的手机号或会员编号找会员。正在找的时候再点不重复找；
+   * force 为真（从会员名单点「调积分」过来）时不管：以最后要找的这一位为准，先前那次的结果回来了也不用。
+   */
+  onFind(e, force) {
+    if (this.finding && force !== true) return;
+    const mine = this.findSeq = (this.findSeq || 0) + 1;
+    this.finding = true;
     admin.findMember(this.data.query)
-      .then((m) => this.setData({ member: memberCard(m), amount: '', reason: '' }))
-      .catch((e) => { this.setData({ member: null }); toast(admin.errorText(e)); })
-      .then(() => this.setData({ busy: false }));
+      .then((m) => { if (mine === this.findSeq) this.setData({ member: memberCard(m), amount: '', reason: '' }); })
+      .catch((err) => { if (mine === this.findSeq) { this.setData({ member: null }); toast(admin.errorText(err)); } })
+      .then(() => { if (mine === this.findSeq) this.finding = false; });
   },
 
   onSign(e) {
@@ -492,7 +497,12 @@ Page({
         if (!res.confirm) return;
         this.setData({ busy: true });
         admin.adjustPoints(m.memberNo, adding ? amount : -amount, reason)
-          .then((after) => { this.setData({ member: memberCard(after), amount: '', reason: '' }); toast(copy.points.done); })
+          .then((after) => {
+            // 结果回来时页面上还是这位会员才更新卡片；已经换成别人了就不动，只说一声调好了
+            const now = this.data.member;
+            if (now && now.memberNo === after.memberNo) this.setData({ member: memberCard(after), amount: '', reason: '' });
+            toast(copy.points.done);
+          })
           .catch((e) => toast(admin.errorText(e)))
           .then(() => this.setData({ busy: false }));
       }

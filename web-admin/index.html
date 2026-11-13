@@ -608,6 +608,7 @@
     previewNotice();
     syncNotice();
     finding = false;
+    findSeq += 1; // 上一次登录期间发出的查找，结果回来也不用
     adjusting = false;
     $('find-submit').disabled = false;
     $('adj-submit').disabled = false;
@@ -1424,7 +1425,8 @@
     if (!no) return;
     switchTab('points');
     $('find-query').value = no;
-    $('find-submit').click();
+    showMember(null);
+    findMember(true);
   });
 
   /* ---------- 积分 ---------- */
@@ -1451,16 +1453,28 @@
     $('adj-amount').value = '';
     $('adj-reason').value = '';
   }
-  $('find-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (finding) return;
+  var findSeq = 0;
+  /**
+   * 按输入框里的手机号或会员编号找会员。正在找的时候不重复找；
+   * force 为真（从会员名单点「调积分」过来）时不管：以最后要找的这一位为准，先前那次的结果回来了也不用。
+   */
+  function findMember(force) {
+    if (finding && !force) return;
+    var mine = ++findSeq;
     finding = true;
     var btn = $('find-submit');
     btn.disabled = true;
     call('adminFindMember', { query: $('find-query').value }).then(function (d) {
-      showMember(d.member);
-    }).catch(function (err) { showMember(null); if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { finding = false; btn.disabled = false; });
+      if (mine === findSeq) showMember(d.member);
+    }).catch(function (err) {
+      if (mine !== findSeq) return;
+      showMember(null);
+      if (err.code !== 'web_expired') toast(errorText(err), true);
+    }).then(function () { if (mine === findSeq) { finding = false; btn.disabled = false; } });
+  }
+  $('find-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    findMember(false);
   });
   $('sign-seg').addEventListener('click', function (e) {
     var s = e.target.getAttribute && e.target.getAttribute('data-sign');

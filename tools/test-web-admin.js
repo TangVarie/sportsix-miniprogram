@@ -485,6 +485,20 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForFunction((n) => document.querySelectorAll('#mb-rows tr').length === n, totalMembers);
     ok(await page.isHidden('#mb-more'), '读完了就没有「再看」');
     if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true });
+    // 正在查另一位会员时从名单点「调积分」：以点的这一位为准，先前那次的结果回来了也不用
+    await page.click('[data-tab="points"]');
+    slow.adminFindMember = 600;
+    await page.fill('#find-query', '100001');
+    await page.click('#find-submit');
+    slow.adminFindMember = 0;
+    await page.click('[data-tab="members"]');
+    await page.waitForFunction((n) => document.querySelectorAll('#mb-rows tr').length >= 30);
+    await page.click('#mb-rows button[data-no="' + memberB.memberNo + '"]');
+    await page.waitForSelector('#adjust-form:not([hidden])');
+    await new Promise((r) => setTimeout(r, 900));
+    ok((await page.textContent('#m-no')).includes(memberB.memberNo) && (await page.inputValue('#find-query')) === memberB.memberNo, '先前那次查找的结果不会盖掉刚点的这位会员');
+    await page.click('[data-tab="members"]');
+    await page.waitForFunction(() => !document.getElementById('mb-more').disabled);
     await page.click('#mb-rows button[data-no="' + memberB.memberNo + '"]');
     await page.waitForSelector('#adjust-form:not([hidden])');
     ok((await page.textContent('#m-no')).includes(memberB.memberNo), '点「调积分」带着这位会员去积分那一栏');

@@ -960,10 +960,9 @@ const actions = {
     const list = res.data.slice(0, MEMBERS_PAGE);
     const counts = {};
     if (list.length) {
-      const ids = list.map((m) => m._id);
-      // 这一页的人各报了几场：一次查出来再数。每人报名的场数有限，1000 条够用
-      const su = await db.collection('signups').where({ openid: _.in(ids) }).limit(1000).get();
-      su.data.forEach((x) => { counts[x.openid] = (counts[x.openid] || 0) + 1; });
+      // 这一页的人各报了几场：一人数一次（一起数的话，报得多的人会把别人的挤掉）
+      const totals = await Promise.all(list.map((m) => db.collection('signups').where({ openid: m._id }).count()));
+      list.forEach((m, i) => { counts[m._id] = totals[i].total; });
     }
     return {
       members: list.map((m) => Object.assign(adminMemberView(m), { joinedAt: ms(m.createdAt), signups: counts[m._id] || 0, admin: m.admin === true })),
