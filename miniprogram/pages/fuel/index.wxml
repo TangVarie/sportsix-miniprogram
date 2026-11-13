@@ -128,22 +128,29 @@
         </view>
       </view>
 
+      <!-- 没加入会员：只看到带几支，时间表加入后才有 -->
+      <view wx:if="{{!member}}" class="fuel-lock">
+        <text class="fuel-lock__title">{{lock.title}}</text>
+        <text class="fuel-lock__body">{{lock.body}}</text>
+        <view class="fuel-lock__btn sx-pressable" hover-class="sx-press" bindtap="onJoin">{{lock.button}}</view>
+      </view>
+
       <!-- 时间轴：开始前的那支在 0%，出发点在 8%，结束在 100% -->
-      <view class="fuel-line {{dense ? 'fuel-line--dense' : ''}}">
+      <view wx:if="{{member}}" class="fuel-line {{dense ? 'fuel-line--dense' : ''}}">
         <view class="fuel-line__track"></view>
         <view wx:for="{{plan.items}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}} {{active === index ? 'fuel-line__dot--active' : ''}}" style="left: {{item.position}}%"></view>
         <text class="fuel-line__start">出发</text>
         <text class="fuel-line__end">{{plan.durationLabel}}</text>
       </view>
 
-      <view class="fuel-cells">
+      <view wx:if="{{member}}" class="fuel-cells">
         <view wx:for="{{plan.items}}" wx:key="id" class="fuel-cell sx-pop {{item.gel ? 'fuel-cell--gel' : ''}} {{active === index ? 'fuel-cell--active' : ''}}" data-index="{{index}}" bindtap="onFocus">
           <text class="fuel-cell__time">{{item.label}}</text>
           <text class="fuel-cell__name">{{item.productName}}</text>
         </view>
       </view>
 
-      <view class="fuel-result__note">时间为出发后的时刻。两款都不需要配水。</view>
+      <view wx:if="{{member}}" class="fuel-result__note">时间为出发后的时刻。两款都不需要配水。</view>
     </block>
 
     <!-- 0 支 -->
@@ -154,7 +161,7 @@
   </view>
 
   <!-- 为什么这样排：句子全部来自 planFuel 的 reasons -->
-  <view class="fuel-why">
+  <view wx:if="{{member}}" class="fuel-why">
     <view class="fuel-why__title">为什么这样排</view>
     <view wx:for="{{plan.reasons}}" wx:key="*this" class="fuel-why__item">
       <view class="sx-check fuel-why__check"></view>

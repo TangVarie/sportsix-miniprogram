@@ -1173,6 +1173,12 @@ async function clientTests() {
   // 未注册：计算页点保存 → 记下输入 → 去注册
   let p = env.openPage('pages/fuel/index', {});
   p.onPick({ currentTarget: { dataset: { field: 'sport', index: 1 } } });
+  // 没加入的人：能改输入、看到带几支，时间表和排法说明的位置是加入提示
+  let fuelHtml = env.renderHtml();
+  ok(!p.data.member && p.data.plan.total > 0 && fuelHtml.includes('这场带'), '没加入也能算出带几支');
+  ok(fuelHtml.includes('加入会员，看每一支什么时候吃') && !fuelHtml.includes('class="fuel-cells') && !fuelHtml.includes('为什么这样排'), '没加入时不显示时间表和排法说明，显示加入提示');
+  p.onJoin();
+  eq(lastCall('switchTab').args.url, '/pages/me/index', '提示上的按钮去加入页');
   p.onSave();
   await tick();
   eq(lastCall('switchTab').args.url, '/pages/me/index', '未注册保存跳到注册');
@@ -1226,6 +1232,8 @@ async function clientTests() {
   // 补给计算：加减到头时说一句为什么，不能点了没反应；点时间可以直接选几小时几分
   {
     const f = env.openPage('pages/fuel/index', {});
+    fuelHtml = env.renderHtml();
+    ok(f.data.member && fuelHtml.includes('class="fuel-cells') && fuelHtml.includes('为什么这样排') && !fuelHtml.includes('加入会员，看每一支什么时候吃'), '加入以后时间表和排法说明都有，没有加入提示');
     const toast = () => (lastCall('showToast') || { args: {} }).args.title;
     const step = (field, delta) => f.onStep({ currentTarget: { dataset: { field: field, delta: delta } } });
     f.onTimePick({ detail: { value: [47, 2] } });
