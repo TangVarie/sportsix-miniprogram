@@ -3,6 +3,9 @@ const store = require('../../utils/store.js');
 const member = require('../../content/member.js');
 const messages = require('../../content/messages.js');
 const config = require('../../config.js');
+const clientCopy = require('../../content/client-state.js');
+const pendingAction = require('../../utils/pending-action.js');
+const { eventState } = require('../../utils/event-state.js');
 const { baseData, go, navTone, headerTone, imgLoaded, shareCard } = require('../../utils/page.js');
 
 // 「已设提醒」的说法：活动自己带 actionDone 就用它（目前只有赛事示例有），否则用会员文案里同一个状态名
@@ -27,6 +30,12 @@ function signupNote(event, detail) {
 
 Page({
   data: Object.assign(baseData(), {
+    clientCopy: clientCopy,
+    loading: true,
+    loadError: false,
+    stale: false,
+    unavailable: false,
+    state: {},
     event: null,
     note: null,
     detail: null,
@@ -50,13 +59,10 @@ Page({
     this.render();
     // 头部设计高 356px，状态栏滚出它之后文字换成黑色
     this.toneAt = headerTone(356);
-    // 从消息卡片直接进来时本机可能还没有这场活动：取一次最新的活动列表；云端数据同步完成后也重画
-    events.refresh().then((changed) => {
-      if (changed) this.render();
-      // 活动已下线或链接失效：页面是自定义导航，不能留一张空白页，回到活动列表
-      if (!this.data.event) go('events');
-    });
+    // 直接按 ID 读取，历史和列表第 50 场以后的活动也能查看。
     this.offStore = store.onChange(() => this.render());
+    this.offEvents = events.onChange(() => this.render());
+    this.onRetry();
   },
 
   /** 转发出去的是这场活动的详情页，标题用活动名称 */
@@ -66,36 +72,57 @@ Page({
   },
 
   onShow() {
-    // 注册回来以后报名状态可能变了
-    if (this.data.event) this.render();
+    this.render();
+    this.onRetry();
   },
 
   onUnload() {
+    this.disposed = true;
     if (this.offStore) this.offStore();
+    if (this.offEvents) this.offEvents();
+  },
+
+  onRetry() {
+    if (this.fetching) return this.fetching;
+    this.setData({ loading: true, loadError: false, unavailable: false });
+    this.fetching = events.fetchEvent(this.eventId)
+      .then(() => { this.detailLoaded = true; })
+      .catch(() => {})
+      .then(() => { this.fetching = null; if (!this.disposed) this.render(); });
+    return this.fetching;
   },
 
   render() {
     const event = events.getEvent(this.eventId);
-    if (!event) { this.setData({ event: null }); return; }
+    const load = events.getLoadState('detail', this.eventId);
+    const requestState = {
+      loading: load.loading || !event && !this.detailLoaded && !load.error,
+      loadError: !!load.error, stale: !!event && !!load.error,
+      unavailable: !event && this.detailLoaded && !load.error
+    };
+    if (!event) { this.setData(Object.assign({ event: null }, requestState)); return; }
     if (event.title) wx.setNavigationBarTitle({ title: event.title });
     const detail = events.getDetail(event);
-    this.setData({
+    const signed = events.hasSignup(event.id);
+    const reminded = events.hasReminder(event.id);
+    this.setData(Object.assign(requestState, {
       event: event,
       detail: detail,
-      // 头图底部并排放的几项和正文里逐行列出的几项
       headFields: detail.fields.filter((f) => f.head),
       rowFields: detail.fields.filter((f) => !f.head),
-      reminded: events.hasReminder(event.id),
+      reminded: reminded,
       remindedText: event.actionDone || REMINDED_TEXT,
-      signed: events.hasSignup(event.id),
-      // 报名须知：这场要用积分、或者填了联系方式时显示
+      signed: signed,
+      state: eventState(event, { signed: signed, reminded: reminded }),
       note: signupNote(event, detail)
-    });
+    }));
   },
 
   onPageScroll(e) {
     navTone(this, e.scrollTop, this.toneAt);
   },
+
+  onEvents() { go('events'); },
 
   onBack() {
     if (getCurrentPages().length > 1) wx.navigateBack();
@@ -103,16 +130,19 @@ Page({
   },
 
   onRemind() {
-    if (!this.data.event || this.data.reminded) return;
-    events.remind(this.data.event.id).then((ok) => {
-      if (ok) this.setData({ reminded: true });
-    });
+    if (!this.data.event || this.data.reminded || this.reminding) return;
+    const state = eventState(this.data.event, { signed: this.data.signed, reminded: this.data.reminded });
+    if (!state.canRemind) { wx.showToast({ title: state.reminderLabel, icon: 'none' }); return; }
+    this.reminding = true;
+    return events.remind(this.data.event.id).then(() => { this.reminding = false; this.render(); });
   },
 
   onSignup() {
     if (!this.data.event || this.data.signed || this.signing) return;
-    // 报名要先是会员
-    if (!store.isMember()) { go('join'); return; }
+    const state = eventState(this.data.event, { signed: this.data.signed });
+    if (!state.canSignup) { this.render(); wx.showToast({ title: state.signupLabel, icon: 'none' }); return; }
+    // 登录完成后回到原活动，由用户再次确认，避免自动扣积分。
+    if (!store.isMember()) { pendingAction.setSignup(this.eventId); go('join'); return; }
     const event = this.data.event;
     const cost = event.cost > 0 ? event.cost : 0;
     const short = () => { const p = (store.getMember() || {}).points; return cost > 0 && typeof p === 'number' && p < cost; };
@@ -140,15 +170,16 @@ Page({
       .then((done) => {
         if (!done) return;
         this.setData({ signed: true });
+        this.render();
         wx.showToast({ title: SIGNUP_TOAST.ok, icon: 'success' });
       })
       .catch((e) => {
         // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
-        if (e.code === 'not_member') { go('join'); return; }
+        if (e.code === 'not_member') { pendingAction.setSignup(this.eventId); go('join'); return; }
         // 积分不够：顺便取一次最新的活动，万一要用的积分也改过，页面上的数跟着变
-        if (e.code === 'insufficient_points') { events.refresh().then(() => this.render()); this.sayShort(cost); return; }
+        if (e.code === 'insufficient_points') { this.onRetry(); this.sayShort(cost); return; }
         // 这场要用的积分刚改过：没扣。取一次最新的活动，页面上的数跟着变，再点报名时按新的数确认
-        if (e.code === 'cost_changed') events.refresh().then(() => this.render());
+        if (e.code === 'cost_changed') this.onRetry();
         wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
       })
       .then(() => { this.signing = false; });

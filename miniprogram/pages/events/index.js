@@ -1,10 +1,18 @@
 const events = require('../../utils/events.js');
 const store = require('../../utils/store.js');
+const clientCopy = require('../../content/client-state.js');
+const { eventState } = require('../../utils/event-state.js');
 const { baseData, selectTab, go, navTone, headerTone, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
 Page({
   data: Object.assign(baseData(), {
+    clientCopy: clientCopy,
+    loadError: false,
+    stale: false,
+    pastError: false,
+    pastStale: false,
+    pastLoading: false,
     arc: assetUrl('assets/graphics/events-header-arc.svg'),
     tab: 'upcoming',
     hasUpcoming: false,
@@ -34,6 +42,7 @@ Page({
     this.toneAt = headerTone(176);
     // 云端数据同步完成后重画（提醒状态以云端为准）
     this.offStore = store.onChange(() => this.render());
+    this.offEvents = events.onChange(() => this.render());
   },
 
   onPageScroll(e) {
@@ -42,37 +51,41 @@ Page({
 
   onShow() {
     selectTab(this, 2);
-    // 提醒状态可能在详情页里变了，每次显示都重读；再从云端取一次最新的活动
-    if (events.isFirstLoad()) this.setData({ loading: true });
     this.render();
-    events.refresh().then((changed) => {
-      if (changed) this.render();
-      if (this.data.loading) this.setData({ loading: false });
-    });
-    // 往期的赞助赛事也从云端取一次，运营在后台加了新的不用等发版
-    events.refreshPast().then((changed) => {
-      if (changed) this.setData({ past: events.listPast() });
-    });
+    this.onRetry();
+    this.onPastRetry();
   },
 
   onUnload() {
     if (this.offStore) this.offStore();
+    if (this.offEvents) this.offEvents();
   },
 
-  /** 按缓存里的活动和提醒状态重画列表 */
+  /** 数据变化和加载状态变化都重画，网络错误不会伪装成空列表。 */
   render() {
-    const upcoming = events.listUpcoming().map((e) => Object.assign({}, e, { reminded: events.hasReminder(e.id) }));
-    // 没有活动时「即将开始」里显示「敬请期待」
-    this.setData({ upcoming: upcoming, hasUpcoming: upcoming.length > 0, newsOn: events.hasNews() });
+    const upcoming = events.listUpcoming().map((e) => {
+      const reminded = events.hasReminder(e.id);
+      return Object.assign({}, e, { reminded: reminded, state: eventState(e, { reminded: reminded, signed: events.hasSignup(e.id) }) });
+    });
+    const load = events.getLoadState('upcoming');
+    const past = events.getLoadState('past');
+    this.setData({
+      upcoming: upcoming, hasUpcoming: upcoming.length > 0, newsOn: events.hasNews(),
+      loading: load.loading && !load.hasData, loadError: !!load.error, stale: !!load.error && load.hasData,
+      past: events.listPast(), pastLoading: past.loading && !past.hasData, pastError: !!past.error, pastStale: past.stale
+    });
   },
+
+  onRetry() { return events.refresh().then(() => this.render()); },
+  onPastRetry() { return events.refreshPast().then(() => this.render()); },
 
   /** 订阅新活动通知。已经订阅着的时候不再弹授权 */
   onNews() {
     if (this.data.newsOn || this.subscribing) return;
     this.subscribing = true;
-    events.subscribeNews().then((ok) => {
+    return events.subscribeNews().then(() => {
       this.subscribing = false;
-      if (ok) this.setData({ newsOn: true });
+      this.render();
     });
   },
 
@@ -86,10 +99,11 @@ Page({
 
   onRemind(e) {
     const id = e.currentTarget.dataset.id;
-    const index = this.data.upcoming.findIndex((x) => x.id === id);
-    if (index < 0 || this.data.upcoming[index].reminded) return;
-    events.remind(id).then((ok) => {
-      if (ok) this.setData({ ['upcoming[' + index + '].reminded']: true });
-    });
+    const event = this.data.upcoming.find((x) => x.id === id);
+    if (!event || event.reminded || this.reminding === id) return;
+    const state = eventState(event, { reminded: event.reminded, signed: events.hasSignup(id) });
+    if (!state.canRemind) { wx.showToast({ title: state.reminderLabel, icon: 'none' }); return; }
+    this.reminding = id;
+    return events.remind(id).then(() => { this.reminding = null; this.render(); });
   }
 });

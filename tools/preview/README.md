@@ -23,6 +23,8 @@ node tools/preview/shot.js --route pages/events/index --out out/events.png --com
 
 需要 Node 和 Playwright（带 Chromium）。脚本会自己在 `config.js` 的 `assetBase` 端口上起资源服务。
 
+首次使用先在仓库根目录执行 `npm ci` 和 `npx playwright install chromium`。已有 Chromium 的机器可以设置 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/浏览器绝对路径`，网页后台测试使用相同入口。
+
 ## 支持范围
 
 - WXML：`{{ }}`、`wx:if / elif / else`、`wx:for`、`block`、`template / import / include`、`slot`。不支持 WXS。

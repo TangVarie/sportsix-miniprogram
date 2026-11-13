@@ -9,6 +9,9 @@ const legal = require('../../content/legal.js');
 const adminCopy = require('../../content/admin.js');
 const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
+const clientCopy = require('../../content/client-state.js');
+const pendingAction = require('../../utils/pending-action.js');
+const { eventState } = require('../../utils/event-state.js');
 const { baseData, selectTab, go, navTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
@@ -55,7 +58,7 @@ function memberPerks() {
 }
 
 /**
- * 我的补给计划。只存了输入，展示时用 planFuel 重算。
+ * 新保存的计划展示结果快照，旧计划缺少快照时按原有方式重算。
  * 没有保存的计划（或存的输入已经算不出来）时返回 saved: false，卡片只留去计算页的入口，
  * 文字用首页「分段补给计算」入口的原文（content/home.js#fuelEntry）。
  */
@@ -64,8 +67,8 @@ function planCard() {
   const tpl = member.me.plan;
   if (saved && saved.input) {
     try {
-      const r = fuel.planFuel(saved.input);
-      const sport = fuel.SPORTS.find((s) => s.key === r.input.sport);
+      const r = saved.result && Array.isArray(saved.result.items) ? saved.result : fuel.planFuel(saved.input);
+      const sport = fuel.SPORTS.find((s) => s.key === saved.input.sport);
       if (sport) {
         const counts = [r.gelCount, r.proCount];
         let n = 0;
@@ -82,27 +85,31 @@ function planCard() {
   return { saved: false, line1: home.fuelEntry.title, line2: home.fuelEntry.body, dots: [] };
 }
 
-/**
- * 我的活动：已报名的和已设提醒的，同一场活动两样都有时只显示「已报名」。
- * 活动已不在「即将开始」里的不显示。
- */
+/** 个人活动独立读取，结束和下架的记录仍可回看。旧缓存可在首次请求前提供占位。 */
 function myEvents() {
+  const states = member.me.events.states;
+  const remote = events.getMyEvents();
+  const loaded = events.getLoadState('mine');
+  const mapRow = (record) => {
+    const e = record.event;
+    const state = record.state;
+    const lifecycle = e ? eventState(e) : null;
+    const stateText = state === 'signed' ? states[0] : states[1];
+    return {
+      id: record.id || e && e.id,
+      title: e ? e.title : clientCopy.historyUnavailable,
+      meta: e ? [e.date, e.city].filter(Boolean).join(' · ') : '',
+      available: !!e,
+      state: state,
+      stateText: lifecycle && lifecycle.readOnly ? stateText + ' · ' + lifecycle.label : stateText
+    };
+  };
+  if (loaded.hasData) return remote.map(mapRow);
   const signed = store.getSignups();
   const reminded = store.getReminders().filter((id) => signed.indexOf(id) < 0);
-  if (!signed.length && !reminded.length) return [];
-  const states = member.me.events.states;
-  const upcoming = events.listUpcoming();
-  const rows = (ids, state, stateText) => ids
-    .map((id) => upcoming.find((e) => e.id === id))
-    .filter(Boolean)
-    .map((e) => ({
-      id: e.id,
-      title: e.title,
-      meta: [e.date, e.city].filter(Boolean).join(' · '),
-      state: state,
-      stateText: stateText
-    }));
-  return rows(signed, 'signed', states[0]).concat(rows(reminded, 'reminded', states[1]));
+  return signed.map((id) => ({ id: id, event: events.getEvent(id), state: 'signed' }))
+    .concat(reminded.map((id) => ({ id: id, event: events.getEvent(id), state: 'reminded' })))
+    .filter((r) => r.event).map(mapRow);
 }
 
 /**
@@ -128,7 +135,11 @@ function readState() {
     menu: (store.getMember() || {}).admin ? MENU.concat([ADMIN_ROW]) : MENU,
     profile: profile(),
     plan: registered ? planCard() : null,
-    myEvents: registered ? myEvents() : []
+    myEvents: registered ? myEvents() : [],
+    historyLoading: registered && events.getLoadState('mine').loading,
+    historyLoaded: registered && events.getLoadState('mine').hasData,
+    historyError: registered && !!events.getLoadState('mine').error,
+    historyStale: registered && events.getLoadState('mine').stale
   };
 }
 
@@ -144,6 +155,8 @@ function toneThreshold() {
 
 Page({
   data: Object.assign(baseData(), {
+    clientCopy: clientCopy,
+    historyNextCursor: null,
     join: member.join,
     me: member.me,
     agreement: splitAgreement(member.join.agreement),
@@ -172,11 +185,17 @@ Page({
     this.setData(baseData());
     this.toneAt = toneThreshold();
     // 云端数据同步完成后重读（会员状态以云端为准）
-    this.offStore = store.onChange(() => { this.setData(readState()); this.syncShareMenu(); });
+    this.offStore = store.onChange(() => {
+      this.setData(readState()); this.syncShareMenu();
+      if (store.isMember() && !this.hadMembership) { this.hadMembership = true; this.onHistoryRetry(); }
+    });
+    this.offEvents = events.onChange(() => this.setData(readState()));
   },
 
   onUnload() {
+    this.disposed = true;
     if (this.offStore) this.offStore();
+    if (this.offEvents) this.offEvents();
   },
 
   onShow() {
@@ -184,7 +203,8 @@ Page({
     // 注册状态、补给计划、提醒、报名都可能在别的页面变了，每次显示都重读；活动列表再从云端取一次
     this.setData(readState());
     this.syncShareMenu();
-    events.refresh().then((changed) => { if (changed) this.setData(readState()); });
+    this.hadMembership = store.isMember();
+    if (this.hadMembership) this.loadHistory(null, true);
   },
 
   /** 只有注册页能转发，收到的人打开看到的也是注册页 */
@@ -253,11 +273,18 @@ Page({
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     navTone(this, 0, this.toneAt);
 
+    const action = pendingAction.take();
+    if (action && action.type === 'signup') {
+      go('event-detail', { id: action.eventId });
+      wx.showToast({ title: clientCopy.loginContinue, icon: 'none' });
+      return;
+    }
+
     // 从计算页点「保存到我的」过来的：把那份输入存下，成功后回到计算页，由它按刚存下的输入还原
     const pending = store.getPendingPlan();
     if (!pending) { wx.showToast({ title: joined && joined.isNew === false ? messages.register.back : messages.register.ok, icon: 'none' }); return; }
-    const r = fuel.planFuel(pending);
-    store.savePlan(pending, { total: r.total, gelCount: r.gelCount, proCount: r.proCount }).then(() => {
+    const saved = fuel.snapshot(pending);
+    store.savePlan(saved.input, saved.result, saved.formulaVersion).then(() => {
       store.clearPendingPlan();
       this.setData(readState());
       getApp().globalData.fuelRestore = true;
@@ -274,8 +301,34 @@ Page({
     go('fuel');
   },
 
+  onHistoryRetry() { return this.loadHistory(); },
+
+  onHistoryMore() {
+    if (!this.data.historyNextCursor) return Promise.resolve();
+    return this.loadHistory(this.data.historyNextCursor);
+  },
+
+  loadHistory(cursor, force) {
+    if (!store.isMember()) return Promise.resolve();
+    if (this.historyFetching && !force) return this.historyFetching;
+    const request = (this.historyRequest || 0) + 1;
+    this.historyRequest = request;
+    this.historyFetching = events.fetchMyEvents(cursor)
+      .then((d) => { if (!this.disposed && request === this.historyRequest) this.setData({ historyNextCursor: d.nextCursor || null }); })
+      .catch(() => {})
+      .then(() => {
+        if (request !== this.historyRequest) return;
+        this.historyFetching = null;
+        if (!this.disposed) this.setData(readState());
+      });
+    return this.historyFetching;
+  },
+
   onEvent(e) {
-    go('event-detail', { id: e.currentTarget.dataset.id });
+    const id = e.currentTarget.dataset.id;
+    const row = this.data.myEvents.find((r) => r.id === id);
+    if (row && row.available === false) { wx.showToast({ title: clientCopy.historyUnavailable, icon: 'none' }); return; }
+    go('event-detail', { id: id });
   },
 
   onPoints() {

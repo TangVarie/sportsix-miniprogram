@@ -35,6 +35,8 @@ Page({
     total: 0,
     cancelled: false,
     loading: true,
+    loaded: false,
+    loadFailed: false,
     busy: false,
     progress: '',
     list: []
@@ -53,6 +55,7 @@ Page({
   load() {
     // 每次读取占一个号：取消报名之后重读时，先发出的旧读取晚回来也不会盖掉新的
     const mine = this.seq = (this.seq || 0) + 1;
+    this.setData({ loading: true, loadFailed: false });
     return admin.signups(this.data.id)
       .then((d) => {
         if (mine !== this.seq) return;
@@ -62,10 +65,18 @@ Page({
           list: d.signups.map(row),
           total: d.total > d.signups.length ? d.total : d.signups.length,
           countText: d.total > d.signups.length ? c.countPartial.replace('[人数]', d.total).replace('[显示]', d.signups.length) : c.count.replace('[人数]', d.signups.length),
-          loading: false
+          loading: false, loaded: true
         });
       })
-      .catch((e) => { if (mine === this.seq) this.setData({ loading: false }); toast(admin.errorText(e)); });
+      .catch((e) => { if (mine === this.seq) { this.setData({ loading: false, loadFailed: true }); toast(admin.errorText(e)); } });
+  },
+
+  onRetry() {
+    if (!this.data.loading && !this.data.busy) return this.load();
+  },
+
+  onUnload() {
+    this.seq = (this.seq || 0) + 1;
   },
 
   onPageScroll(e) {
@@ -117,7 +128,7 @@ Page({
 
   /** 取消整场活动：下架，所有人撤销、退积分、发通知。人多时分几批做，页面上显示还剩多少 */
   onCancelEvent() {
-    if (this.data.busy) return;
+    if (this.data.busy || this.data.loading || !this.data.loaded || this.data.loadFailed) return;
     wx.showModal({
       title: c.cancelEventTitle,
       content: c.cancelEventConfirm.replace('[人数]', this.data.total || this.data.list.length),
@@ -125,7 +136,7 @@ Page({
         if (!res.confirm) return;
         this.setData({ busy: true });
         admin.cancelEvent(this.data.id, (left) => this.setData({ progress: left ? c.cancelling.replace('[人数]', left) : '' }))
-          .then(() => { toast(c.cancelEventDone); events.refresh(); })
+          .then(() => { toast(c.cancelEventDone); events.refresh(true); })
           .catch((err) => toast(admin.errorText(err)))
           .then(() => this.load())
           .then(() => this.setData({ busy: false, progress: '' }));

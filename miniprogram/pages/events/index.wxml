@@ -6,15 +6,27 @@
       <view class="ev-header__h1">活动</view>
     </view>
     <view class="ev-tabs">
-      <view class="ev-tab sx-pressable {{tab === 'upcoming' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="upcoming" bindtap="onTab">即将开始</view>
-      <view class="ev-tab sx-pressable {{tab === 'past' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="past" bindtap="onTab">往期</view>
+      <view class="ev-tab sx-pressable {{tab === 'upcoming' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="upcoming" bindtap="onTab" aria-role="button" aria-pressed="{{tab === 'upcoming'}}">即将开始</view>
+      <view class="ev-tab sx-pressable {{tab === 'past' ? 'ev-tab--on' : ''}}" hover-class="sx-press" data-tab="past" bindtap="onTab" aria-role="button" aria-pressed="{{tab === 'past'}}">往期</view>
     </view>
+  </view>
+
+  <view wx:if="{{tab === 'upcoming' && stale && hasUpcoming}}" class="ev-status">
+    <text>{{clientCopy.stale}}</text>
+    <view class="ev-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
   </view>
 
   <!-- 即将开始，第一次取活动还没返回：占位块 -->
   <view wx:if="{{tab === 'upcoming' && loading && !hasUpcoming}}" class="ev-list">
     <view class="ev-skeleton ev-skeleton--tall sx-skeleton"></view>
     <view class="ev-skeleton sx-skeleton"></view>
+  </view>
+
+  <view wx:elif="{{tab === 'upcoming' && loadError && !hasUpcoming}}" class="ev-list">
+    <view class="ev-status ev-status--block">
+      <text>{{clientCopy.loadFailed}}</text>
+      <view class="ev-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
   </view>
 
   <!-- 即将开始，还没有活动：敬请期待 -->
@@ -30,7 +42,7 @@
         <text class="ev-news__title">{{news.title}}</text>
         <text class="ev-news__body">{{news.body}}</text>
       </view>
-      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews">
+      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews" aria-role="button" aria-disabled="{{newsOn}}">
         <image class="ev-remind__icon" src="/assets/icons/bell-{{newsOn ? 'grey' : 'navy'}}.svg" />
         <text>{{newsOn ? news.actionDone : news.action}}</text>
       </view>
@@ -42,7 +54,7 @@
     <block wx:for="{{upcoming}}" wx:key="id">
       <!-- 赛事：照片卡 -->
       <view wx:if="{{item.style === 'poster'}}" class="ev-poster sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
-        <view class="ev-poster__top" data-id="{{item.id}}" bindtap="onOpen">
+        <view class="ev-poster__top" data-id="{{item.id}}" bindtap="onOpen" aria-role="button" aria-label="{{item.title}}">
           <view class="ev-poster__photo sx-photo"><image class="sx-photo__img sx-img-fade {{loaded['poster' + index] ? '' : 'sx-img-wait'}}" data-img="poster{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" /></view>
           <image class="ev-poster__ridge sx-draw" src="{{item.graphic}}" />
           <view class="ev-poster__tags">
@@ -55,10 +67,10 @@
           </view>
         </view>
         <view class="ev-poster__bar">
-          <text class="ev-poster__opens">{{item.signupOpens ? '报名 ' + item.signupOpens + ' 开始' : ''}}</text>
-          <view class="ev-remind sx-pressable {{item.reminded ? 'ev-remind--done' : ''}}" hover-class="sx-press" data-id="{{item.id}}" bindtap="onRemind">
+          <text class="ev-poster__opens">{{item.state.key === 'not_open' && item.signupOpens ? '报名 ' + item.signupOpens + ' 开始' : item.state.signupLabel}}</text>
+          <view class="ev-remind sx-pressable {{item.reminded || !item.state.canRemind ? 'ev-remind--done' : ''}}" hover-class="sx-press" data-id="{{item.id}}" bindtap="onRemind" aria-role="button" aria-disabled="{{!item.state.canRemind}}">
             <image class="ev-remind__icon" src="/assets/icons/bell-{{item.reminded ? 'grey' : 'navy'}}.svg" />
-            <text>{{item.reminded ? item.actionDone : item.action}}</text>
+            <text>{{item.reminded ? item.actionDone : item.state.reminderLabel}}</text>
           </view>
         </view>
       </view>
@@ -71,11 +83,11 @@
           <text class="ev-lime__name">{{item.title}}</text>
           <text class="ev-lime__meta">{{item.meta}}</text>
         </view>
-        <view class="ev-lime__btn sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onOpen">{{item.action}}</view>
+        <view class="ev-lime__btn sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onOpen" aria-role="button" aria-label="{{item.title}}">{{item.action}}</view>
       </view>
 
       <!-- 抽奖：行卡 -->
-      <view wx:else class="ev-row sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s" data-id="{{item.id}}" bindtap="onOpen">
+      <view wx:else class="ev-row sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s" data-id="{{item.id}}" bindtap="onOpen" aria-role="button" aria-label="{{item.title}}">
         <view class="ev-row__icon"><image class="ev-row__icon-img" src="/assets/icons/{{item.icon}}-lime.svg" /></view>
         <view class="ev-row__text">
           <text class="ev-row__type">{{item.type}}</text>
@@ -91,7 +103,7 @@
         <text class="ev-news__title">{{news.title}}</text>
         <text class="ev-news__body">{{news.body}}</text>
       </view>
-      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews">
+      <view class="ev-remind ev-news__btn sx-pressable {{newsOn ? 'ev-remind--done' : ''}}" hover-class="sx-press" bindtap="onNews" aria-role="button" aria-disabled="{{newsOn}}">
         <image class="ev-remind__icon" src="/assets/icons/bell-{{newsOn ? 'grey' : 'navy'}}.svg" />
         <text>{{newsOn ? news.actionDone : news.action}}</text>
       </view>
@@ -100,8 +112,14 @@
 
   <!-- 往期 -->
   <view wx:else class="ev-past sx-in">
+    <view wx:if="{{pastError}}" class="ev-status ev-status--wide">
+      <text>{{past.length ? clientCopy.stale : clientCopy.loadFailed}}</text>
+      <view class="ev-status__retry" bindtap="onPastRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
+    <view wx:if="{{pastLoading && !past.length}}" class="ev-skeleton sx-skeleton"></view>
+    <view wx:if="{{!pastLoading && !pastError && !past.length}}" class="ev-status ev-status--wide">{{clientCopy.pastEmpty}}</view>
     <view wx:for="{{past}}" wx:key="index" class="ev-past__card sx-rise" style="animation-delay: {{0.05 + index * 0.05}}s">
-      <image class="ev-past__img sx-img-fade {{loaded['past' + index] ? '' : 'sx-img-wait'}}" data-img="past{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
+      <image lazy-load="{{true}}" class="ev-past__img sx-img-fade {{loaded['past' + index] ? '' : 'sx-img-wait'}}" data-img="past{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
       <view class="ev-past__text">
         <text class="ev-past__year sx-num-700">{{item.year}}</text>
         <text class="ev-past__name">{{item.name}}</text>

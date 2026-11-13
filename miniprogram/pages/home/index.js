@@ -1,6 +1,7 @@
 const home = require('../../content/home.js');
 const products = require('../../content/products.js');
 const events = require('../../utils/events.js');
+const clientCopy = require('../../content/client-state.js');
 const { baseData, watchReveal, navTone, measureDarkZones, go, selectTab, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl, withAssets } = require('../../utils/assets.js');
 
@@ -48,6 +49,8 @@ const startValue = (value) => valueAt(value, 0);
 
 Page({
   data: Object.assign(baseData(), {
+    clientCopy: clientCopy,
+    racesStale: false,
     trackLines: assetUrl('assets/graphics/hero-track-lines.svg'),
     arc: assetUrl('assets/graphics/hero-arc.svg'),
     hero: withAssets(home.hero),
@@ -77,7 +80,7 @@ Page({
     this.setData(baseData());
     this.showRaces();
     // 赞助赛事存在云端，运营在后台加了新的、改了哪些放首页，这里取一次最新的
-    events.refreshPast().then((changed) => { if (changed) this.showRaces(); });
+    this.offEvents = events.onChange(() => this.showRaces());
 
     // 状态栏文字在深色首屏上用白字，滚过首屏和三个数字之后换黑字
     let width = 390;
@@ -109,11 +112,19 @@ Page({
 
   /** 「众多专业机构选择 SPORTSIX 产品」那一排：往期赛事里设了「放在首页」的那些 */
   showRaces() {
-    this.setData({ raceCards: events.listPast().filter((p) => p.home !== false) });
+    const state = events.getLoadState('past');
+    this.setData({ raceCards: events.listPast().filter((p) => p.home !== false), racesStale: !!state.error });
   },
 
   onShow() {
     selectTab(this, 0);
+    this.showRaces();
+    this.onRacesRetry();
+  },
+
+  onRacesRetry() {
+    if (getApp().globalData.singlePage) return Promise.resolve(false);
+    return events.refreshPast();
   },
 
   onHide() {
@@ -122,6 +133,7 @@ Page({
   },
 
   onUnload() {
+    if (this.offEvents) this.offEvents();
     if (this.stopReveal) this.stopReveal();
     if (this.stopCount) this.stopCount();
     if (this.stopMeasure) this.stopMeasure();

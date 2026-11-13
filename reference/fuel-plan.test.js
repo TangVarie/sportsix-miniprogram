@@ -3,7 +3,7 @@
  * 这些用例是设计稿里公式的预期结果，改公式时先改这里。
  */
 const assert = require('assert');
-const { planFuel, carbRate, SPORTS, SCENES, LIMITS } = require('./fuel-plan.js');
+const { planFuel, snapshot, VERSION, carbRate, SPORTS, SCENES, LIMITS } = require('./fuel-plan.js');
 
 const seq = (r) => r.items.map((i) => i.label + (i.product === 'gel' ? 'G' : 'P')).join(' ');
 let n = 0;
@@ -101,6 +101,39 @@ assert.ok(says({ hot: true }, '高温天出汗多'), '旧的 hot: true 仍然有
 assert.ok(!says({}, '雨天') && !says({}, '低温') && !says({}, '高温'), '常温没有天气说明');
 assert.ok(!says({ weather: 'rain' }, '高温') && !says({ weather: 'cold' }, '雨天'), '只出现所选天气的说明');
 n += 6;
+
+// 输入相关的提醒不能被通用说明挤掉，尤其是长时间、高温、第一次用胶的组合。
+for (const sport of SPORTS.map((s) => s.key)) {
+  for (const minutes of [240, 480, 2880]) {
+    for (const start of ['am', 'pm', 'night']) {
+      for (const weather of ['hot', 'cold', 'rain']) {
+        for (const caffeineSensitive of [false, true]) {
+          const r = planFuel({ sport, minutes, start, weather, caffeineSensitive, firstTime: true });
+          assert.ok(r.reasons.length <= 6, '说明仍不超过六条');
+          assert.ok(r.reasons.some((x) => x.startsWith('第一次用胶')), '首次用胶提醒不能截断');
+          const prefix = { hot: '高温天', cold: '低温天', rain: '雨天' }[weather];
+          assert.ok(r.reasons.some((x) => x.startsWith(prefix)), '天气提醒不能截断');
+          if (minutes >= 360) assert.ok(r.reasons.some((x) => x.includes('补给站和固体食物')), '超长补给说明不能截断');
+          if (caffeineSensitive) assert.ok(r.reasons.some((x) => x.startsWith('咖啡因敏感')), '咖啡因敏感提醒不能截断');
+          if (start === 'night') assert.ok(r.reasons.some((x) => x.startsWith('晚上出发')), '夜间提醒不能截断');
+        }
+      }
+    }
+  }
+}
+{
+  const input = { sport: 'trail', minutes: 2880, weather: 'hot', firstTime: true };
+  const saved = snapshot(input);
+  const expected = planFuel(input);
+  delete expected.input;
+  assert.ok(typeof VERSION === 'string' && VERSION.length > 0, '公式有明确版本');
+  assert.strictEqual(saved.formulaVersion, VERSION, '快照记录生成时的公式版本');
+  assert.deepStrictEqual(saved.result, expected, '快照保留完整时间表、解释和统计');
+  assert.strictEqual(saved.input.minutes, input.minutes, '快照保留输入');
+  assert.ok(!Object.prototype.hasOwnProperty.call(saved.result, 'input'), '输入与结果分开保存');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(saved)), saved, '快照可持久保存');
+}
+n += 2;
 
 // 超长距离（百公里、百英里越野这类）：时长最长 48 小时。
 // 前 10 小时照旧；之后胶减到每小时 1 支，其余靠补给站和固体食物。咖啡因的上限按每 24 小时算。

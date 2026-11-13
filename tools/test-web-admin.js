@@ -58,6 +58,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
   let slowSave = 0;
   const slow = {};   // 接口名 → 拖慢多少毫秒
   const broken = {}; // 接口名 → true 时这个接口调不通（像断网）
+  const lostResponse = {}; // 写入已经成功，再让客户端收到网络错误
+  const requests = [];
   const server = http.createServer((req, res) => {
     if (req.url === '/' || req.url.startsWith('/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -75,9 +77,11 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
         if (p.data && p.data.action === 'adminUploadCover' && slowUpload) await new Promise((r) => setTimeout(r, slowUpload));
         if (p.data && p.data.action === 'adminSaveEvent' && slowSave) await new Promise((r) => setTimeout(r, slowSave));
         const act = p.data && p.data.action;
+        requests.push(p.data);
         if (slow[act]) await new Promise((r) => setTimeout(r, slow[act]));
         if (broken[act]) { res.writeHead(500); res.end('broken'); return; }
         const result = p.name === 'api' ? await cloud.run(() => api.main(p.data)) : { ok: false, code: 'unknown_function' };
+        if (lostResponse[act]) { lostResponse[act] -= 1; res.writeHead(500); res.end('response lost'); return; }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       });
@@ -88,8 +92,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = 'http://127.0.0.1:' + server.address().port;
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { launchChromium } = require('./browser.js');
+  const browser = await launchChromium();
   try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: SHOTS ? 2 : 1 });
     const page = await ctx.newPage();
@@ -179,6 +183,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     // ----- 编辑、下架 -----
     await page.locator('#ev-rows tr', { hasText: '杭州越野赛' }).getByText('编辑').click();
     await page.waitForSelector('#drawer:not([hidden])');
+    await page.waitForSelector('#drawer-save:enabled');
     eq([await page.inputValue('#f-title'), await page.inputValue('#f-date'), await page.inputValue('#f-quota'), await page.isChecked('#f-published')], ['杭州越野赛', '2027-03-20T07:30', '300', true], '编辑时填好原来的内容');
     await page.fill('#f-title', '杭州西湖越野赛');
     await page.click('#drawer-save');
@@ -194,12 +199,15 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     const filesBefore = Object.keys(cloud.state.files).length;
     await page.locator('#ev-rows tr', { hasText: '上海半程马拉松' }).getByText('编辑').click();
     await page.waitForSelector('#drawer:not([hidden])');
+    await page.waitForSelector('#drawer-save:enabled');
     await page.setInputFiles('#f-cover-file', { name: 'cover.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
     await page.waitForFunction(() => document.getElementById('f-cover-pick').textContent === '正在上传');
     ok(await page.isDisabled('#drawer-save'), '头图还在传的时候不能保存');
+    page.once('dialog', (d) => d.accept());
     await page.click('#drawer-close');
     await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('编辑').click();
     await page.waitForSelector('#drawer:not([hidden])');
+    await page.waitForSelector('#drawer-save:enabled');
     ok(await page.isEnabled('#drawer-save'), '换了一个活动，保存按钮可用');
     await page.waitForFunction((n) => true, null);
     await new Promise((r) => setTimeout(r, 900));
@@ -215,8 +223,10 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     slowSave = 500;
     await page.locator('#ev-rows tr', { hasText: '上海半程马拉松' }).getByText('编辑').click();
     await page.waitForSelector('#drawer:not([hidden])');
+    await page.waitForSelector('#drawer-save:enabled');
     await page.fill('#f-venue', '西岸');
     await page.click('#drawer-save');
+    page.once('dialog', (d) => d.accept());
     await page.click('#drawer-close');
     await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('编辑').click();
     await page.waitForSelector('#drawer:not([hidden])');
@@ -226,6 +236,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(cloud.col('events').find((e) => e._id === 'race').venue, '西岸', '前一个活动的修改写到云端');
     ok(await page.isVisible('#drawer'), '正在填的表单没有被关掉');
     eq([await page.inputValue('#f-title'), await page.isEnabled('#drawer-save')], ['周年抽奖（改到一半）', true], '填到一半的内容还在，保存按钮可用');
+    page.once('dialog', (d) => d.accept());
     await page.click('#drawer-close');
     slowSave = 0;
 
@@ -425,7 +436,29 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     ok(await page.isEnabled('#adj-submit'), '调整按钮恢复可用');
     slow.adminAdjustPoints = 0;
 
+    // ----- 写入成功但响应丢失：重试复用operationId，余额和流水都只变化一次 -----
+    await page.fill('#adj-amount', '10');
+    await page.fill('#adj-reason', '响应丢失重试验证');
+    const pointBeforeRetry = cloud.col('members').find((m) => m._id === 'user-a').points;
+    const logsBeforeRetry = cloud.col('point_logs').filter((l) => l.openid === 'user-a').length;
+    lostResponse.adminAdjustPoints = 1;
+    page.once('dialog', (d) => d.accept());
+    await page.click('#adj-submit');
+    await expectToast('网络异常，请稍后再试', '响应丢失时提示重试');
+    eq(cloud.col('members').find((m) => m._id === 'user-a').points, pointBeforeRetry + 10, '丢响应之前服务端确实已经执行');
+    const firstRetry = requests.filter((d) => d.action === 'adminAdjustPoints').slice(-1)[0];
+    page.once('dialog', (d) => d.accept());
+    await page.click('#adj-submit');
+    await expectToast('已调整', '同一笔调整重试可以恢复结果');
+    const secondRetry = requests.filter((d) => d.action === 'adminAdjustPoints').slice(-1)[0];
+    ok(firstRetry.operationId && firstRetry.operationId === secondRetry.operationId, '丢响应后的重试带同一个operationId');
+    eq(cloud.col('members').find((m) => m._id === 'user-a').points, pointBeforeRetry + 10, '重试不会再次加积分');
+    eq(cloud.col('point_logs').filter((l) => l.openid === 'user-a').length, logsBeforeRetry + 1, '重试不会再次记流水');
+
     // ----- 刷新页面还在登录状态；凭证过期后回到登录页 -----
+    // 上一个断言留下了未提交的积分草稿，刷新前明确清掉。
+    await page.fill('#adj-amount', '');
+    await page.fill('#adj-reason', '');
     await page.reload();
     await page.waitForSelector('#view-app:not([hidden])');
     ok(true, '刷新页面不用重新登录');

@@ -135,22 +135,34 @@
         <view class="fuel-lock__btn sx-pressable" hover-class="sx-press" bindtap="onJoin">{{lock.button}}</view>
       </view>
 
-      <!-- 时间轴：开始前的那支在 0%，出发点在 8%，结束在 100% -->
-      <view wx:if="{{member}}" class="fuel-line {{dense ? 'fuel-line--dense' : ''}}">
+      <view wx:if="{{member && segmented}}" class="fuel-stages">
+        <view class="fuel-stages__head"><text>{{ui.stages}}</text><text class="fuel-stages__count">{{stageCount}}</text></view>
+        <text class="fuel-stages__hint">{{ui.stageHint}}</text>
+        <scroll-view class="fuel-stages__scroll" scroll-x>
+          <view class="fuel-stages__tabs">
+            <view wx:for="{{stages}}" wx:key="index" class="fuel-stages__tab {{stageIndex === item.index ? 'fuel-stages__tab--on' : ''}}" data-index="{{item.index}}" bindtap="onStage">{{item.label}}</view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 超过六小时仅画当前段的时间轴，所有格子保留出发后的绝对时刻。 -->
+      <view wx:if="{{member}}" class="fuel-line {{stageIndex > 0 ? 'fuel-line--stage' : ''}}">
         <view class="fuel-line__track"></view>
-        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}} {{active === index ? 'fuel-line__dot--active' : ''}}" style="left: {{item.position}}%"></view>
-        <text class="fuel-line__start">出发</text>
-        <text class="fuel-line__end">{{plan.durationLabel}}</text>
+        <view wx:for="{{stageItems}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}} {{active === index ? 'fuel-line__dot--active' : ''}}" style="left: {{item.position}}%"></view>
+        <text class="fuel-line__start">{{stageStart}}</text>
+        <text class="fuel-line__end">{{stageEnd}}</text>
       </view>
 
       <view wx:if="{{member}}" class="fuel-cells">
-        <view wx:for="{{plan.items}}" wx:key="id" class="fuel-cell sx-pop {{item.gel ? 'fuel-cell--gel' : ''}} {{active === index ? 'fuel-cell--active' : ''}}" data-index="{{index}}" bindtap="onFocus">
+        <view wx:for="{{stageItems}}" wx:key="id" class="fuel-cell sx-pop {{item.gel ? 'fuel-cell--gel' : ''}} {{active === index ? 'fuel-cell--active' : ''}}" data-index="{{index}}" bindtap="onFocus">
           <text class="fuel-cell__time">{{item.label}}</text>
           <text class="fuel-cell__name">{{item.productName}}</text>
         </view>
       </view>
 
       <view wx:if="{{member}}" class="fuel-result__note">时间为出发后的时刻。两款都不需要配水。</view>
+      <view wx:if="{{member && plan.days > 1}}" class="fuel-result__note">{{ui.fixedDay}}</view>
+      <view wx:if="{{member && restoredSnapshot}}" class="fuel-result__note">{{ui.savedSnapshot}}</view>
     </block>
 
     <!-- 0 支 -->
@@ -170,7 +182,7 @@
   </view>
 
   <view class="fuel-actions">
-    <view class="fuel-actions__save sx-pressable" hover-class="sx-press" bindtap="onSave">保存到我的</view>
+    <view class="fuel-actions__save sx-pressable {{saving ? 'fuel-actions__save--busy' : ''}}" hover-class="sx-press" bindtap="onSave">{{saving ? ui.saving : ui.save}}</view>
     <view class="fuel-actions__more sx-pressable" hover-class="sx-press" bindtap="onProducts">看两款胶</view>
   </view>
   <view class="fuel-foot">结果按产品成分和通行的运动营养建议计算，供参考。可根据个人体能、出汗量微调，新的补给方式先在训练里试。</view>

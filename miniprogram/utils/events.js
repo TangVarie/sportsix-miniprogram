@@ -57,23 +57,70 @@ function fromCloud(e) {
     // 报名要用多少积分（0 是不用），和报名的人有事找谁
     cost: e.cost > 0 ? e.cost : 0,
     contact: e.contact || '',
+    readOnly: !!e.readOnly,
     raw: e
   };
   view.meta = t.style === 'lime' ? join([view.window, view.quota]) : join([view.date, view.city]);
   return withAssets(view);
 }
 
-/** 缓存里的活动列表；从没缓存过时返回 null（和「缓存过、但云端一场活动都没有」的 [] 区分开） */
-function readCache() {
-  try {
-    const v = wx.getStorageSync(CACHE_KEY);
-    return Array.isArray(v) ? v : null;
-  } catch (e) {
-    return null;
-  }
+const PAST_KEY = 'sx_past';
+const cache = Object.create(null);
+const states = Object.create(null);
+const flights = Object.create(null);
+const generations = Object.create(null);
+const details = Object.create(null);
+const listeners = [];
+let mine = [];
+let mineCursor = null;
+
+function onChange(fn) {
+  listeners.push(fn);
+  return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
 }
-function cached() {
-  return readCache() || [];
+function emit() {
+  listeners.slice().forEach((fn) => { try { fn(); } catch (e) { /* 一个页面异常不影响其他订阅者 */ } });
+}
+function readList(key) {
+  if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+  try {
+    const v = wx.getStorageSync(key);
+    cache[key] = Array.isArray(v) ? v : null;
+  } catch (e) { cache[key] = null; }
+  return cache[key];
+}
+function writeList(key, list) {
+  cache[key] = list;
+  try { wx.setStorageSync(key, list); } catch (e) { /* 运行时数据已更新，持久化失败也能显示 */ }
+}
+
+function stateKey(kind, id) { return kind === 'detail' ? 'detail:' + id : kind; }
+function state(key) {
+  if (!states[key]) {
+    const hasData = key === 'upcoming' ? config.sampleEvents || readList(CACHE_KEY) !== null
+      : key === 'past' ? true : key.indexOf('detail:') === 0 ? !!getEvent(key.slice(7)) : false;
+    states[key] = { status: hasData ? 'ready' : 'idle', loading: false, error: null, hasData: hasData, stale: false, updatedAt: 0 };
+  }
+  return states[key];
+}
+/** 请求状态与内容分开，网络失败不会冒充「没有活动」。hasData 包括成功取到的空结果。 */
+function getLoadState(kind, id) { return Object.assign({}, state(stateKey(kind || 'upcoming', id))); }
+function begin(key) {
+  const s = state(key);
+  Object.assign(s, { status: s.hasData ? 'refreshing' : 'loading', loading: true, error: null, stale: false });
+  const generation = (generations[key] || 0) + 1;
+  generations[key] = generation;
+  emit();
+  return generation;
+}
+function complete(key, empty) {
+  Object.assign(state(key), { status: empty ? 'empty' : 'ready', loading: false, error: null, hasData: true, stale: false, updatedAt: Date.now() });
+  emit();
+}
+function failed(key, error) {
+  const s = state(key);
+  Object.assign(s, { status: s.hasData ? 'stale' : 'error', loading: false, error: error && error.code || 'network', stale: s.hasData });
+  emit();
 }
 
 /**
@@ -81,22 +128,30 @@ function cached() {
  * 取到过一次以后（哪怕是空的）就不再算首次加载，回到这一页时直接显示缓存里的结果。
  */
 function isFirstLoad() {
-  return !config.sampleEvents && cloud.enabled() && readCache() === null;
+  return !config.sampleEvents && cloud.enabled() && readList(CACHE_KEY) === null;
 }
 
 /** 即将开始的活动（同步，读缓存） */
 function listUpcoming() {
   if (config.sampleEvents) return content.upcoming.map(fromSample);
-  return cached().map(fromCloud);
+  return (readList(CACHE_KEY) || []).map(fromCloud);
 }
 
 /** 从云端取最新的活动列表，更新缓存。用示例数据或没配云环境时不请求。resolve 是否有更新。 */
-function refresh() {
+function refresh(force) {
   if (config.sampleEvents || !cloud.enabled()) return Promise.resolve(false);
-  return cloud.call('events').then((d) => {
-    try { wx.setStorageSync(CACHE_KEY, d.events || []); } catch (e) { /* 缓存失败不影响本次显示 */ }
+  if (!force && flights.upcoming) return flights.upcoming;
+  const generation = begin('upcoming');
+  const promise = cloud.call('events').then((d) => {
+    if (generation !== generations.upcoming) return false;
+    const list = d.events || [];
+    writeList(CACHE_KEY, list);
+    complete('upcoming', !list.length);
     return true;
-  }).catch(() => false);
+  }).catch((e) => { if (generation === generations.upcoming) failed('upcoming', e); return false; });
+  flights.upcoming = promise;
+  promise.then(() => { if (flights.upcoming === promise) delete flights.upcoming; });
+  return promise;
 }
 
 /** 「即将开始」里没有活动时的空状态 */
@@ -104,26 +159,80 @@ function getEmpty() {
   return withAssets({ title: content.empty.title, image: content.empty.image, graphic: content.empty.graphic });
 }
 
-const PAST_KEY = 'sx_past';
-
 /** 往期的赞助赛事（同步，读缓存）。还没从云端取到过时用包里的那几场 */
 function listPast() {
-  let list = null;
-  try { const v = wx.getStorageSync(PAST_KEY); if (Array.isArray(v)) list = v; } catch (e) { /* 读不到就用包里的 */ }
-  return withAssets(list || content.past);
+  return withAssets(readList(PAST_KEY) || content.past);
+}
+/** 运营保存后返回的完整列表也走这个入口，首页和活动页同步更新。 */
+function setPast(list) {
+  generations.past = (generations.past || 0) + 1;
+  writeList(PAST_KEY, list || []);
+  complete('past', !list || !list.length);
 }
 
 /** 从云端取最新的往期赛事，更新缓存。没配云环境时不请求。resolve 是否有更新。 */
-function refreshPast() {
+function refreshPast(force) {
   if (!cloud.enabled()) return Promise.resolve(false);
-  return cloud.call('pastEvents').then((d) => {
-    try { wx.setStorageSync(PAST_KEY, d.past || []); } catch (e) { /* 缓存失败不影响下次再取 */ }
+  if (!force && flights.past) return flights.past;
+  const generation = begin('past');
+  const promise = cloud.call('pastEvents').then((d) => {
+    if (generation !== generations.past) return false;
+    writeList(PAST_KEY, d.past || []);
+    complete('past', !(d.past || []).length);
     return true;
-  }).catch(() => false);
+  }).catch((e) => { if (generation === generations.past) failed('past', e); return false; });
+  flights.past = promise;
+  promise.then(() => { if (flights.past === promise) delete flights.past; });
+  return promise;
 }
 
 function getEvent(id) {
+  if (Object.prototype.hasOwnProperty.call(details, id)) return details[id];
   return listUpcoming().find((e) => e.id === id) || null;
+}
+
+/** 详情不依赖公共列表的数量和日期范围；历史报名可由云端返回只读详情。 */
+function fetchEvent(id) {
+  if (config.sampleEvents || !cloud.enabled()) return Promise.resolve(getEvent(id));
+  const key = stateKey('detail', id);
+  if (flights[key]) return flights[key];
+  const generation = begin(key);
+  const promise = cloud.call('event', { id: id }).then((d) => {
+    if (generation !== generations[key]) return getEvent(id);
+    details[id] = d.event ? fromCloud(Object.assign({}, d.event, { readOnly: !!d.readOnly })) : null;
+    complete(key, !details[id]);
+    return details[id];
+  }).catch((e) => {
+    if (generation === generations[key] && e && e.code === 'not_found') {
+      details[id] = null;
+      complete(key, true);
+      return null;
+    }
+    if (generation === generations[key]) failed(key, e);
+    throw e;
+  });
+  flights[key] = promise;
+  const done = () => { if (flights[key] === promise) delete flights[key]; };
+  promise.then(done, done);
+  return promise;
+}
+
+function getMyEvents() { return mine.slice(); }
+/** cursor 留空从第一页重新加载；翻页时保留已有记录，删除活动也保留本人记录。 */
+function fetchMyEvents(cursor) {
+  if (!cloud.enabled()) return Promise.resolve({ records: getMyEvents(), nextCursor: null });
+  const key = 'mine';
+  const generation = begin(key);
+  return cloud.call('myEvents', { cursor: cursor || null }).then((d) => {
+    const records = (d.records || []).map((r) => Object.assign({}, r, { event: r.event ? fromCloud(r.event) : null }));
+    if (generation !== generations[key]) return { records: getMyEvents(), nextCursor: mineCursor };
+    const all = cursor ? mine.concat(records) : records;
+    const seen = Object.create(null);
+    mine = all.filter((r) => { const id = r.id || r.event && r.event.id; if (seen[id]) return false; seen[id] = true; return true; });
+    mineCursor = d.nextCursor || null;
+    complete(key, !mine.length);
+    return { records: getMyEvents(), nextCursor: mineCursor };
+  }).catch((e) => { if (generation === generations[key]) failed(key, e); throw e; });
 }
 
 /**
@@ -160,20 +269,43 @@ function getDetail(event) {
  * 没设上时提示一句：用户以前选过「总是拒绝」或关了订阅消息总开关时，微信不会再弹授权窗，不提示的话看起来像按钮没反应。
  * @returns {Promise<boolean>} 是否已设提醒
  */
-function remind(eventId) {
+const pendingBatches = Object.create(null);
+const subscriptionFlights = Object.create(null);
+function subscribe(kind, eventId) {
   const tmpl = config.subscribeTemplateId;
-  if (!tmpl) return store.addReminder(eventId).then(() => true);
-  return new Promise((resolve) => {
-    wx.requestSubscribeMessage({
-      tmplIds: [tmpl],
-      success: (res) => {
-        if (res[tmpl] !== 'accept') { toast(messages.remind.declined); resolve(false); return; }
-        store.addReminder(eventId, tmpl).then(() => resolve(true)).catch(() => { toast(messages.remind.failed); resolve(false); });
-      },
-      fail: () => { toast(messages.remind.declined); resolve(false); }
-    });
+  const key = kind + ':' + (eventId || '');
+  if (subscriptionFlights[key]) return subscriptionFlights[key];
+  const copy = messages[kind];
+  const save = (batchId) => kind === 'remind' ? store.addReminder(eventId, tmpl, batchId) : store.subscribeNews(tmpl, batchId);
+  const persist = (batch) => save(batch.id).then((d) => {
+    delete pendingBatches[key];
+    return !d || (kind === 'news' ? d.news !== false : d.reminded !== false);
+  }).catch(() => { toast(copy.failed); return false; });
+  let promise;
+  if (!tmpl) promise = save('').then(() => true);
+  // 登记响应丢失时复用这次已授权的批次，不重复弹授权，也不把已发送的记录重新激活。
+  else if (pendingBatches[key] && pendingBatches[key].templateId === tmpl) promise = persist(pendingBatches[key]);
+  else promise = new Promise((resolve) => {
+    const declined = () => { toast(copy.declined); resolve(false); };
+    try {
+      wx.requestSubscribeMessage({
+        tmplIds: [tmpl],
+        success: (res) => {
+          if (res[tmpl] !== 'accept') { declined(); return; }
+          const batch = { id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2), templateId: tmpl };
+          pendingBatches[key] = batch;
+          persist(batch).then(resolve);
+        },
+        fail: declined
+      });
+    } catch (e) { declined(); }
   });
+  subscriptionFlights[key] = promise;
+  const done = () => { if (subscriptionFlights[key] === promise) delete subscriptionFlights[key]; };
+  promise.then(done, done);
+  return promise;
 }
+function remind(eventId) { return subscribe('remind', eventId); }
 
 /**
  * 报名前请用户订阅一次消息：同意了的，报名被取消或活动取消时能用微信的服务通知告诉他。
@@ -203,21 +335,11 @@ function getNews() {
  * @returns {Promise<boolean>} 是否订阅上了
  */
 function subscribeNews() {
-  const tmpl = config.subscribeTemplateId;
-  if (!tmpl) return store.subscribeNews().then(() => true);
-  return new Promise((resolve) => {
-    wx.requestSubscribeMessage({
-      tmplIds: [tmpl],
-      success: (res) => {
-        if (res[tmpl] !== 'accept') { toast(messages.news.declined); resolve(false); return; }
-        store.subscribeNews(tmpl).then(() => resolve(true)).catch(() => { toast(messages.news.failed); resolve(false); });
-      },
-      fail: () => { toast(messages.news.declined); resolve(false); }
-    });
-  });
+  return subscribe('news');
 }
 
 module.exports = {
   listUpcoming, isFirstLoad, refresh, listPast, refreshPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
-  getNews, subscribeNews, hasNews: store.hasNews, askSubscribe
+  getNews, subscribeNews, hasNews: store.hasNews, askSubscribe,
+  onChange, getLoadState, setPast, fetchEvent, fetchMyEvents, getMyEvents
 };

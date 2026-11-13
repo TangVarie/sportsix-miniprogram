@@ -32,6 +32,10 @@ Page({
     id: '',
     form: emptyForm(),
     times: emptyTimes(),
+    loaded: false,
+    loading: false,
+    loadFailed: false,
+    conflict: false,
     busy: false,
     uploading: false
   }),
@@ -44,13 +48,18 @@ Page({
     const m = store.getMember();
     if (!m || !m.admin) { toast(copy.errors.forbidden); go('me'); return; }
     if (query.id) this.load(query.id);
+    else { this.setData({ loaded: true }); this.savedSnapshot = this.snapshot(); }
   },
 
   /** 编辑：把这场活动现在的内容填进表单 */
   load(id) {
-    admin.listEvents().then((list) => {
+    const mine = this.loadSeq = (this.loadSeq || 0) + 1;
+    this.setData({ loading: true, loaded: false, loadFailed: false });
+    return admin.listEvents().then((list) => {
+      if (mine !== this.loadSeq) return;
       const e = list.find((x) => x.id === id);
-      if (!e) { toast(copy.errors.not_found); return; }
+      if (!e) throw { code: 'not_found' };
+      this.version = e.version;
       const times = {};
       TIME_FIELDS.forEach((k) => { times[k] = admin.toPicker(e[k]); });
       this.setData({
@@ -59,9 +68,38 @@ Page({
           cost: e.cost ? String(e.cost) : '', contact: e.contact || '',
           cover: e.cover, intro: e.intro, published: e.status === 'published'
         },
-        times: times
+        times: times,
+        loaded: true, loading: false, conflict: false
       });
-    }).catch((e) => toast(admin.errorText(e)));
+      this.savedSnapshot = this.snapshot();
+      admin.watchUnsaved(false);
+    }).catch((e) => {
+      if (mine !== this.loadSeq) return;
+      this.setData({ loading: false, loadFailed: true });
+      toast(admin.errorText(e));
+    });
+  },
+
+  snapshot() {
+    return JSON.stringify({ form: this.data.form, times: this.data.times });
+  },
+
+  dirty() {
+    return this.data.uploading || (this.data.loaded && this.snapshot() !== this.savedSnapshot);
+  },
+
+  changed() {
+    admin.watchUnsaved(this.dirty());
+  },
+
+  onRetry() {
+    if (this.data.loading || this.data.busy) return;
+    admin.confirmDiscard(this.dirty(), () => this.load(this.data.id));
+  },
+
+  onUnload() {
+    this.loadSeq = (this.loadSeq || 0) + 1;
+    admin.watchUnsaved(false);
   },
 
   onPageScroll(e) {
@@ -74,64 +112,80 @@ Page({
   },
 
   onBack() {
-    if (getCurrentPages().length > 1) wx.navigateBack();
-    else go('admin');
+    admin.confirmDiscard(this.dirty(), () => {
+      admin.watchUnsaved(false);
+      if (getCurrentPages().length > 1) wx.navigateBack();
+      else go('admin');
+    });
   },
 
   onType(e) {
+    if (!this.data.loaded || this.data.busy) return;
     tick();
     this.setData({ 'form.type': e.currentTarget.dataset.type });
+    this.changed();
   },
 
   onInput(e) {
+    if (!this.data.loaded || this.data.busy) return;
     this.setData({ ['form.' + e.currentTarget.dataset.field]: e.detail.value });
+    this.changed();
   },
 
   /** 选了日期或时间。data-field 是哪个时间，data-part 是 date 还是 time */
   onTime(e) {
+    if (!this.data.loaded || this.data.busy) return;
     const { field, part } = e.currentTarget.dataset;
     this.setData({ ['times.' + field + '.' + part]: e.detail.value });
+    this.changed();
   },
 
   onTimeClear(e) {
+    if (!this.data.loaded || this.data.busy) return;
     this.setData({ ['times.' + e.currentTarget.dataset.field]: { date: '', time: '' } });
+    this.changed();
   },
 
   onPublishToggle() {
+    if (!this.data.loaded || this.data.busy) return;
     tick();
     this.setData({ 'form.published': !this.data.form.published });
+    this.changed();
   },
 
   /** 选一张图传到云存储，活动存的是它的 fileID */
   onCover() {
-    if (this.data.uploading) return;
+    if (!this.data.loaded || this.data.busy || this.data.uploading) return;
     wx.chooseMedia({
       count: 1, mediaType: ['image'], sizeType: ['compressed'],
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
         if (!file) return;
         this.setData({ uploading: true });
+        this.changed();
         admin.uploadCover(file.tempFilePath)
           .then((fileID) => this.setData({ 'form.cover': fileID }))
           .catch(() => toast(copy.errors.upload))
-          .then(() => this.setData({ uploading: false }));
+          .then(() => { this.setData({ uploading: false }); this.changed(); });
       }
     });
   },
 
   onCoverClear() {
+    if (!this.data.loaded || this.data.busy || this.data.uploading) return;
     this.setData({ 'form.cover': '' });
+    this.changed();
   },
 
   /** 表单 → 交给云函数的活动数据 */
   payload() {
     const f = this.data.form;
-    const quota = parseInt(f.quota, 10);
-    const cost = parseInt(f.cost, 10);
+    const quota = String(f.quota || '').trim() ? Number(f.quota) : null;
+    const cost = String(f.cost || '').trim() ? Number(f.cost) : 0;
     const event = {
-      cost: cost > 0 ? cost : 0, contact: f.contact,
+      cost: cost, contact: f.contact,
       type: f.type, title: f.title, city: f.city, venue: f.venue,
-      quota: quota > 0 ? quota : null, quotaText: f.quotaText,
+      quota: quota, quotaText: f.quotaText,
       cover: f.cover, intro: f.intro, status: f.published ? 'published' : 'draft'
     };
     TIME_FIELDS.forEach((k) => {
@@ -144,21 +198,25 @@ Page({
   },
 
   onSave() {
+    if (!this.data.loaded) { toast(copy.errors.load_first); return; }
+    if (this.data.conflict) { toast(copy.errors.conflict); return; }
     // 头图还在传的时候点保存：说一句，不能没反应
     if (this.data.uploading) { toast(copy.errors.uploading_wait); return; }
     if (this.data.busy) return;
     const event = this.payload();
     // 先在本机拦一下必填项，省一次来回；云函数里还会再检查
-    if (!String(event.title || '').trim()) { toast(copy.errors.missing_title); return; }
-    if (!event.date) { toast(copy.errors.missing_date); return; }
+    const invalid = admin.eventError(event);
+    if (invalid) { toast(copy.errors[invalid]); return; }
     this.setData({ busy: true });
-    admin.saveEvent(this.data.id, event)
+    return admin.saveEvent(this.data.id, event, this.version)
       .then(() => {
         // 小程序里的活动列表跟着更新
-        events.refresh();
+        events.refresh(true);
+        this.savedSnapshot = this.snapshot();
+        admin.watchUnsaved(false);
         toast(copy.form.saved);
         setTimeout(() => this.onBack(), 600);
       })
-      .catch((e) => { this.setData({ busy: false }); toast(admin.errorText(e)); });
+      .catch((e) => { this.setData({ busy: false, conflict: e.code === 'conflict' }); toast(admin.errorText(e)); });
   }
 });

@@ -14,6 +14,8 @@ SPORTSIX 小程序做三件事：品牌和产品介绍、活动通知、会员�
 
 ## 常用命令
 
+开发和自动检查使用 Node.js 22。首次运行先执行 `npm ci`；需要网页测试或页面截图时执行 `npx playwright install chromium`。本机已有 Chromium 时，可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定可执行文件。两个云函数各有独立的依赖锁文件，分别在对应目录执行 `npm ci`。
+
 | 命令 | 作用 |
 |---|---|
 | `npm test` | 补给公式测试、文案是否已同步、工程自检（页面文件、图标和资源路径、WXSS 禁用写法）、云开发测试 |
@@ -22,6 +24,11 @@ SPORTSIX 小程序做三件事：品牌和产品介绍、活动通知、会员�
 | `npm run size` | 包体积检查（单包上限 2M） |
 | `npm run cdn` | 把小程序用到的资源挑到 `out/cdn/assets/`，用来上传到云存储 |
 | `npm run shot -- --route pages/home/index --compare design/screens/01-home.png` | 不开开发者工具，渲染页面并和设计稿并排对照，见 `tools/preview/README.md` |
+| `npm run test:audit` | 数据一致性、请求乱序、失败恢复、登录返回、补给分段和后台编辑保护的回归测试 |
+| `npm run check:sdk` | 检查两个云函数锁定的真实 SDK 事务包装层，使用本地传输替身，不访问云端；先在两个云函数目录执行 `npm ci` |
+| `npm run verify` | 完整检查，包含 `npm test`、电脑端后台浏览器测试和包体检查；PR 的 CI 使用此命令 |
+
+修复范围、验证结果与发布顺序见 `docs/06-audit-fixes.md`。PR 自动检查在 `.github/workflows/check.yml`；真实手机号授权、订阅消息送达和真机表现仍由开发者工具及真机验收。
 
 ## 上线前要换掉的配置
 

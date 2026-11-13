@@ -64,8 +64,8 @@ async function main() {
   await new Promise((r) => pageServer.listen(0, '127.0.0.1', r));
   const base = 'http://127.0.0.1:' + pageServer.address().port;
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { launchChromium } = require('../browser.js');
+  const browser = await launchChromium();
   try {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, reducedMotion: a.motion ? 'no-preference' : 'reduce' });
     const p = await ctx.newPage();

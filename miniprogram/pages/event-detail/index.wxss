@@ -82,3 +82,9 @@
 .ed-btn--done { border-color: #F5F5F5; background: #F5F5F5; color: #5E6170; animation: sxPop .3s ease-out; }
 .ed-btn--primary { flex: 1.4; background: #C2E541; font-weight: 900; }
 .ed-btn__icon { display: block; width: 38rpx; height: 38rpx; }
+
+.ed-status { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; padding: 23rpx; border-radius: 19rpx; background: #F5F5F5; color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
+.ed-status--block { margin: 38rpx; flex-direction: column; align-items: flex-start; }
+.ed-status__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }
+.ed-state-head { height: calc(123rpx + var(--sx-safe-top)); }
+.ed-state-skeleton { width: 100%; height: 300rpx; border-radius: 19rpx; }

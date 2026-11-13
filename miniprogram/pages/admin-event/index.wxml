@@ -19,7 +19,15 @@
     <view class="ae-header__title">{{id ? copy.titleEdit : copy.titleNew}}</view>
   </view>
 
-  <view class="ae-body">
+  <view wx:if="{{!loaded}}" class="ae-body">
+    <view class="ae-hint">{{loading ? copy.loading : copy.loadFailed}}</view>
+    <view wx:if="{{loadFailed}}" class="ae-btn" bindtap="onRetry">{{copy.retry}}</view>
+  </view>
+  <view wx:else class="ae-body">
+    <view wx:if="{{conflict}}" class="ae-card">
+      <view class="ae-hint">{{copy.conflict}}</view>
+      <view class="ae-btn" bindtap="onRetry">{{copy.retry}}</view>
+    </view>
     <!-- 基本信息 -->
     <view class="ae-card">
       <view class="ae-card__title">{{copy.groups.basic}}</view>
@@ -65,7 +73,7 @@
       </view>
       <view class="ae-field">
         <text class="ae-label">{{copy.labels.cost}}</text>
-        <input class="ae-input" value="{{form.cost}}" type="number" maxlength="6" placeholder="{{copy.placeholders.cost}}" placeholder-class="ae-ph" data-field="cost" bindinput="onInput" />
+        <input class="ae-input" value="{{form.cost}}" type="number" maxlength="7" placeholder="{{copy.placeholders.cost}}" placeholder-class="ae-ph" data-field="cost" bindinput="onInput" />
         <view class="ae-hint">{{copy.hints.cost}}</view>
       </view>
       <view class="ae-field">
