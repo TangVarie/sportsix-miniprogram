@@ -1134,6 +1134,27 @@ async function clientTests() {
   p.onPastSave();
   await tick();
   eq([p.data.past.length, p.data.past[0].nameEn], [5, 'Seoul Marathon'], '编辑后列表更新');
+  // 读取列表的请求还没回来时保存了一场：晚回来的那份旧列表不能把刚保存的盖掉
+  {
+    const real = e3.wx.cloud.callFunction;
+    let held = null;
+    e3.wx.cloud.callFunction = (o) => {
+      const res = real(o);
+      if (o.data.action !== 'adminPastEvents' || held) return res;
+      // 这次读取的结果先扣住，等保存完了再放出去
+      return res.then((v) => new Promise((resolve) => { held = () => resolve(v); }));
+    };
+    p.loadPast();
+    await tick();
+    e3.tap('onPastEdit', { id: p.data.past[0].id });
+    p.onPastInput({ currentTarget: { dataset: { field: 'nameEn' } }, detail: { value: 'Seoul Marathon 2027' } });
+    p.onPastSave();
+    await tick();
+    held();
+    await tick();
+    e3.wx.cloud.callFunction = real;
+    eq(p.data.past[0].nameEn, 'Seoul Marathon 2027', '晚回来的旧列表没有盖掉刚保存的内容');
+  }
   const plain2 = e3.wx.showModal;
   e3.wx.showModal = (o) => { e3.wx.__calls.push({ api: 'showModal', args: o }); o.success({ confirm: true }); };
   e3.tap('onPastDelete', { id: p.data.past[4].id });

@@ -179,13 +179,16 @@ Page({
   /* ---------- 往期的赞助赛事 ---------- */
 
   loadPast() {
+    // 每次读取或保存、删除都占一个号。读取回来时号变了，说明这期间列表已经被更新的结果换过了，这份旧的不用
+    const mine = this.pastSeq = (this.pastSeq || 0) + 1;
     return admin.listPast()
-      .then((list) => this.setData({ past: list.map(pastRow), pastLoaded: true }))
+      .then((list) => { if (mine === this.pastSeq) this.setData({ past: list.map(pastRow), pastLoaded: true }); })
       .catch((e) => toast(admin.errorText(e)));
   },
 
-  /** 列表有变化：后台的列表和小程序活动页的缓存一起更新 */
+  /** 保存或删除成功后拿到的新列表：后台的列表和小程序活动页的缓存一起更新 */
   pastChanged(list) {
+    this.pastSeq = (this.pastSeq || 0) + 1;
     this.setData({ past: list.map(pastRow), pastLoaded: true });
     events.refreshPast();
   },
