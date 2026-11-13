@@ -107,6 +107,7 @@ function go(to, params) {
   if (to === 'energy-gel' || to === 'energy-gel-pro') { wx.navigateTo({ url: '/pages/product/index?id=' + to }); return; }
   if (to === 'points') { wx.navigateTo({ url: '/pages/points/index' }); return; }
   if (to === 'admin') { wx.navigateTo({ url: '/pages/admin/index' }); return; }
+  if (to === 'admin-signups') { wx.navigateTo({ url: '/pages/admin-signups/index?id=' + ((params && params.id) || '') }); return; }
   if (to === 'admin-event') { wx.navigateTo({ url: '/pages/admin-event/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
   if (to === 'doc') { wx.navigateTo({ url: '/pages/doc/index?type=' + ((params && params.type) || 'agreement') }); return; }
   if (to === 'event-detail') { wx.navigateTo({ url: '/pages/event-detail/index' + (params && params.id ? '?id=' + params.id : '') }); return; }

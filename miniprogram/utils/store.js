@@ -12,6 +12,8 @@ const KEY = { member: 'sx_member', reminders: 'sx_reminders', signups: 'sx_signu
 
 // 运营在后台设的公告，随启动同步拿到。只放在内存里：每次打开小程序都重新取
 let notice = null;
+// 还没看过的站内消息（报名被取消、活动取消），随启动同步拿到，app.js 逐条弹出来
+let inbox = [];
 
 function read(key, fallback) {
   try {
@@ -61,6 +63,7 @@ function sync(retries) {
     write(KEY.signups, d.signups || []);
     write(KEY.news, d.news ? true : null);
     notice = d.notice || null;
+    inbox = d.inbox || [];
     emit();
     return true;
   }).catch(() => false); // 取不到时先用上次的缓存
@@ -76,6 +79,18 @@ function unseenNotice() {
 }
 function markNoticeSeen(version) {
   write(KEY.noticeSeen, version);
+}
+
+/** 取走还没看过的站内消息：[{ id, title, content }]。取走以后这边就清空，同一条不会弹两次 */
+function takeInbox() {
+  const list = inbox;
+  inbox = [];
+  return list;
+}
+/** 这几条看过了，告诉云端下次不用再给。没告诉成也没关系，最多下次再弹一遍 */
+function readInbox(ids) {
+  if (!cloud.enabled() || !ids || !ids.length) return Promise.resolve();
+  return cloud.call('readInbox', { ids: ids }).catch(() => {});
 }
 
 /** 会员：未注册返回 null。云开发下是 { nickname, phoneMasked, memberNo, points, createdAt } */
@@ -155,12 +170,17 @@ function subscribeNews(templateId) {
 function getSignups() { return read(KEY.signups, []); }
 function hasSignup(eventId) { return getSignups().indexOf(eventId) >= 0; }
 /**
- * 报名。失败时 reject 的 Error 带 code：not_member、not_open、closed、full、not_found、network。
+ * 报名。失败时 reject 的 Error 带 code：not_member、not_open、closed、full、insufficient_points、not_found、network。
  * 没配云环境时没有地方登记报名，直接按 'no_backend' 失败。
  */
-function signup(eventId) {
+function signup(eventId, templateId) {
   if (!cloud.enabled()) return Promise.reject(Object.assign(new Error('no_backend'), { code: 'no_backend' }));
-  return tracked(cloud.call('signup', { eventId: eventId }).then(() => { addTo(KEY.signups, eventId); }));
+  // templateId：报名时同意了订阅消息的带上，报名被取消或活动取消时云端用它发通知
+  return tracked(cloud.call('signup', { eventId: eventId, templateId: templateId || '' }).then((d) => {
+    addTo(KEY.signups, eventId);
+    // 这场用了积分的话，云端返回扣完以后的会员信息
+    if (d && d.member) write(KEY.member, d.member);
+  }));
 }
 
 /** 补给计划：只保存最近一份。input 是 planFuel 的输入，展示时用 planFuel(input) 重算。 */
@@ -187,7 +207,7 @@ function getPendingPlan() { return read(KEY.pending, null); }
 function clearPendingPlan() { write(KEY.pending, null); }
 
 module.exports = {
-  sync, onChange, unseenNotice, markNoticeSeen,
+  sync, onChange, unseenNotice, markNoticeSeen, takeInbox, readInbox,
   getMember, isMember, register, setNickname, fetchPoints,
   getReminders, hasReminder, addReminder, hasNews, subscribeNews,
   getSignups, hasSignup, signup,

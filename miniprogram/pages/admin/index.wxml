@@ -28,7 +28,10 @@
         <view class="ad-event__btns">
           <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onEdit">{{copy.events.edit}}</view>
           <view class="ad-mini {{item.published ? '' : 'ad-mini--on'}} sx-pressable" hover-class="sx-press" data-id="{{item.id}}" data-status="{{item.published ? 'draft' : 'published'}}" bindtap="onStatus">{{item.published ? copy.events.unpublish : copy.events.publish}}</view>
+          <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onSignups">{{copy.events.signupList}}</view>
+          <view wx:if="{{item.canAnnounce}}" class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onAnnounce">{{copy.events.announce}}</view>
           <view wx:if="{{item.canNotify}}" class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onNotify">{{copy.events.notify}}</view>
+          <view wx:if="{{item.canPast}}" class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onToPast">{{copy.events.toPast}}</view>
         </view>
       </view>
     </view>
@@ -46,7 +49,10 @@
       <view wx:for="{{past}}" wx:key="id" class="ad-past">
         <image class="ad-past__img" src="{{item.src}}" mode="aspectFill" />
         <view class="ad-past__text">
-          <text class="ad-past__year sx-num-700">{{item.year}}</text>
+          <view class="ad-past__top">
+            <text class="ad-past__year sx-num-700">{{item.year}}</text>
+            <text wx:if="{{item.home}}" class="ad-chip ad-chip--published">{{copy.past.homeTag}}</text>
+          </view>
           <text class="ad-event__title">{{item.name}}</text>
           <text wx:if="{{item.nameEn}}" class="ad-event__meta">{{item.nameEn}}</text>
           <view class="ad-event__btns">
@@ -82,6 +88,11 @@
           <view class="ad-mini sx-pressable" hover-class="sx-press" bindtap="onPastImage">{{uploading ? copy.past.uploading : (pastForm.image ? copy.past.changeImage : copy.past.chooseImage)}}</view>
         </view>
       </view>
+      <view class="ad-switch-row ad-gap" bindtap="onPastHome">
+        <text class="ad-label">{{copy.past.labels.home}}</text>
+        <view class="ad-switch {{pastForm.home ? 'ad-switch--on' : ''}}"><view class="ad-switch__dot"></view></view>
+      </view>
+      <view class="ad-hint ad-hint--in">{{copy.past.homeHint}}</view>
     </view>
     <view class="ad-btn sx-pressable {{busy || uploading ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onPastSave">{{copy.past.save}}</view>
     <view class="ad-btn ad-btn--line ad-btn--second sx-pressable" hover-class="sx-press" bindtap="onPastCancel">{{copy.past.cancel}}</view>

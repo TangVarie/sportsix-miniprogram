@@ -13,9 +13,22 @@ const SIGNED_TEXT = member.me.events.states[0];
 // 报名结果的提示（content/messages）。没配云环境时没有地方登记报名，按网络异常提示
 const SIGNUP_TOAST = Object.assign({ no_backend: messages.signup.network }, messages.signup);
 
+/** 报名须知要显示的几行。活动不用积分、也没填联系方式时不显示（返回 null） */
+function signupNote(event, detail) {
+  if (!event || !(event.cost > 0 || event.contact)) return null;
+  const copy = detail.signupNote;
+  return {
+    title: copy.title,
+    lines: (event.cost > 0 ? [copy.cost.replace('[积分]', event.cost)] : []).concat([copy.noCancel]),
+    contactLabel: copy.contact,
+    contact: event.contact
+  };
+}
+
 Page({
   data: Object.assign(baseData(), {
     event: null,
+    note: null,
     detail: null,
     headFields: [],
     rowFields: [],
@@ -74,7 +87,9 @@ Page({
       rowFields: detail.fields.filter((f) => !f.head),
       reminded: events.hasReminder(event.id),
       remindedText: event.actionDone || REMINDED_TEXT,
-      signed: events.hasSignup(event.id)
+      signed: events.hasSignup(event.id),
+      // 报名须知：这场要用积分、或者填了联系方式时显示
+      note: signupNote(event, detail)
     });
   },
 
@@ -98,15 +113,46 @@ Page({
     if (!this.data.event || this.data.signed || this.signing) return;
     // 报名要先是会员
     if (!store.isMember()) { go('join'); return; }
+    const event = this.data.event;
+    const cost = event.cost > 0 ? event.cost : 0;
+    // 本机知道积分不够的，直接说，不用先弹订阅和确认
+    const points = (store.getMember() || {}).points;
+    if (cost && typeof points === 'number' && points < cost) { this.sayShort(cost); return; }
     this.signing = true;
-    store.signup(this.data.event.id).then(() => {
-      this.setData({ signed: true });
-      wx.showToast({ title: SIGNUP_TOAST.ok, icon: 'success' });
-    }).catch((e) => {
-      // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
-      if (e.code === 'not_member') { go('join'); return; }
-      wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
-    }).then(() => { this.signing = false; });
+    // 先请用户订阅一次消息（必须由这次点击直接触发）：同意了的，报名被取消或活动取消时能收到微信通知；不同意也照样报
+    events.askSubscribe()
+      .then((templateId) => this.confirmCost(cost).then((go_) => (go_ ? store.signup(event.id, templateId).then(() => true) : false)))
+      .then((done) => {
+        if (!done) return;
+        this.setData({ signed: true });
+        wx.showToast({ title: SIGNUP_TOAST.ok, icon: 'success' });
+      })
+      .catch((e) => {
+        // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
+        if (e.code === 'not_member') { go('join'); return; }
+        if (e.code === 'insufficient_points') { this.sayShort(cost); return; }
+        wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
+      })
+      .then(() => { this.signing = false; });
+  },
+
+  /** 积分不够：说清楚这场要多少 */
+  sayShort(cost) {
+    wx.showToast({ title: SIGNUP_TOAST.insufficient_points.replace('[积分]', cost), icon: 'none' });
+  },
+
+  /** 要用积分的活动，报名前确认一次：用多少积分、报名后不能自行取消。不用积分的直接报。resolve 是否继续 */
+  confirmCost(cost) {
+    if (!cost) return Promise.resolve(true);
+    const copy = this.data.detail.signupNote;
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: copy.confirmTitle,
+        content: copy.confirm.replace('[积分]', cost),
+        success: (res) => resolve(!!res.confirm),
+        fail: () => resolve(false)
+      });
+    });
   },
 
 onGroup() {

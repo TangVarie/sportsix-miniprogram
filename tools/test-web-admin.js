@@ -37,7 +37,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
   cloud.state.data.events = [
     { _id: 'race', type: '赛事', title: '上海半程马拉松', status: 'published', date: new Date(now + 20 * DAY), city: '上海', venue: '徐汇滨江', quota: 200, signupCount: 36, signupStart: new Date(now + DAY), signupEnd: new Date(now + 10 * DAY) },
     { _id: 'trial', type: '试用装', title: '能量胶PRO 试用装申领', status: 'draft', date: new Date(now + 30 * DAY), signupCount: 0 },
-    { _id: 'old', type: '抽奖', title: '周年抽奖', status: 'published', date: new Date(now - 40 * DAY), signupCount: 120 }
+    { _id: 'old', type: '抽奖', title: '周年抽奖', status: 'published', date: new Date(now - 40 * DAY), signupCount: 120 },
+    { _id: 'done', type: '赛事', title: '去年的路跑', status: 'published', date: new Date(now - 300 * DAY), signupCount: 0 }
   ];
   cloud.state.phones = { 'code-a': '13800001234', 'code-b': '13900005678' };
   const api = cloud.load('api');
@@ -128,7 +129,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
 
     // ----- 活动列表 -----
     await page.waitForSelector('#ev-rows tr');
-    eq(await page.locator('#ev-rows tr').count(), 3, '列出全部活动');
+    eq(await page.locator('#ev-rows tr').count(), 4, '列出全部活动');
     const rowTexts = await page.locator('#ev-rows tr').allTextContents();
     ok(rowTexts.some((t) => t.includes('上海半程马拉松') && t.includes('36 / 200') && t.includes('已上架')), '已上架的活动带报名人数');
     ok(rowTexts.some((t) => t.includes('周年抽奖') && t.includes('已结束')), '过期的活动标成已结束');
@@ -173,7 +174,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     const made = cloud.col('events').find((e) => e.title === '杭州越野赛');
     ok(made && made.status === 'published' && made.quota === 300 && made.city === '杭州' && made.cover === uploaded[0] && made.intro === '第一段\n第二段', '新建的活动写到云端');
     eq([made.date.getTime(), made.signupEnd.getTime()], [new Date('2027-03-20T07:30').getTime(), new Date('2027-03-10T23:59').getTime()], '时间按填的存');
-    await page.waitForFunction(() => document.querySelectorAll('#ev-rows tr').length === 4);
+    await page.waitForFunction(() => document.querySelectorAll('#ev-rows tr').length === 5);
 
     // ----- 编辑、下架 -----
     await page.locator('#ev-rows tr', { hasText: '杭州越野赛' }).getByText('编辑').click();
@@ -248,12 +249,74 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(await raceRow().getByText('通知', { exact: true }).count(), 0, '通知过的活动不再有通知按钮');
     eq(cloud.col('events').find((e) => e._id === 'race').notifyStatus, 'pending', '云端登记上了');
 
+    // ----- 报名名单：看名单、导出、取消某个人、取消整场；活动表单里设积分和联系方式 -----
+    await page.click('[data-tab="events"]');
+    await raceRow().getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    await page.fill('#f-cost', '300');
+    await page.fill('#f-contact', '客服电话 021-0000');
+    await page.click('#drawer-save');
+    await expectToast('已保存', '活动设上报名积分和联系方式');
+    const raceDoc = cloud.col('events').find((e) => e._id === 'race');
+    eq([raceDoc.cost, raceDoc.contact], [300, '客服电话 021-0000'], '积分和联系方式写到云端');
+    raceDoc.signupStart = new Date(cloud.state.now - DAY);
+    cloud.state.openid = 'user-b';
+    ok((await cloud.run(() => api.main({ action: 'signup', eventId: 'race' }))).ok, '会员用积分报名');
+    cloud.state.openid = '';
+    eq(memberB.points, 200, '报名扣了 300 积分');
+    await page.click('[data-tab="events"]');
+    await raceRow().getByText('名单').click();
+    await page.waitForFunction(() => document.querySelectorAll('#roster-rows tr').length === 1);
+    eq([await page.textContent('#roster-title'), await page.textContent('#roster-count'), (await page.textContent('#roster-rows')).includes(memberB.phone)], ['上海半程马拉松', '1 人报名', true], '名单里有活动名、人数和完整手机号');
+    const download = page.waitForEvent('download');
+    await page.click('#roster-export');
+    const file = await download;
+    const csv = fs.readFileSync(await file.path(), 'utf8');
+    ok(csv.includes('"老李"') && csv.includes(memberB.phone) && csv.includes('"300"'), '导出的表格里有昵称、手机号、积分');
+    page.once('dialog', (d) => d.accept());
+    await page.locator('#roster-rows tr').getByText('取消报名').click();
+    await expectToast('已取消', '取消某个人的报名');
+    await page.waitForFunction(() => document.querySelectorAll('#roster-rows tr').length === 0 && document.getElementById('roster-count').textContent === '0 人报名');
+    eq([memberB.points, cloud.col('inbox').filter((m) => m.openid === 'user-b').length], [500, 1], '积分退回，给他留了一条消息');
+    cloud.state.openid = 'user-b';
+    await cloud.run(() => api.main({ action: 'signup', eventId: 'race' }));
+    cloud.state.openid = '';
+    await page.click('#roster-close');
+    await raceRow().getByText('名单').click();
+    await page.waitForFunction(() => document.querySelectorAll('#roster-rows tr').length === 1);
+    page.once('dialog', (d) => d.accept());
+    await page.click('#roster-cancel-event');
+    await expectToast('活动已取消', '取消整场活动');
+    await page.waitForFunction(() => document.querySelectorAll('#roster-rows tr').length === 0);
+    await page.click('#roster-close');
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('#ev-rows tr'), (tr) => tr.textContent.includes('上海半程马拉松') && tr.textContent.includes('已取消')));
+    eq([raceDoc.status, raceDoc.cancelled, memberB.points], ['draft', true, 500], '活动下架并标成取消，积分退回');
+
+    // ----- 发公告：上架着的活动一键发成公告 -----
+    await page.locator('#ev-rows tr', { hasText: '能量胶PRO 试用装申领' }).getByText('上架', { exact: true }).click();
+    await expectToast('已上架，小程序里能看到了', '上架一场活动');
+    let announceText = '';
+    page.once('dialog', (d) => { announceText = d.message(); d.accept(); });
+    await page.locator('#ev-rows tr', { hasText: '能量胶PRO 试用装申领' }).getByText('发公告').click();
+    await expectToast('公告已发出', '发公告');
+    const sent = cloud.col('settings').find((d) => d._id === 'notice');
+    ok(announceText.includes('能量胶PRO 试用装申领') && sent.enabled && sent.title === '新活动' && sent.content.startsWith('「能量胶PRO 试用装申领」上线了'), '公告的内容是这场活动，已经打开');
+
+    // ----- 加到往期：办完的赛事把名称和年份带进往期的表单 -----
+    eq(await page.locator('#ev-rows tr', { hasText: '周年抽奖' }).getByText('加到往期').count(), 0, '抽奖没有「加到往期」');
+    await page.locator('#ev-rows tr', { hasText: '去年的路跑' }).getByText('加到往期').click();
+    await page.waitForSelector('#past-form:not([hidden])');
+    eq([await page.inputValue('#p-name'), await page.inputValue('#p-year'), await page.isChecked('#p-home'), await page.textContent('#past-form-title')],
+      ['去年的路跑', String(new Date(now - 300 * DAY).getFullYear()), true, '添加赛事'], '往期的表单预填了名称和年份，默认放在首页');
+    await page.click('#past-cancel');
+
     // ----- 往期的赞助赛事：列出来、加一场、改、删 -----
     await page.click('[data-tab="past"]');
     await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 4);
     eq(await page.locator('#past-rows tr').first().locator('.cell-title__name').textContent(), '韩国汉江跑步节', '列出包里原有的几场');
     ok((await page.locator('#past-rows tr').first().locator('.thumb').evaluate((n) => n.style.backgroundImage)).includes('/assets/photos/endorsement/2026-hangang-running-festival.jpg'), '原有的照片拼上资源前缀显示');
     await page.click('#past-new');
+    await page.uncheck('#p-home', { force: true });
     await page.fill('#p-year', '27');
     await page.fill('#p-name', '首尔马拉松');
     await page.click('#past-save');
@@ -268,6 +331,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 5 && document.getElementById('past-form').hidden);
     const added = cloud.col('past_events').find((x) => x.name === '首尔马拉松');
     ok(added && added.year === '2027' && /^cloud:\/\//.test(added.image), '写到云端，照片是云存储的文件');
+    eq([added.home, (await page.locator('#past-rows tr').first().textContent()).includes('不放')], [false, true], '关掉了「放在首页」，列表上写着不放');
     eq(await page.locator('#past-rows tr').first().locator('.cell-title__name').textContent(), '首尔马拉松', '年份新的排最前');
     await page.locator('#past-rows tr', { hasText: '首尔马拉松' }).getByText('编辑').click();
     await page.fill('#p-nameEn', 'Seoul Marathon');

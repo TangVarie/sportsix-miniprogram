@@ -18,7 +18,7 @@ function createCloud() {
     afterGet: null,    // (集合名, 条件) => Promise：查询结果已经取好、还没交出去时先等它，用来模拟「读到的已经是旧的」
     onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
     updateError: null, // (集合名) => true 时这次更新做成之后再抛错（模拟结果没传回来）
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
@@ -38,6 +38,7 @@ function createCloud() {
       if (c.$op === 'lt') return v != null && val(v) < val(c.v);
       if (c.$op === 'lte') return v != null && val(v) <= val(c.v);
       if (c.$op === 'exists') return (v !== undefined) === c.v;
+      if (c.$op === 'in') return c.v.indexOf(v) >= 0;
       throw new Error('替身不支持的查询指令：' + c.$op);
     });
   }
@@ -114,6 +115,7 @@ function createCloud() {
       lt: (v) => ({ $op: 'lt', v: v }),
       lte: (v) => ({ $op: 'lte', v: v }),
       exists: (v) => ({ $op: 'exists', v: v }),
+      in: (v) => ({ $op: 'in', v: v }),
       inc: (v) => ({ $op: 'inc', v: v }),
       remove: () => ({ $op: 'remove' })
     },

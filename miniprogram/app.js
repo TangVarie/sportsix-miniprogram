@@ -64,7 +64,25 @@ App({
   /** 用云端数据覆盖本机缓存，顺带取公告 */
   refresh() {
     this.lastSync = Date.now();
-    return store.sync().then(() => this.showNotice());
+    return store.sync().then(() => this.showInbox()).then(() => this.showNotice());
+  },
+
+  /**
+   * 给这位用户的站内消息（报名被取消、活动取消）：逐条弹出来，点了「知道了」才算看过。
+   * 都看完以后再往下走（弹公告），两个弹窗不会叠在一起。
+   */
+  showInbox() {
+    const list = store.takeInbox();
+    return list.reduce((done, m) => done.then(() => new Promise((resolve) => {
+      wx.showModal({
+        title: m.title,
+        content: m.content,
+        showCancel: false,
+        confirmText: messages.inbox.confirm,
+        success: () => { store.readInbox([m.id]); resolve(); },
+        fail: () => resolve()
+      });
+    })), Promise.resolve());
   },
 
   /** 运营在后台设了公告：打开小程序时弹一次。同一条公告在这台手机上不弹第二次 */

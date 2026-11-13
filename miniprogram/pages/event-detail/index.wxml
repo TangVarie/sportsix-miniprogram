@@ -43,6 +43,16 @@
       <view class="ed-about__body">{{detail.about.body}}</view>
     </view>
 
+    <!-- 报名须知：要用多少积分、报名后不能自行取消、有事找谁（设计稿里没有，后加的） -->
+    <view wx:if="{{note}}" class="ed-note">
+      <text class="ed-note__title">{{note.title}}</text>
+      <text wx:for="{{note.lines}}" wx:key="*this" class="ed-note__line">{{item}}</text>
+      <view wx:if="{{note.contact}}" class="ed-note__contact">
+        <text class="ed-note__k">{{note.contactLabel}}</text>
+        <text class="ed-note__v" user-select="{{true}}">{{note.contact}}</text>
+      </view>
+    </view>
+
     <view wx:if="{{groupReady}}" class="ed-group">
       <view class="ed-group__icon"><image class="ed-group__icon-img" src="/assets/icons/group-lime.svg" /></view>
       <view class="ed-group__text">

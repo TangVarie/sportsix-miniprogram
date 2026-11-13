@@ -25,6 +25,27 @@ function saveEvent(id, event) {
 function setEventStatus(id, status) {
   return cloud.call('adminSetEventStatus', { id: id, status: status }).then((d) => d.event);
 }
+/** 一场活动的报名名单：{ event, signups: [{ memberNo, nickname, phone, cost, at }] }，早报的在前 */
+function signups(id) {
+  return cloud.call('adminSignups', { id: id });
+}
+/** 取消某位会员的报名（按会员编号）：名额让出来，积分退回，对方收到通知 */
+function cancelSignup(id, memberNo) {
+  return cloud.call('adminCancelSignup', { id: id, memberNo: memberNo });
+}
+/**
+ * 取消整场活动。人多时云端一次做不完，这里接着调，直到做完。
+ * onProgress(还剩多少人) 每做完一批回调一次。
+ */
+function cancelEvent(id, onProgress) {
+  const step = (left) => cloud.call('adminCancelEvent', { id: id }).then((d) => {
+    if (onProgress) onProgress(d.remaining);
+    // 做完了；或者连着十轮人数都没少（出了什么问题），停下来，不无休止地调
+    if (!d.remaining || left <= 0) return d;
+    return step(left - 1);
+  });
+  return step(60);
+}
 /** 往期的赞助赛事（活动页「往期」里的照片卡），年份新的在前 */
 function listPast() {
   return cloud.call('adminPastEvents').then((d) => d.past || []);
@@ -89,4 +110,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };

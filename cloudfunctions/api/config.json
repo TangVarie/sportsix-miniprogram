@@ -1,7 +1,8 @@
 {
   "permissions": {
     "openapi": [
-      "phonenumber.getPhoneNumber"
+      "phonenumber.getPhoneNumber",
+      "subscribeMessage.send"
     ]
   }
 }

@@ -113,7 +113,8 @@
   .cell-title__type { font-size: 12px; line-height: 18px; color: var(--sub); }
   .chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; line-height: 18px; font-weight: 700; }
   .chip--published { background: var(--lime); color: var(--navy); }
-  .chip--draft, .chip--ended { background: var(--line); color: var(--sub); }
+  .chip--draft, .chip--ended, .chip--cancelled { background: var(--line); color: var(--sub); }
+  .ops--wrap { flex-wrap: wrap; max-width: 260px; }
   .ops { display: flex; gap: 8px; }
   .empty { padding: 48px 16px; text-align: center; color: var(--sub); }
 
@@ -245,6 +246,8 @@
           </div>
           <span class="hint" style="display:block">照片会自动压到合适的大小再上传。</span>
         </div>
+        <label class="switch"><input id="p-home" type="checkbox"><span class="switch__track"></span><span>放在首页</span></label>
+        <p class="hint">打开后出现在首页「众多专业机构选择 SPORTSIX 产品」那一排里，关掉只在活动页的往期里显示。</p>
         <div class="ops" style="margin-top: 18px">
           <button id="past-save" class="btn" type="submit">保存</button>
           <button id="past-cancel" class="btn btn--line" type="button">取消</button>
@@ -252,7 +255,7 @@
       </form>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>赛事</th><th>年份</th><th>英文名或副标题</th><th>操作</th></tr></thead>
+          <thead><tr><th>赛事</th><th>年份</th><th>英文名或副标题</th><th>首页</th><th>操作</th></tr></thead>
           <tbody id="past-rows"></tbody>
         </table>
         <div id="past-empty" class="empty" hidden>还没有往期赛事，点右上角「添加赛事」</div>
@@ -322,6 +325,28 @@
 
 <!-- 新建、编辑活动 -->
 <div id="drawer-mask" class="mask" hidden></div>
+
+<!-- 报名名单：从右边滑出来的一栏 -->
+<div id="roster-mask" class="mask" hidden></div>
+<div id="roster" class="drawer" hidden>
+  <div class="drawer__head">
+    <h2 class="drawer__title">报名名单</h2>
+    <button id="roster-close" class="drawer__close" type="button" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer__body">
+    <div id="roster-title" class="panel__title" style="margin-bottom: 4px"></div>
+    <p id="roster-count" class="hint" style="margin: 0 0 14px"></p>
+    <div class="ops" style="margin-bottom: 14px">
+      <button id="roster-export" class="btn btn--line btn--small" type="button">导出表格</button>
+      <button id="roster-cancel-event" class="btn btn--line btn--small" type="button">取消整场活动</button>
+    </div>
+    <table>
+      <thead><tr><th>会员</th><th>手机号</th><th>报名时间</th><th>积分</th><th>操作</th></tr></thead>
+      <tbody id="roster-rows"></tbody>
+    </table>
+    <div id="roster-empty" class="empty" hidden>还没有人报名</div>
+  </div>
+</div>
 <form id="drawer" class="drawer" hidden autocomplete="off">
   <div class="drawer__head">
     <h2 id="drawer-title" class="drawer__title"></h2>
@@ -350,6 +375,12 @@
     </div>
     <label class="field"><span class="field__label">会员提前报名</span><input id="f-memberSignupStart" class="input" type="datetime-local">
       <span class="hint" style="display:block">填了，活动卡片上显示「会员优先报名」，提醒也按这个时间发。</span></label>
+    <div class="row">
+      <label class="field"><span class="field__label">报名所需积分</span><input id="f-cost" class="input" inputmode="numeric" maxlength="6" placeholder="不填就是不用积分">
+        <span class="hint" style="display:block">报名时扣掉，积分不够的人报不了。取消报名或取消活动时自动退回。</span></label>
+      <label class="field"><span class="field__label">联系方式</span><input id="f-contact" class="input" maxlength="100" placeholder="报名的人有事找谁，比如 客服电话">
+        <span class="hint" style="display:block">显示在活动详情里。报名后会员不能自己取消，要找这里联系你们。</span></label>
+    </div>
     <div class="row">
       <label class="field"><span class="field__label">名额</span><input id="f-quota" class="input" inputmode="numeric" maxlength="6" placeholder="不填就不限"></label>
       <label class="field"><span class="field__label">名额写法</span><input id="f-quotaText" class="input" maxlength="20" placeholder="比如 限 200 份"></label>
@@ -437,6 +468,8 @@
     missing_title: '请填写名称',
     missing_date: '请选择活动时间',
     bad_signup_time: '报名结束要晚于报名开始',
+    bad_cost: '积分数太大了',
+    not_signed: '这个人已经不在名单里了',
     bad_year: '年份填四位数字',
     missing_name: '请填写名称',
     missing_image: '请选择照片',
@@ -520,6 +553,8 @@
     $('ev-rows').textContent = '';
     $('ev-subs').textContent = '';
     saving = 0;
+    closeRoster();
+    rosterBusy = false;
     past = [];
     $('past-rows').textContent = '';
     closePast();
@@ -606,8 +641,9 @@
     if (n.status !== 'done') return '通知发送中';
     return '已通知 ' + n.sent + ' 人' + (n.failed ? '，' + n.failed + ' 人没发到' : '');
   }
-  var STATE_TEXT = { published: '已上架', draft: '未上架', ended: '已结束' };
+  var STATE_TEXT = { published: '已上架', draft: '未上架', ended: '已结束', cancelled: '已取消' };
   function stateOf(e) {
+    if (e.cancelled) return 'cancelled';
     if (e.status !== 'published') return 'draft';
     return e.date && e.date < Date.now() - 24 * 3600 * 1000 ? 'ended' : 'published';
   }
@@ -697,7 +733,43 @@
           return loadEvents();
         }).catch(function (err) { toggle.disabled = false; if (err.code !== 'web_expired') toast(errorText(err), true); });
       });
+      wrap.className = 'ops ops--wrap';
       wrap.appendChild(edit); wrap.appendChild(toggle);
+      var roster = el('button', 'btn btn--line btn--small', '名单');
+      roster.type = 'button';
+      roster.addEventListener('click', function () { openRoster(e); });
+      wrap.appendChild(roster);
+      // 上架着、还没结束的活动：一键发成公告（用户下次打开小程序时弹出来）
+      if (state === 'published') {
+        var announce = el('button', 'btn btn--line btn--small', '发公告');
+        announce.type = 'button';
+        announce.addEventListener('click', function () {
+          var where = [e.city, e.venue].filter(Boolean).join(' ');
+          var content = '「' + e.title + '」上线了，' + moment(e.date) + (where ? '，' + where : '') + '。到活动页查看和报名。';
+          if (!window.confirm(content + '\n\n用户下次打开小程序时会弹出这条公告。现在的公告会被它换掉。')) return;
+          announce.disabled = true;
+          call('adminSaveNotice', { notice: { title: '新活动', content: content, enabled: true } }).then(function () {
+            toast('公告已发出');
+            // 公告页上的内容过时了：下次进去重新读
+            notice.ready = false;
+            syncNotice();
+          }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+            .then(function () { announce.disabled = false; });
+        });
+        wrap.appendChild(announce);
+      }
+      // 办完的赛事：加到往期（往期只放赛事）。切到「往期赛事」，把名称、年份、头图带进表单
+      if (e.type === '赛事' && state === 'ended') {
+        var toPast = el('button', 'btn btn--line btn--small', '加到往期');
+        toPast.type = 'button';
+        toPast.addEventListener('click', function () {
+          switchTab('past');
+          openPast({ id: '', year: String(new Date(e.date).getFullYear()), name: e.title, nameEn: '', image: e.cover || '', home: true });
+          $('past-form-title').textContent = '添加赛事';
+          if (!e.cover) toast('这场活动没有头图，请在下面选一张照片', true);
+        });
+        wrap.appendChild(toPast);
+      }
       // 新活动通知：上架着、还没开始、没通知过的活动可以通知一次
       if (state === 'published' && !e.notify && e.date > Date.now()) {
         var notify = el('button', 'btn btn--line btn--small', '通知');
@@ -768,6 +840,8 @@
     TEXT_FIELDS.forEach(function (k) { $('f-' + k).value = e ? (e[k] || '') : ''; });
     TIME_FIELDS.forEach(function (k) { $('f-' + k).value = e ? toInput(e[k]) : ''; });
     $('f-quota').value = e && e.quota ? String(e.quota) : '';
+    $('f-cost').value = e && e.cost ? String(e.cost) : '';
+    $('f-contact').value = e ? (e.contact || '') : '';
     $('f-published').checked = !!e && e.status === 'published';
     setCover(e ? e.cover : '');
     $('drawer-mask').hidden = false;
@@ -852,7 +926,8 @@
     if (uploading) { toast('头图还在上传，等一下再保存', true); return; }
     if (saving === editor) return; // 这个表单已经在保存了，不重复提交（新建的活动重复提交会建出两个）
     var quota = parseInt($('f-quota').value, 10);
-    var event = { type: form.type, quota: quota > 0 ? quota : null, cover: form.cover, status: $('f-published').checked ? 'published' : 'draft' };
+    var cost = parseInt($('f-cost').value, 10);
+    var event = { type: form.type, quota: quota > 0 ? quota : null, cost: cost > 0 ? cost : 0, contact: $('f-contact').value, cover: form.cover, status: $('f-published').checked ? 'published' : 'draft' };
     TEXT_FIELDS.forEach(function (k) { event[k] = $('f-' + k).value; });
     TIME_FIELDS.forEach(function (k) { event[k] = fromInput($('f-' + k).value); });
     if (form.type !== '抽奖') event.drawAt = null;
@@ -870,6 +945,114 @@
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
       // 按钮的状态只归当时那个表单管；换了表单以后，按钮由新表单自己管
       .then(function () { if (saving === mine) saving = 0; syncSave(); });
+  });
+
+  /* ---------- 报名名单 ---------- */
+  var rosterEvent = null; // 正在看哪场活动的名单
+  var rosterList = [];
+  var rosterSeq = 0;
+  var rosterBusy = false;
+  function closeRoster() {
+    rosterSeq += 1; // 还没回来的读取不作数
+    rosterEvent = null;
+    $('roster-mask').hidden = true;
+    $('roster').hidden = true;
+  }
+  function renderRoster() {
+    var body = $('roster-rows');
+    body.textContent = '';
+    $('roster-count').textContent = rosterList.length + ' 人报名';
+    rosterList.forEach(function (s) {
+      var tr = el('tr');
+      var who = el('td');
+      who.appendChild(el('div', 'cell-title__name', s.nickname || '没填昵称'));
+      who.appendChild(el('div', 'cell-sub', '会员编号 ' + (s.memberNo || '—')));
+      tr.appendChild(who);
+      tr.appendChild(el('td', '', s.phone || '—'));
+      tr.appendChild(el('td', '', moment(s.at)));
+      tr.appendChild(el('td', '', s.cost > 0 ? String(s.cost) : '—'));
+      var ops = el('td');
+      var cancel = el('button', 'btn btn--line btn--small', '取消报名');
+      cancel.type = 'button';
+      cancel.addEventListener('click', function () {
+        if (rosterBusy || !rosterEvent) return;
+        var id = rosterEvent.id;
+        if (!window.confirm('取消「' + (s.nickname || '没填昵称') + '（' + s.memberNo + '）」的报名？名额让出来，积分退回，对方会收到通知。')) return;
+        rosterBusy = true;
+        cancel.disabled = true;
+        call('adminCancelSignup', { id: id, memberNo: s.memberNo }).then(function () { toast('已取消'); })
+          .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+          .then(function () { rosterBusy = false; loadEvents(); if (rosterEvent && rosterEvent.id === id) return loadRoster(); return null; });
+      });
+      ops.appendChild(cancel);
+      tr.appendChild(ops);
+      body.appendChild(tr);
+    });
+    $('roster-empty').hidden = rosterList.length > 0;
+  }
+  /** 读这场活动的名单。只用最后发出的那次读取；名单关掉或换了一场以后回来的不作数 */
+  function loadRoster() {
+    if (!rosterEvent) return null;
+    var mine = ++rosterSeq;
+    return call('adminSignups', { id: rosterEvent.id }).then(function (d) {
+      if (mine !== rosterSeq) return;
+      rosterList = d.signups || [];
+      renderRoster();
+    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); });
+  }
+  function openRoster(e) {
+    rosterEvent = { id: e.id, title: e.title };
+    rosterList = [];
+    $('roster-title').textContent = e.title;
+    $('roster-count').textContent = '正在读取';
+    $('roster-rows').textContent = '';
+    $('roster-empty').hidden = true;
+    $('roster-mask').hidden = false;
+    $('roster').hidden = false;
+    loadRoster();
+  }
+  $('roster-close').addEventListener('click', closeRoster);
+  $('roster-mask').addEventListener('click', closeRoster);
+  /** 导出成表格（CSV，Excel 能直接打开）：昵称、会员编号、手机号、报名时间、用的积分 */
+  $('roster-export').addEventListener('click', function () {
+    if (!rosterEvent || !rosterList.length) { toast('还没有人报名', true); return; }
+    // 开头是 = + - @ 的内容前面加一个单引号：不然表格软件会把它当公式算
+    var cell = function (v) {
+      var s = String(v == null ? '' : v);
+      if (/^[=+\-@]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    var lines = [['昵称', '会员编号', '手机号', '报名时间', '用的积分']].concat(rosterList.map(function (s) {
+      return [s.nickname, s.memberNo, s.phone, moment(s.at), s.cost > 0 ? s.cost : 0];
+    })).map(function (r) { return r.map(cell).join(','); });
+    // 开头的 BOM 让 Excel 按 UTF-8 认中文
+    var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = rosterEvent.title + ' 报名名单.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  /** 取消整场活动：下架，所有人撤销、退积分、发通知。人多时云端分几批做，这里接着调到做完 */
+  $('roster-cancel-event').addEventListener('click', function () {
+    if (rosterBusy || !rosterEvent) return;
+    var id = rosterEvent.id;
+    if (!window.confirm('取消「' + rosterEvent.title + '」？活动会下架，' + rosterList.length + ' 位报名的人全部撤销，积分退回，每个人都会收到通知。这一步不能撤回。')) return;
+    rosterBusy = true;
+    var btn = this;
+    btn.disabled = true;
+    var step = function (left) {
+      return call('adminCancelEvent', { id: id }).then(function (d) {
+        if (rosterEvent && rosterEvent.id === id) $('roster-count').textContent = d.remaining ? '正在处理，还剩 ' + d.remaining + ' 人' : '';
+        if (!d.remaining || left <= 0) return d;
+        return step(left - 1);
+      });
+    };
+    step(60).then(function () { toast('活动已取消'); })
+      .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { rosterBusy = false; btn.disabled = false; loadEvents(); if (rosterEvent && rosterEvent.id === id) return loadRoster(); return null; });
   });
 
   /* ---------- 往期的赞助赛事 ---------- */
@@ -915,6 +1098,7 @@
       tr.appendChild(name);
       tr.appendChild(el('td', '', p.year));
       tr.appendChild(el('td', '', p.nameEn || '—'));
+      tr.appendChild(el('td', '', p.home !== false ? '放' : '不放'));
       var ops = el('td');
       var wrap = el('div', 'ops');
       var edit = el('button', 'btn btn--line btn--small', '编辑');
@@ -968,6 +1152,7 @@
     $('p-name').value = p ? p.name : '';
     $('p-nameEn').value = p ? p.nameEn : '';
     setPastImage(p ? p.image : '');
+    $('p-home').checked = p ? p.home !== false : true;
     setPastUploading(false);
     $('past-form').hidden = false;
     $('p-name').focus();
@@ -1002,7 +1187,7 @@
     e.preventDefault();
     if (pastUploading) { toast('照片还在上传，等一下再保存', true); return; }
     if (pastSaving === pastEditor) return;
-    var item = { year: $('p-year').value.trim(), name: $('p-name').value, nameEn: $('p-nameEn').value, image: pastForm.image };
+    var item = { year: $('p-year').value.trim(), name: $('p-name').value, nameEn: $('p-nameEn').value, image: pastForm.image, home: $('p-home').checked };
     // 先在这里拦一下，省一次来回；云函数里还会再检查
     if (!/^(19|20)\d{2}$/.test(item.year)) { toast(ERRORS.bad_year, true); $('p-year').focus(); return; }
     if (!item.name.trim()) { toast(ERRORS.missing_name, true); $('p-name').focus(); return; }

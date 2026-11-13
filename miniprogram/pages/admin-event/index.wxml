@@ -64,6 +64,16 @@
         <view class="ae-hint">{{copy.hints.memberSignupStart}}</view>
       </view>
       <view class="ae-field">
+        <text class="ae-label">{{copy.labels.cost}}</text>
+        <input class="ae-input" value="{{form.cost}}" type="number" maxlength="6" placeholder="{{copy.placeholders.cost}}" placeholder-class="ae-ph" data-field="cost" bindinput="onInput" />
+        <view class="ae-hint">{{copy.hints.cost}}</view>
+      </view>
+      <view class="ae-field">
+        <text class="ae-label">{{copy.labels.contact}}</text>
+        <input class="ae-input" value="{{form.contact}}" maxlength="100" placeholder="{{copy.placeholders.contact}}" placeholder-class="ae-ph" data-field="contact" bindinput="onInput" />
+        <view class="ae-hint">{{copy.hints.contact}}</view>
+      </view>
+      <view class="ae-field">
         <text class="ae-label">{{copy.labels.quota}}</text>
         <input class="ae-input" value="{{form.quota}}" type="number" maxlength="6" placeholder="{{copy.placeholders.quota}}" placeholder-class="ae-ph" data-field="quota" bindinput="onInput" />
       </view>

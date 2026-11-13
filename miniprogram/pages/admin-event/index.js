@@ -12,7 +12,7 @@ const TIME_FIELDS = ['date', 'signupStart', 'signupEnd', 'memberSignupStart', 'd
 const DEFAULT_TIME = { signupEnd: '23:59' };
 
 function emptyForm() {
-  return { type: TYPES[0], title: '', city: '', venue: '', quota: '', quotaText: '', cover: '', intro: '', published: false };
+  return { type: TYPES[0], title: '', city: '', venue: '', quota: '', quotaText: '', cost: '', contact: '', cover: '', intro: '', published: false };
 }
 function emptyTimes() {
   const t = {};
@@ -56,6 +56,7 @@ Page({
       this.setData({
         form: {
           type: e.type, title: e.title, city: e.city, venue: e.venue, quota: e.quota ? String(e.quota) : '', quotaText: e.quotaText,
+          cost: e.cost ? String(e.cost) : '', contact: e.contact || '',
           cover: e.cover, intro: e.intro, published: e.status === 'published'
         },
         times: times
@@ -126,7 +127,9 @@ Page({
   payload() {
     const f = this.data.form;
     const quota = parseInt(f.quota, 10);
+    const cost = parseInt(f.cost, 10);
     const event = {
+      cost: cost > 0 ? cost : 0, contact: f.contact,
       type: f.type, title: f.title, city: f.city, venue: f.venue,
       quota: quota > 0 ? quota : null, quotaText: f.quotaText,
       cover: f.cover, intro: f.intro, status: f.published ? 'published' : 'draft'

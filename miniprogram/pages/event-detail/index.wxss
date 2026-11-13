@@ -44,6 +44,13 @@
 .ed-member__body { font-size: 23rpx; line-height: 35rpx; font-weight: 500; }
 
 .ed-about { display: flex; flex-direction: column; gap: 12rpx; margin-top: 54rpx; }
+/* 报名须知（设计稿里没有）：灰底圆角卡片，同活动页的行卡 */
+.ed-note { display: flex; flex-direction: column; gap: 8rpx; margin-top: 38rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.ed-note__title { margin-bottom: 4rpx; font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.ed-note__line { font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.ed-note__contact { display: flex; gap: 23rpx; margin-top: 8rpx; padding-top: 19rpx; border-top: 1px solid #E6E6E7; font-size: 25rpx; line-height: 38rpx; }
+.ed-note__k { flex-shrink: 0; color: #5E6170; }
+.ed-note__v { min-width: 0; font-weight: 700; color: #010439; }
 .ed-about__eyebrow { color: #061A70; }
 .ed-about__title { font-size: 38rpx; line-height: 54rpx; font-weight: 900; color: #010439; }
 .ed-about__body { min-height: 169rpx; margin-top: 8rpx; font-size: 27rpx; line-height: 42rpx; }
