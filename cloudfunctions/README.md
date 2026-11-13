@@ -53,15 +53,16 @@ cloudfunctions/
 
 | 集合 | `_id` | 字段 |
 |---|---|---|
-| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`admin`（管理员，手动加）、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
+| `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`admin`（管理员，手动加）、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt`。`ledgerVersion`（是 1 表示注册积分和它的积分记录已经核对过，由云函数写） |
 | `events` 活动 | 自动 | 见下 |
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`cost`（报名时扣了多少积分）、`templateId`（报名时同意了订阅消息才有）、`createdAt`。取消报名是把这条记录删掉 |
 | `inbox` 站内消息 | 自动 | `openid`、`title`、`content`、`read`、`createdAt`。报名被取消、活动被取消时写一条，会员下次进小程序时弹出来。云函数自动建 |
-| `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
-| `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动）和 `job`（划给了哪一次登记，对应活动上的 `notifyId`），空的是还没划、`claimedAt`、`sentAt`、`error`。云函数自动建 |
+| `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt`。`batchId`、`batches`（这条提醒用的是哪一次订阅授权、用过哪些：同一次授权重复登记不会让发过的提醒再发一遍），`status` 多了一个 `waiting`（登记了还没发） |
+| `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动）和 `job`（划给了哪一次登记，对应活动上的 `notifyId`），空的是还没划、`claimedAt`、`sentAt`、`error`。云函数自动建。`batchId`（这次订阅用的是哪一次授权） |
 | `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）、`home`（放不放在首页，没有这个字段算放）、`deleted`（在后台删掉的赛事不抹记录，只标上这个）。云函数自动建，建的时候放进包里原有的几场 |
-| `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
-| `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
+| `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt`。新版小程序存的还有 `formulaVersion`（保存时的公式版本），这时 `result` 里是完整的时间表和排法说明，之后公式改了，已保存的计划照原样显示 |
+| `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建。注册赠送的那条 `_id` 是固定的（`welcome_` 开头）；后台调积分的那条 `_id` 是 `adjust_` 开头，带 `by`（操作的管理员）、`operationId` 和 `signature`（同一笔操作重试时靠它们认出来，不会加两次） |
+| `subscription_batches` 用过的订阅授权 | 摘要 | `openid`、`batchId`、`createdAt`。记下新活动通知的每一次订阅授权，同一次授权重复提交不会重新登记。云函数自动建，也可以提前建，权限同样设成所有用户不可读写 |
 | `admin_web` 电脑端登录 | 摘要 | 登录码（`c_` 开头）、登录凭证（`s_` 开头）。云函数自动建 |
 | `settings` 设置 | `notice` | 公告：`title`、`content`、`enabled`、`updatedAt`、`updatedBy`。云函数自动建 |
 | `counters` 计数 | `memberNo` | `next`（下一个会员编号）。云函数自动建，不要手动改 |
@@ -164,6 +165,9 @@ npm run test:web
 | `cover` | string | 头图。云存储的 fileID（`cloud://...`）或 https 地址；不填用默认配图 |
 | `intro` | string | 活动介绍 |
 | `signupCount` | number | 已报名人数，由云函数维护，不用手填 |
+| `version` | number | 每保存、上下架、取消一次加一，由云函数维护。两位管理员同时改同一场活动时，后保存的那位会被提示重新读取，不会把前一位的修改盖掉 |
+| `cost`、`contact` | number、string | 报名所需积分（不填或 0 是不用积分）、联系方式 |
+| `cancelled` | boolean | 活动被取消过。重新上架后变回 `false` |
 
 活动没有提供的项，页面上不显示，不会留方括号占位。
 
@@ -207,6 +211,19 @@ npm run test:web
 - **发公告**：活动列表上的「发公告」把这场活动的名称和时间地点填进公告并打开，会员进小程序时弹一次。
 
 `api` 这次多了一个云调用权限 `subscribeMessage.send`（写在 `api/config.json`），并带了一份 `template.js`，它和 `remind/template.js` 必须一模一样（`npm test` 会核对），改一处要把另一处也改了。要重新上传 `api`。
+
+## 时间和并发上的几条规则
+
+这些是整体复查时定下来的，细节和验证过程在 `docs/06-audit-fixes.md`。
+
+- **报名时间**：会员开始报名不晚于公开开始报名；报名结束晚于开始，并且不晚于活动时间。不符合的活动在后台保存时会被拦住。没填报名结束的，到活动时间就不能报了。
+- **读一场活动**：小程序按活动的 `_id` 读（`event` 接口），不依赖「即将开始」的列表。下架或结束的活动，只有报过名或设过提醒的本人还能看，只读。
+- **我的活动**：`myEvents` 接口分页读本人的报名和提醒记录，一次最多 100 条。
+- **调积分**：后台每一笔调整带一个操作编号。网络断了重试，同一个编号只算一次；改了数量或原因再提交，会提示重新填写。
+- **改活动**：保存、上下架、取消都带着读到时的 `version`，对不上就提示「活动已被修改」，填好的内容留着。
+- **提醒**：`remind` 一次执行最多跑 45 秒就不再领新的任务，所以它的超时时间要设到 60 秒（见部署步骤第 5 步），设短了会发到一半被掐断。
+
+依赖版本锁定在两个云函数各自的 `package-lock.json` 里（`wx-server-sdk 4.0.2`），上传时选「云端安装依赖」会按它装。
 
 ## 会员看板
 
