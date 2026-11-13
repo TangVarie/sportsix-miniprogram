@@ -170,6 +170,8 @@
     "missing_content": "请填写公告内容",
     "missing_query": "请填写手机号或会员编号",
     "bad_delta": "请填写数量",
+    "delta_too_large": "一次最多调整 100000 积分",
+    "uploading_wait": "图片还在上传，等一下再保存",
     "missing_reason": "请填写原因",
     "insufficient": "积分不够减",
     "upload": "图片上传失败，请再试一次",

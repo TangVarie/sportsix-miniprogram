@@ -57,8 +57,20 @@ const WEATHERS = [
   { key: 'rain', label: '雨天' }
 ];
 
-/** 输入范围与默认值 */
-const LIMITS = { minMinutes: 30, maxMinutes: 600, minutesStep: 15, minKg: 40, maxKg: 110, kgStep: 5 };
+/**
+ * 输入范围与默认值。时长最长 48 小时，够算百公里、百英里这类越野赛；再长的多日赛中间要睡觉、有换装点，
+ * 不是一张连续的时间表排得了的，页面上提示分段算。
+ */
+const LIMITS = { minMinutes: 30, maxMinutes: 2880, minutesStep: 15, minKg: 40, maxKg: 110, kgStep: 5 };
+/**
+ * 超长距离：10 小时以后，胶减到每小时 1 支（PRO 一支约 21g 碳水、85 千卡），其余靠补给站和固体食物。
+ * 依据是通行的超长距离补给建议（ISSN 关于超级马拉松的立场声明：每小时 150 到 400 千卡，碳水 30 到 50g，
+ * 来源要多样）：时间越长，越难只靠胶，肠胃也越吃不消，所以胶只占其中一部分。
+ */
+const ULTRA_FROM = 600;
+const ULTRA_INTERVAL = 60;
+/** 咖啡因的上限按每 24 小时算（成人一天不超过 400mg 是按天计的），跨到第二个 24 小时重新计 */
+const DAY = 1440;
 const DEFAULT_INPUT = { sport: 'road', scene: 'race', minutes: 240, kg: 65, start: 'am', caffeineSensitive: false, hot: false, weather: 'normal', firstTime: false };
 
 function formatTime(m) {
@@ -89,9 +101,10 @@ function carbRate(input) {
 }
 
 /**
- * 第二步：含咖啡因的 BASIC 最多几支
+ * 第二步：含咖啡因的 BASIC 最多几支（每 24 小时）
  * 每公斤体重 3mg 封顶，总量不超过 400mg；下午出发或第一次用胶最多 90mg；
  * 晚上出发或咖啡因敏感为 0。
+ * 超过 24 小时的，每个 24 小时各算各的，上限相同（第二个 24 小时开始时，钟点和出发时一样）。
  */
 function caffeineCap(input) {
   let capMg = Math.min(3 * input.kg, 400);
@@ -120,26 +133,33 @@ function planFuel(input) {
   const hasPre = T >= 60 || input.scene === 'race';
   if (hasPre) items.push({ minute: -30, product: 'pro' });
 
-  let used = 0;
+  // 含咖啡因的 BASIC 按 24 小时一段来排：每段里只排在前 60% 的时段，每段不超过 capN 支。
+  // 不超过 24 小时的只有一段，就是「排在全程的前 60%」。
+  const used = {}; // 第几段 → 已经排了几支
   let lastCaf = -999;
-  const early = 0.6 * T; // 含咖啡因的 BASIC 只排在前 60% 的时段
   const takeGel = (t) => {
-    if (used >= capN || t > early || t - lastCaf < 30) return false;
-    if (t + 0.001 < used * (early / capN)) return false; // 支数少于可排位置时，在前 60% 里均匀分开
-    used += 1;
+    const d = Math.floor(t / DAY);
+    const from = d * DAY;
+    const early = 0.6 * Math.min(DAY, T - from);
+    const n = used[d] || 0;
+    if (n >= capN || t - from > early || t - lastCaf < 30) return false;
+    if (t - from + 0.001 < n * (early / capN)) return false; // 支数少于可排位置时，在前 60% 里均匀分开
+    used[d] = n + 1;
     lastCaf = t;
     return true;
   };
+  // 排完一支之后隔多久排下一支：10 小时以后固定每小时 1 支
+  const gap = (t, isGel) => (t >= ULTRA_FROM ? ULTRA_INTERVAL : roundInterval((isGel ? GEL.carb : PRO.carb) / rate * 60));
 
   if (rate > 0) {
     const firstIsGel = takeGel(30);
-    if (firstIsGel) { used -= 1; lastCaf = -999; }
+    if (firstIsGel) { used[0] -= 1; lastCaf = -999; }
     let t = roundInterval((firstIsGel ? GEL.carb : PRO.carb) / rate * 60);
     if (t < 30 && firstIsGel) t = 30;
     while (t <= T - 15) { // 结束前 15 分钟内不再安排
       const g = takeGel(t);
       items.push({ minute: t, product: g ? 'gel' : 'pro' });
-      t += roundInterval((g ? GEL.carb : PRO.carb) / rate * 60);
+      t += gap(t, g);
     }
   } else if (input.scene === 'hard' && T >= 40) {
     // 不足 1 小时的高强度训练：中段补 1 支
@@ -164,6 +184,8 @@ function planFuel(input) {
     caffeinePerKg: Math.round(gelCount * GEL.caffeine / input.kg * 10) / 10,
     kcal: gelCount * GEL.kcal + proCount * PRO.kcal,
     durationLabel: formatTime(T),
+    // 跨了几个 24 小时。咖啡因的上限是每个 24 小时各算各的
+    days: Math.ceil(T / DAY),
     items: items.map((i) => ({
       minute: i.minute,
       label: i.minute < 0 ? preLabel : formatTime(i.minute),
@@ -197,16 +219,17 @@ function explain(r) {
   } else {
     why.push('不足 1 小时，只在' + (s.scene === 'race' ? '赛前' : '中段') + '补 1 支。');
   }
-  if (s.minutes >= 360) why.push('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
+  if (s.minutes > ULTRA_FROM) why.push('前 10 小时胶按每小时约 ' + r.carbRate + 'g 排，之后减到每小时 1 支，其余靠补给站和固体食物。');
+  else if (s.minutes >= 360) why.push('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
   if (r.items[0].minute < 0) why.push('开始前 30 分钟先吃 1 支 PRO 打底，它不含咖啡因，HBCD 排空快，不坠胃。');
   if (r.gelCount > 0) {
-    why.push('体重 ' + s.kg + 'kg，含咖啡因的 BASIC 不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
+    why.push('体重 ' + s.kg + 'kg，含咖啡因的 BASIC ' + (r.days > 1 ? '每 24 小时' : '') + '不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
       (r.caffeineCapCount * 45 / s.kg).toFixed(1) + 'mg），间隔至少 30 分钟。');
   }
-  if (s.start === 'pm' && !s.caffeineSensitive) why.push('下午出发，含咖啡因的最多 2 支，避免影响晚上睡眠。');
+  if (s.start === 'pm' && !s.caffeineSensitive) why.push('下午出发，含咖啡因的' + (r.days > 1 ? '每 24 小时' : '') + '最多 2 支，避免影响晚上睡眠。');
   if (s.start === 'night') why.push('晚上出发，全程用 0 咖啡因的 PRO。');
   if (s.caffeineSensitive) why.push('咖啡因敏感，全程用 0 咖啡因的 PRO。');
-  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的 BASIC 排在前 60% 的时段，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
+  if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的 BASIC 排在' + (r.days > 1 ? '每 24 小时的前 60%' : '前 60% 的时段') + '，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
   const weather = s.hot ? 'hot' : s.weather;
   if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20 到 25mg，电解质要另外补。');
   if (weather === 'cold') why.push('低温天口渴感弱，容易漏掉补给，按时间表吃。');
@@ -223,6 +246,7 @@ function explain(r) {
  *   carbRate                      每小时碳水目标（g）
  *   caffeineCapMg, caffeineCapCount
  *   durationLabel                 '4:00'
+ *   days                          跨了几个 24 小时（咖啡因的上限每 24 小时各算各的）
  *   items: [{ minute, label, product: 'gel' | 'pro', productName, position }]
  *   reasons: [string]
  * }

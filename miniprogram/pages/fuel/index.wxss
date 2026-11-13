@@ -80,6 +80,9 @@
 .fuel-step__btn--wide { width: 88rpx; }
 .fuel-step__btn--plus { background: #010439; color: #FFFFFF; }
 .fuel-step__time { flex: 1 0 auto; text-align: center; white-space: nowrap; font-size: 65rpx; line-height: 77rpx; color: #061A70; }
+/* 时间包在选择器里：选择器占原来时间的位置，时间下面一道虚线，提示可以点 */
+.fuel-step__pick { flex: 1 0 auto; text-align: center; }
+.fuel-step__time--pick { display: inline-block; border-bottom: 2rpx dashed #9AA3CF; }
 .fuel-step__kg { display: flex; align-items: baseline; gap: 8rpx; }
 .fuel-step__value { font-size: 65rpx; line-height: 77rpx; color: #061A70; }
 .fuel-step__unit { font-size: 25rpx; line-height: 37rpx; color: #5E6170; }
@@ -112,6 +115,9 @@
   border: 4rpx solid #FFFFFF; background: transparent;
 }
 .fuel-line__dot--gel { border-color: #C2E541; background: #C2E541; }
+/* 支数多（超长距离）：点画小一点、实心，不然挤成一条看不出疏密 */
+.fuel-line--dense .fuel-line__dot { top: 15rpx; width: 15rpx; height: 15rpx; margin-left: -8rpx; border-radius: 8rpx; border-width: 0; background: #FFFFFF; }
+.fuel-line--dense .fuel-line__dot--gel { background: #C2E541; }
 /* 点了下面某一格：时间轴上对应的点加一圈光环 */
 .fuel-line__dot--active { z-index: 1; box-shadow: 0 0 0 8rpx rgba(255, 255, 255, .35); }
 .fuel-line__start, .fuel-line__end { position: absolute; top: 46rpx; font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }

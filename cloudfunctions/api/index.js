@@ -728,7 +728,9 @@ const actions = {
     const target = res.data[0];
     if (!event.memberNo || !target) throw fail('not_found');
     const delta = Number(event.delta);
-    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100000) throw fail('bad_delta');
+    if (!Number.isInteger(delta) || delta === 0) throw fail('bad_delta');
+    // 一次最多加减 10 万：超了要说清楚是太多了，不是没填
+    if (Math.abs(delta) > 100000) throw fail('delta_too_large');
     const reason = cleanText(event.reason, 30);
     if (!reason) throw fail('missing_reason');
     const cond = { _id: target._id };

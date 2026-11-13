@@ -141,7 +141,9 @@ Page({
   },
 
   onSave() {
-    if (this.data.busy || this.data.uploading) return;
+    // 头图还在传的时候点保存：说一句，不能没反应
+    if (this.data.uploading) { toast(copy.errors.uploading_wait); return; }
+    if (this.data.busy) return;
     const event = this.payload();
     // 先在本机拦一下必填项，省一次来回；云函数里还会再检查
     if (!String(event.title || '').trim()) { toast(copy.errors.missing_title); return; }

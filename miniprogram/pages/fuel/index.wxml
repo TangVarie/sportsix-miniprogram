@@ -49,7 +49,10 @@
             <view class="fuel-pill__btn sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-60" bindtap="onStep">-1h</view>
             <view class="fuel-pill__btn fuel-pill__btn--next sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="-15" bindtap="onStep">-15</view>
           </view>
-          <text class="fuel-step__time sx-num">{{durationLabel}}</text>
+          <!-- 点时间弹出选择器，直接选几小时几分；长距离的不用一下一下点加号 -->
+          <picker class="fuel-step__pick" mode="multiSelector" range="{{timeRange}}" value="{{timeValue}}" bindchange="onTimePick">
+            <text class="fuel-step__time fuel-step__time--pick sx-num">{{durationLabel}}</text>
+          </picker>
           <view class="fuel-pill fuel-pill--plus">
             <view class="fuel-pill__btn sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="15" bindtap="onStep">+15</view>
             <view class="fuel-pill__btn fuel-pill__btn--next sx-num sx-pressable" hover-class="sx-press" data-field="minutes" data-delta="60" bindtap="onStep">+1h</view>
@@ -126,7 +129,7 @@
       </view>
 
       <!-- 时间轴：开始前的那支在 0%，出发点在 8%，结束在 100% -->
-      <view class="fuel-line">
+      <view class="fuel-line {{dense ? 'fuel-line--dense' : ''}}">
         <view class="fuel-line__track"></view>
         <view wx:for="{{plan.items}}" wx:key="id" class="fuel-line__dot sx-pop {{item.gel ? 'fuel-line__dot--gel' : ''}} {{active === index ? 'fuel-line__dot--active' : ''}}" style="left: {{item.position}}%"></view>
         <text class="fuel-line__start">出发</text>
