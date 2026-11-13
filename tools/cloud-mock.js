@@ -18,10 +18,13 @@ function createCloud() {
     afterGet: null,    // (集合名, 条件) => Promise：查询结果已经取好、还没交出去时先等它，用来模拟「读到的已经是旧的」
     onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
     updateError: null, // (集合名) => true 时这次更新做成之后再抛错（模拟结果没传回来）
+    txFails: null,     // 事务专用。'before'：没提交就抛错；'after'：提交成功后抛错（结果没传回来）。用一次就清掉；'always'：一直提交不了，直到清掉
+    beforeTx: null,    // () => Promise：事务开始之前先等它，用来排出特定的先后顺序
     absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
+  let txQueue = Promise.resolve();
   const col = (name) => {
     if (state.absent[name]) throw new Error('collection not exists: ' + name);
     return (state.data[name] = state.data[name] || []);
@@ -125,7 +128,46 @@ function createCloud() {
       delete state.absent[name];
       return { errMsg: 'createCollection:ok' };
     },
-    collection: (name) => query(name)
+    collection: (name) => query(name),
+    /**
+     * 事务：回调里只能按 _id 操作单条记录（doc 的 get、set、update、remove 和 add），和真的一样不支持 where。
+     * 替身里事务一个一个排队执行；回调抛错就把数据恢复成开始之前的样子。
+     */
+    runTransaction(fn) {
+      const run = async () => {
+        if (state.beforeTx) await state.beforeTx();
+        const mode = state.txFails;
+        if (mode !== 'always') state.txFails = null;
+        if (mode === 'before' || mode === 'always') throw new Error('transaction failed');
+        const backup = {};
+        Object.keys(state.data).forEach((k) => { backup[k] = state.data[k].map(copy); });
+        const absent = Object.assign({}, state.absent);
+        const t = {
+          collection: (name) => ({
+            add: (o) => query(name).add(o),
+            doc: (id) => Object.assign(query(name).doc(id), {
+              async get() {
+                const doc = col(name).find((d) => d._id === id);
+                if (!doc) throw new Error('document not exists: ' + id);
+                return { data: copy(doc) };
+              }
+            })
+          }),
+          async rollback(reason) { throw reason; }
+        };
+        try {
+          await fn(t);
+        } catch (e) {
+          state.data = backup;
+          state.absent = absent;
+          throw e;
+        }
+        if (mode === 'after') throw new Error('response lost');
+      };
+      const p = txQueue.then(run, run);
+      txQueue = p.catch(() => {});
+      return p;
+    }
   };
 
   const sdk = {

@@ -205,6 +205,7 @@
     "no_subscribers": "还没有人订阅新活动通知",
     "bad_cost": "积分数太大了",
     "not_signed": "这个人已经不在名单里了",
+    "cancel_incomplete": "还有人没处理完，请再点一次「取消整场活动」",
     "bad_year": "年份填四位数字",
     "missing_name": "请填写名称",
     "missing_image": "请选择照片",

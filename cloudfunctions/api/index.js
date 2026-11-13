@@ -428,24 +428,22 @@ function costOf(e) {
 
 /* ---------- 站内消息 ---------- */
 
-/** 给某位用户留一条消息，他下次打开小程序时弹出来。集合第一次用到时自己建。留不上不影响别的 */
-async function addInbox(openid, title, content) {
-  const data = { openid: openid, title: title, content: content, read: false, createdAt: db.serverDate() };
+/** 事务里要写的集合得先在：没有就建。每个云函数实例里每个集合只查一次 */
+const ensured = {};
+async function ensureCollection(name) {
+  if (ensured[name]) return;
   try {
-    await db.collection('inbox').add({ data: data });
+    await db.collection(name).limit(1).get();
   } catch (e) {
-    try {
-      await db.createCollection('inbox');
-      await db.collection('inbox').add({ data: data });
-    } catch (e2) {
-      console.error('addInbox', e2);
-    }
+    try { await db.createCollection(name); } catch (e2) { /* 别的请求刚建好 */ }
   }
+  ensured[name] = true;
 }
 
 /**
  * 撤掉一个人在一场活动里的报名：删掉报名记录，名额让出来，报名用的积分退回去，并给他留一条消息。
- * 只有亲手把报名记录删掉的那次调用才退积分：两位管理员同时取消同一个人，积分不会退两次。
+ * 这几步放在一个事务里，要么都做成要么都没做：不会出现记录删了积分却没退的情况，中途出错可以再点一次。
+ * 两位管理员同时取消同一个人，只有一个事务删得到记录，积分不会退两次。
  * @param why 'signup'（管理员取消了他的报名）或 'event'（整场活动取消了）
  * @returns 这次有没有撤掉
  */
@@ -453,17 +451,39 @@ async function removeSignup(openid, e, why, by) {
   const id = openid + '_' + e._id;
   const s = await findById('signups', id);
   if (!s) return false;
-  const res = await db.collection('signups').doc(id).remove();
-  if (!res.stats.removed) return false;
-  await db.collection('events').where({ _id: e._id, signupCount: _.gte(1) }).update({ data: { signupCount: _.inc(-1) } });
   const cost = Number.isInteger(s.cost) && s.cost > 0 ? s.cost : 0;
-  if (cost) {
-    await db.collection('members').where({ _id: openid }).update({ data: { points: _.inc(cost) } });
-    await logPoints(openid, cost, '退回「' + e.title + '」的报名积分', by);
-  }
   const refund = cost ? '，' + cost + ' 积分已退回' : '';
   const contact = e.contact ? '有疑问请联系 ' + e.contact + '。' : '';
-  // 报名时同意了订阅的：用那一条额度发一条微信的服务通知。发不出去（他后来关了订阅等）不影响别的，下面的站内消息照留
+  const notice = why === 'event'
+    ? { title: '活动取消', content: '「' + e.title + '」取消了，你的报名已撤销' + refund + '。' + contact }
+    : { title: '报名已取消', content: '你在「' + e.title + '」的报名已被取消' + refund + '。' + contact };
+  await ensureCollection('inbox');
+  if (cost) await ensureCollection('point_logs');
+  let removed = false;
+  try {
+    await db.runTransaction(async (t) => {
+      removed = false;
+      const rm = await t.collection('signups').doc(id).remove();
+      if (!rm.stats.removed) return;
+      const ev = (await t.collection('events').doc(e._id).get()).data;
+      if (ev.signupCount >= 1) await t.collection('events').doc(e._id).update({ data: { signupCount: _.inc(-1) } });
+      if (cost) {
+        await t.collection('members').doc(openid).update({ data: { points: _.inc(cost) } });
+        const log = { openid: openid, delta: cost, reason: '退回「' + e.title + '」的报名积分', createdAt: db.serverDate() };
+        if (by) log.by = by;
+        await t.collection('point_logs').add({ data: log });
+      }
+      await t.collection('inbox').add({ data: { openid: openid, title: notice.title, content: notice.content, read: false, createdAt: db.serverDate() } });
+      removed = true;
+    });
+  } catch (err) {
+    // 记录还在：这次没做成，什么都没变，把错误交出去，再点一次就行。
+    // 记录不在了：别的请求刚撤掉，或者这次其实做成了只是结果没传回来。两种情况积分都已经退好，按「没什么可撤的」处理
+    if (await findById('signups', id)) throw err;
+    return false;
+  }
+  if (!removed) return false;
+  // 报名时同意了订阅的：用那一条额度发一条微信的服务通知。发不出去（他后来关了订阅等）不影响别的，站内消息已经留好了
   if (s.templateId) {
     try {
       await cloud.openapi.subscribeMessage.send({
@@ -478,10 +498,11 @@ async function removeSignup(openid, e, why, by) {
       console.error('cancel notice', id, err && (err.errCode || err.errMsg || err.message));
     }
   }
-  if (why === 'event') await addInbox(openid, '活动取消', '「' + e.title + '」取消了，你的报名已撤销' + refund + '。' + contact);
-  else await addInbox(openid, '报名已取消', '你在「' + e.title + '」的报名已被取消' + refund + '。' + contact);
   return true;
 }
+
+/** 报名的事务和别人的撞上时，一共试几次 */
+const SIGNUP_TRIES = 4;
 
 /** 会员报名从 memberSignupStart 开始；没填就用 signupStart */
 const signupOpensAt = (e) => ms(e.memberSignupStart) || ms(e.signupStart);
@@ -654,6 +675,7 @@ const actions = {
   /**
    * 取消整场活动：先下架（小程序里不再显示，也报不了名），再把报名的人逐个撤掉、退积分、留消息。
    * 人多时一次调用做不完：每次最多处理 40 人，返回还剩多少（remaining），页面接着调，直到 0。
+   * 报名的事务里会重新读活动的状态，所以下架之后不会再有新的报名写进来。
    */
   async adminCancelEvent(event, openid) {
     await requireAdmin(openid);
@@ -662,7 +684,10 @@ const actions = {
     if (!e) throw fail('not_found');
     if (!e.cancelled) await db.collection('events').doc(id).update({ data: { status: 'draft', cancelled: true, cancelledAt: db.serverDate(), updatedAt: db.serverDate() } });
     const batch = await db.collection('signups').where({ eventId: id }).limit(40).get();
-    for (const s of batch.data) await removeSignup(s.openid, e, 'event', openid);
+    for (const s of batch.data) {
+      // 某一个人没撤成（数据库一时出错）不拖累别人：他还留在名单里，算在 remaining 里，下一次调用再撤
+      try { await removeSignup(s.openid, e, 'event', openid); } catch (err) { console.error('cancel event', s._id, err && err.message); }
+    }
     const remaining = (await db.collection('signups').where({ eventId: id }).count()).total;
     return { event: adminEventView(await findById('events', id)), remaining: remaining };
   },
@@ -933,7 +958,8 @@ const actions = {
   /**
    * 报名：要先是会员；在报名时间内；有名额限制时不超额；这场要用积分的，积分得够（不够报不了）。
    * 报名后会员自己不能取消，要联系运营（活动详情里有联系方式），由运营在后台取消并退积分。
-   * 先用条件更新占名额，再写报名记录。任何一步中断，signupCount 只会多不会少，所以不会超额（最坏是空出一个名额）。
+   * 占名额、扣积分、写报名记录在一个事务里，要么都做成要么都没做：不会扣了积分却没报上，也不会超额。
+   * 活动在这中间被下架或取消的，事务里会发现，报不上。
    */
   async signup(event, openid) {
     const member = await findById('members', openid);
@@ -948,50 +974,55 @@ const actions = {
     const id = openid + '_' + e._id;
     if (await findById('signups', id)) return { eventId: e._id, already: true };
 
-    // 这场要用积分的：先看够不够，不够就不用去占名额了
+    // 这场要用积分的：先看够不够，不够就不用往下走了（事务里还会再看一次）
     const cost = costOf(e);
     if (cost && !((member.points || 0) >= cost)) throw fail('insufficient_points');
+    if (cost) await ensureCollection('point_logs');
 
-    // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
-    if (typeof e.signupCount !== 'number') await db.collection('events').where({ _id: e._id, signupCount: _.exists(false) }).update({ data: { signupCount: 0 } });
-    if (typeof e.quota === 'number') {
-      // 条件更新：只有还没满时才加一，避免并发超额
-      const res = await db.collection('events').where({ _id: e._id, signupCount: _.lt(e.quota) }).update({ data: { signupCount: _.inc(1) } });
-      if (!res.stats.updated) throw fail('full');
-    } else {
-      await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(1) } });
-    }
-    const release = () => db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(-1) } });
-    // 扣积分也是条件更新：只有还够的时候才扣得动，同一个人同时报两场不会扣成负数
-    if (cost) {
-      const paid = await db.collection('members').where({ _id: openid, points: _.gte(cost) }).update({ data: { points: _.inc(-cost) } });
-      if (!paid.stats.updated) {
-        await release();
-        // 同一个人连点了两次：另一个请求刚把积分扣走并报上了名，这次按「已经报过」处理，不提示积分不够
-        if (await findById('signups', id)) return { eventId: e._id, already: true };
-        throw fail('insufficient_points');
-      }
-    }
-    const refund = () => (cost ? db.collection('members').where({ _id: openid }).update({ data: { points: _.inc(cost) } }) : null);
-    // 报名记录带上本次请求的标记，写入出错时靠它分清是哪种情况；cost 是这次用了多少积分，取消时照这个数退
+    // 报名记录带上本次请求的标记，事务出错时靠它分清是哪种情况；cost 是这次用了多少积分，取消时照这个数退
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    try {
-      // templateId：报名时同意了订阅消息的，记下模板，报名被取消或活动取消时用它发一条通知
-      await db.collection('signups').add({
+    // 事务里发现报不了时把原因记在这里（事务不写任何东西，正常结束）
+    let refused = '';
+    const attempt = () => db.runTransaction(async (t) => {
+      refused = '';
+      // 活动和会员在事务里重新读：这时活动可能刚被下架或取消，名额可能刚被别人占掉，积分可能刚用在别处
+      const ev = (await t.collection('events').doc(e._id).get()).data;
+      if (ev.status !== 'published') { refused = 'not_found'; return; }
+      const count = typeof ev.signupCount === 'number' ? ev.signupCount : 0;
+      if (typeof ev.quota === 'number' && count >= ev.quota) { refused = 'full'; return; }
+      if (cost) {
+        const me = (await t.collection('members').doc(openid).get()).data;
+        if (!((me.points || 0) >= cost)) { refused = 'insufficient_points'; return; }
+        await t.collection('members').doc(openid).update({ data: { points: _.inc(-cost) } });
+        await t.collection('point_logs').add({ data: { openid: openid, delta: -cost, reason: '报名「' + e.title + '」', createdAt: db.serverDate() } });
+      }
+      // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
+      await t.collection('events').doc(e._id).update({ data: { signupCount: count + 1 } });
+      // templateId：报名时同意了订阅消息的，记下模板，报名被取消或活动取消时用它发一条通知。
+      // 同一个人的另一个请求已经写了这条记录时，这里会失败，整个事务作废
+      await t.collection('signups').add({
         data: { _id: id, openid: openid, eventId: e._id, token: token, cost: cost, templateId: event.templateId ? String(event.templateId) : '', createdAt: db.serverDate() }
       });
-    } catch (err) {
-      const existing = await findById('signups', id);
-      // 记录在，而且是这次请求写的：写入其实成功了，只是响应丢了。名额和积分都已经用上，不能退，照成功处理。
-      if (!(existing && existing.token === token)) {
-        // 记录在，但是别的请求写的（同一个人并发点了两次），或者确实没写进去：把这次多占的名额、多扣的积分还回去
-        await release();
-        await refund();
+    });
+    for (let left = SIGNUP_TRIES; ; left--) {
+      try {
+        await attempt();
+        break;
+      } catch (err) {
+        const existing = await findById('signups', id);
+        // 记录在，而且是这次请求写的：事务其实提交了，只是结果没传回来。照成功处理
+        if (existing && existing.token === token) break;
+        // 记录在，但是别的请求写的（同一个人连点了两次）：这次什么都没扣，按「已经报过」处理
         if (existing) return { eventId: e._id, already: true };
-        throw err;
+        // 没写进去（很多人同时抢名额时事务会互相冲突）：这次什么都没变，再试；试够了把错误交出去
+        if (left <= 1) throw err;
       }
     }
-    if (cost) await logPoints(openid, -cost, '报名「' + e.title + '」');
+    if (refused) {
+      // 同一个人连点了两次：另一个请求刚把积分扣走并报上了名，这次按「已经报过」处理，不提示积分不够或名额满了
+      if (await findById('signups', id)) return { eventId: e._id, already: true };
+      throw fail(refused);
+    }
     return { eventId: e._id, already: false, member: memberView(await findById('members', openid)) };
   }
 };

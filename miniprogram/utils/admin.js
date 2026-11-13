@@ -35,16 +35,18 @@ function cancelSignup(id, memberNo) {
 }
 /**
  * 取消整场活动。人多时云端一次做不完，这里接着调，直到做完。
- * onProgress(还剩多少人) 每做完一批回调一次。
+ * onProgress(还剩多少人) 每做完一批回调一次。没做完就停下来的，reject { code: 'cancel_incomplete' }。
  */
 function cancelEvent(id, onProgress) {
-  const step = (left) => cloud.call('adminCancelEvent', { id: id }).then((d) => {
+  // 只要人数在减少就一直做下去；连着三轮没减少（出了什么问题）才停，停下来时按「没做完」报错，不当成做完
+  const step = (last, stuck) => cloud.call('adminCancelEvent', { id: id }).then((d) => {
     if (onProgress) onProgress(d.remaining);
-    // 做完了；或者连着十轮人数都没少（出了什么问题），停下来，不无休止地调
-    if (!d.remaining || left <= 0) return d;
-    return step(left - 1);
+    if (!d.remaining) return d;
+    const still = last != null && d.remaining >= last ? stuck + 1 : 0;
+    if (still >= 3) return Promise.reject({ code: 'cancel_incomplete', remaining: d.remaining });
+    return step(d.remaining, still);
   });
-  return step(60);
+  return step(null, 0);
 }
 /** 往期的赞助赛事（活动页「往期」里的照片卡），年份新的在前 */
 function listPast() {

@@ -115,12 +115,27 @@ Page({
     if (!store.isMember()) { go('join'); return; }
     const event = this.data.event;
     const cost = event.cost > 0 ? event.cost : 0;
-    // 本机知道积分不够的，直接说，不用先弹订阅和确认
-    const points = (store.getMember() || {}).points;
-    if (cost && typeof points === 'number' && points < cost) { this.sayShort(cost); return; }
+    const short = () => { const p = (store.getMember() || {}).points; return cost > 0 && typeof p === 'number' && p < cost; };
+    // 本机记着的积分不够：这个数可能是旧的（运营刚给加了积分），先和云端对一下再说够不够
+    if (short()) {
+      this.signing = true;
+      wx.showLoading({ title: '', mask: true });
+      store.sync().catch(() => false).then(() => {
+        wx.hideLoading();
+        if (short()) { this.signing = false; this.sayShort(cost); return; }
+        // 对完发现够了：接着报。这时已经不是点击的那一下，订阅请求弹不出来，这一次就不问了
+        this.finishSignup(event, cost, Promise.resolve(''));
+      });
+      return;
+    }
     this.signing = true;
     // 先请用户订阅一次消息（必须由这次点击直接触发）：同意了的，报名被取消或活动取消时能收到微信通知；不同意也照样报
-    events.askSubscribe()
+    this.finishSignup(event, cost, events.askSubscribe());
+  },
+
+  /** 报名的后半段：等订阅的结果（templateId，没同意是空的）→ 要用积分的确认一次 → 报名 */
+  finishSignup(event, cost, asked) {
+    asked
       .then((templateId) => this.confirmCost(cost).then((go_) => (go_ ? store.signup(event.id, templateId).then(() => true) : false)))
       .then((done) => {
         if (!done) return;

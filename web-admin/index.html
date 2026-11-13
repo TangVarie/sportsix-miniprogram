@@ -470,6 +470,7 @@
     bad_signup_time: '报名结束要晚于报名开始',
     bad_cost: '积分数太大了',
     not_signed: '这个人已经不在名单里了',
+    cancel_incomplete: '还有人没处理完，请再点一次「取消整场活动」',
     bad_year: '年份填四位数字',
     missing_name: '请填写名称',
     missing_image: '请选择照片',
@@ -1043,14 +1044,17 @@
     rosterBusy = true;
     var btn = this;
     btn.disabled = true;
-    var step = function (left) {
+    // 只要人数在减少就一直做下去；连着三轮没减少才停，停下来时按「没做完」报错，不当成做完
+    var step = function (last, stuck) {
       return call('adminCancelEvent', { id: id }).then(function (d) {
         if (rosterEvent && rosterEvent.id === id) $('roster-count').textContent = d.remaining ? '正在处理，还剩 ' + d.remaining + ' 人' : '';
-        if (!d.remaining || left <= 0) return d;
-        return step(left - 1);
+        if (!d.remaining) return d;
+        var still = last != null && d.remaining >= last ? stuck + 1 : 0;
+        if (still >= 3) return Promise.reject({ code: 'cancel_incomplete' });
+        return step(d.remaining, still);
       });
     };
-    step(60).then(function () { toast('活动已取消'); })
+    step(null, 0).then(function () { toast('活动已取消'); })
       .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
       .then(function () { rosterBusy = false; btn.disabled = false; loadEvents(); if (rosterEvent && rosterEvent.id === id) return loadRoster(); return null; });
   });

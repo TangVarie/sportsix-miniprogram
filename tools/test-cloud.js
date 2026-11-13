@@ -422,14 +422,21 @@ async function signupFailureTests() {
   const count = () => cloud.col('events').find((e) => e._id === 'race').signupCount;
   await call('register', { code: 'code-a' });
 
-  cloud.state.addFails = 'before';
-  eq((await call('signup', { eventId: 'race' })).code, 'server_error', '报名记录没写进去时报错');
-  eq(count(), 0, '没写进去：占的名额退回');
+  cloud.state.txFails = 'always';
+  eq((await call('signup', { eventId: 'race' })).code, 'server_error', '事务一直提交不了时报错');
+  cloud.state.txFails = null;
+  eq(count(), undefined, '没提交：名额没动');
   eq(cloud.col('signups').length, 0, '没有留下报名记录');
 
-  cloud.state.addFails = 'after';
-  eq((await call('signup', { eventId: 'race' })).data.already, false, '写进去了但响应丢失：按成功处理');
-  eq(count(), 1, '响应丢失时不退名额');
+  cloud.state.addFails = 'before';
+  eq((await call('signup', { eventId: 'race' })).data.already, false, '事务撞上了一次：自己再试，报上');
+  eq([count(), cloud.col('signups').length], [1, 1], '重试不会多占名额');
+  cloud.col('signups').length = 0;
+  cloud.col('events').find((e) => e._id === 'race').signupCount = 0;
+
+  cloud.state.txFails = 'after';
+  eq((await call('signup', { eventId: 'race' })).data.already, false, '提交了但结果没传回来：按成功处理');
+  eq([count(), cloud.col('signups').length], [1, 1], '结果丢失时不会再报一次');
 
   cloud.state.openid = 'user-b';
   await call('register', { code: 'code-b' });
@@ -483,15 +490,19 @@ async function paidSignupTests() {
   eq([member('user-c').points, event(climb).signupCount], [299, 1], '没扣积分，也没占名额');
   // 同一个人两个请求同时进来：只成一个，只扣一次
   member('user-c').points = 300;
-  const twice = await Promise.all([as('user-c', 'signup', { eventId: climb }), as('user-c', 'signup', { eventId: climb })]);
+  cloud.state.openid = 'user-c';
+  const twice = await Promise.all([call('signup', { eventId: climb }), call('signup', { eventId: climb })]);
+  cloud.state.openid = 'user-a';
   eq([twice.every((x) => x.ok), member('user-c').points, event(climb).signupCount, logs('user-c').filter((l) => l[0] === -300).length], [true, 0, 2, 1], '同时点两次：只扣一次积分，只占一个名额');
   // 名额满了：不扣积分
   event(climb).quota = 2;
   eq([(await call('signup', { eventId: climb })).code, member('user-a').points], ['full', 500], '名额满了不扣积分');
   // 报名记录没写成：名额和积分都还回去
   await call('adminSaveEvent', { id: climb, event: { type: '赛事', title: '欢乐爬', status: 'published', date: cloud.state.now + 9 * DAY, quota: 5, cost: 300, contact: '客服电话 021-0000' } });
-  cloud.state.addFails = 'before';
-  eq([(await call('signup', { eventId: climb })).code, member('user-a').points, event(climb).signupCount], ['server_error', 500, 2], '报名记录没写成：积分和名额都还回去');
+  cloud.state.txFails = 'always';
+  eq([(await call('signup', { eventId: climb })).code, member('user-a').points, event(climb).signupCount], ['server_error', 500, 2], '事务没提交：积分和名额都没动');
+  cloud.state.txFails = null;
+  eq(logs('user-a').filter((l) => l[0] < 0), [], '也没有多出积分记录');
 
   // 报名名单：只有管理员能看，带完整手机号
   eq((await as('user-b', 'adminSignups', { id: climb })).code, 'forbidden', '普通会员看不了名单');
@@ -558,6 +569,94 @@ async function paidSignupTests() {
 }
 
 /** 往期的赞助赛事：存在云端，运营在后台增删改，不用重新发版 */
+/** 报名和取消中途出错、互相撞上时：积分和名额不能对不上 */
+async function signupRecoveryTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  cloud.state.phones = { 'code-a': '13800001234', 'code-b': '13900005678', 'code-c': '13700002222' };
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const as = async (openid, action, data) => {
+    const who = cloud.state.openid;
+    cloud.state.openid = openid;
+    try { return await call(action, data); } finally { cloud.state.openid = who; }
+  };
+  const member = (id) => cloud.col('members').find((m) => m._id === id);
+  const event = (id) => cloud.col('events').find((e) => e._id === id);
+  const logs = (id) => cloud.col('point_logs').filter((l) => l.openid === id && l.reason !== 'welcome').map((l) => l.delta);
+  const inbox = (id) => (state().inbox || []).filter((m) => m.openid === id).length;
+  const state = () => cloud.state.data;
+  await call('register', { code: 'code-a' });
+  member('user-a').admin = true;
+  await as('user-b', 'register', { code: 'code-b' });
+  await as('user-c', 'register', { code: 'code-c' });
+  const make = async (title) => (await call('adminSaveEvent', { event: { type: '赛事', title: title, status: 'published', date: cloud.state.now + 9 * DAY, cost: 100, quota: 5 } })).data.event.id;
+  const run = await make('晨跑');
+
+  // 扣积分那一步做成了但结果没传回来：不会扣了积分却没报上，再点也不会扣第二次
+  cloud.state.txFails = 'after';
+  let r = await as('user-b', 'signup', { eventId: run });
+  eq([r.data.already, member('user-b').points, event(run).signupCount, logs('user-b')], [false, 400, 1, [-100]], '结果丢了：报上了，只扣一次');
+  eq([(await as('user-b', 'signup', { eventId: run })).data.already, member('user-b').points, event(run).signupCount], [true, 400, 1], '再点一次：已经报过，不再扣');
+  // 一直提交不了：什么都没变
+  cloud.state.txFails = 'always';
+  eq((await as('user-c', 'signup', { eventId: run })).code, 'server_error', '提交不了时报错');
+  cloud.state.txFails = null;
+  eq([member('user-c').points, event(run).signupCount, logs('user-c'), cloud.col('signups').length], [500, 1, [], 1], '没扣积分、没占名额、没有记录');
+
+  // 取消报名中途出错：记录还在、积分没动，再点一次能做完，不会漏退也不会多退
+  cloud.state.txFails = 'always';
+  eq((await call('adminCancelSignup', { id: run, memberNo: '100002' })).code, 'server_error', '取消做不成时报错');
+  cloud.state.txFails = null;
+  eq([cloud.col('signups').length, member('user-b').points, event(run).signupCount, inbox('user-b')], [1, 400, 1, 0], '没做成：报名还在，积分和名额没动，也没留消息');
+  ok((await call('adminCancelSignup', { id: run, memberNo: '100002' })).ok, '再点一次做成');
+  eq([cloud.col('signups').length, member('user-b').points, event(run).signupCount, inbox('user-b'), logs('user-b')], [0, 500, 0, 1, [-100, 100]], '报名撤了，积分退回一次，留了一条消息');
+  // 取消做成了但结果没传回来：积分已经退好，再点提示不在名单里，不会多退
+  await as('user-b', 'signup', { eventId: run });
+  cloud.state.txFails = 'after';
+  await call('adminCancelSignup', { id: run, memberNo: '100002' });
+  eq([cloud.col('signups').length, member('user-b').points], [0, 500], '结果丢了：其实已经撤掉并退回');
+  eq([(await call('adminCancelSignup', { id: run, memberNo: '100002' })).code, member('user-b').points], ['not_signed', 500], '再点不会多退');
+
+  // 取消整场活动时，有人的报名正走到一半（已经看过活动是上架的，还没扣积分）：他报不上，也不会被扣积分
+  const race2 = await make('夜跑');
+  let cancelled = null;
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    cancelled = await as('user-a', 'adminCancelEvent', { id: race2 });
+  };
+  r = await as('user-c', 'signup', { eventId: race2 });
+  eq([cancelled.data.remaining, r.code], [0, 'not_found'], '活动先取消完了，走到一半的报名报不上');
+  eq([member('user-c').points, cloud.col('signups').filter((x) => x.eventId === race2).length, event(race2).signupCount || 0, logs('user-c')], [500, 0, 0, []], '没扣积分，取消了的活动上没有留下报名');
+
+  // 取消整场活动时有一个人一时撤不掉：别人照撤，他留在名单里，再调一次撤完
+  const race3 = await make('山路');
+  await as('user-b', 'signup', { eventId: race3 });
+  await as('user-c', 'signup', { eventId: race3 });
+  cloud.state.txFails = 'before';
+  r = await call('adminCancelEvent', { id: race3 });
+  eq([r.ok, r.data.remaining, member('user-b').points + member('user-c').points], [true, 1, 900], '一个没撤成：算在还剩的人数里，另一个已经退了');
+  r = await call('adminCancelEvent', { id: race3 });
+  eq([r.data.remaining, member('user-b').points, member('user-c').points], [0, 500, 500], '再调一次撤完，每人只退一次');
+
+  // 页面上的「接着调」：只要人数在减少就一直做；一直不减少就按没做完报错，不当成做完
+  const path = require('path');
+  const adminJs = path.join(__dirname, '..', 'miniprogram', 'utils', 'admin.js');
+  const cloudJs = path.join(__dirname, '..', 'miniprogram', 'utils', 'cloud.js');
+  const realCall = require(cloudJs).call;
+  let left = 2600; let calls = 0;
+  require(cloudJs).call = () => { calls += 1; left = Math.max(0, left - 40); return Promise.resolve({ remaining: left }); };
+  delete require.cache[adminJs];
+  const seen = [];
+  r = await require(adminJs).cancelEvent('x', (n) => seen.push(n));
+  eq([r.remaining, calls, seen.length], [0, 65, 65], '2600 人：一直做到完，不在中途当成做完');
+  require(cloudJs).call = () => Promise.resolve({ remaining: 7 });
+  r = await require(adminJs).cancelEvent('x').then(() => 'done', (e) => e.code);
+  eq(r, 'cancel_incomplete', '人数一直不减少：停下来报没做完');
+  require(cloudJs).call = realCall;
+  delete require.cache[adminJs];
+}
+
 async function pastTests() {
   const cloud = createCloud();
   seed(cloud);
@@ -1465,6 +1564,24 @@ async function signupClientTests() {
   p.onSignup();
   await tick();
   eq([p.data.signed, lastToast(env), calls(env, 'requestSubscribeMessage').length - asked], [false, '积分不够，这场需要 900 积分', 0], '积分不够：提示这场要多少，不弹订阅');
+  // 本机记着的积分是旧的（运营刚给加了积分）：先和云端对一下，够了就能报
+  userB.points = 1000;
+  p.onSignup();
+  await tick(); await tick();
+  eq([p.data.signed, userB.points], [true, 100], '运营加了积分之后，不用重开小程序就能报');
+  // 后面的用例接着用原来的数
+  userB.points = 200;
+  cloud.col('signups').splice(cloud.col('signups').findIndex((x) => x.eventId === pricey), 1);
+  // 联网对不上的时候：照本机的数说不够，按钮还能再点
+  await as('user-a', 'adminSaveEvent', { event: { type: '赛事', title: '更贵的活动', status: 'published', date: cloud.state.now + 8 * DAY, cost: 5000 } });
+  p = env.openPage('pages/event-detail/index', { id: cloud.col('events').find((e) => e.title === '更贵的活动')._id });
+  await tick();
+  cloud.state.getError = () => true;
+  p.onSignup();
+  await tick(); await tick();
+  cloud.state.getError = null;
+  eq([p.data.signed, lastToast(env), !!p.signing], [false, '积分不够，这场需要 5000 积分', false], '对不上云端时照本机的数提示，之后还能再点');
+
   // 不用积分、也没填联系方式的活动：没有报名须知，不弹确认
   p = env.openPage('pages/event-detail/index', { id: 'trial' });
   await tick();
@@ -1701,6 +1818,7 @@ async function fontTests() {
   await remindTests();
   await newsTests();
   await pastTests();
+  await signupRecoveryTests();
   await paidSignupTests();
   await clientTests();
   console.log('云开发测试通过：' + n + ' 项');
