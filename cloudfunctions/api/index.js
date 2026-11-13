@@ -294,7 +294,13 @@ async function listPast() {
     }
     all = await read();
     if (!PAST_SEED.every((s, i) => all.some((p) => p._id === 'seed-' + (i + 1)))) throw fail('server_error');
-    try { await col().add({ data: { _id: PAST_MARK, createdAt: db.serverDate() } }); } catch (e) { /* 另一个请求刚记上 */ }
+    try {
+      await col().add({ data: { _id: PAST_MARK, createdAt: db.serverDate() } });
+    } catch (e) {
+      // 另一个请求刚记上的话没事；确实没记上就报错。没记上还接着往下做的话，
+      // 这次删掉的初始赛事，下一次读又会被当成「还没放齐」补回来
+      if (!(await findById('past_events', PAST_MARK))) throw fail('server_error');
+    }
   }
   return all.filter((p) => p._id !== PAST_MARK)
     .sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))

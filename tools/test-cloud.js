@@ -452,6 +452,24 @@ async function pastTests() {
   r = await call('pastEvents');
   eq([r.ok, r.data.past.length], [true, 4], '下一次读接着补齐');
 
+  // 四场都在、只差「放完了」那条记录没记上（上次记的时候出错）：这时删除要先失败，不能删了又被补回来
+  {
+    const c2 = createCloud();
+    seed(c2);
+    const api2 = c2.load('api');
+    const call2 = (action, data) => c2.run(() => api2.main(Object.assign({ action: action }, data)));
+    await call2('register', { code: 'code-a' });
+    c2.col('members').find((d) => d._id === 'user-a').admin = true;
+    await call2('pastEvents');
+    const list = c2.col('past_events');
+    list.splice(list.findIndex((d) => d._id === '_seeded'), 1);
+    c2.state.addFails = 'before';
+    eq((await call2('adminDeletePast', { id: 'seed-1' })).code, 'server_error', '「放完了」没记上：删除报错');
+    ok(list.some((d) => d._id === 'seed-1'), '没有删掉又补回来这种假成功');
+    ok((await call2('adminDeletePast', { id: 'seed-1' })).ok && !list.some((d) => d._id === 'seed-1'), '记上以后删除正常');
+    eq((await call2('pastEvents')).data.past.length, 3, '删掉的不会回来');
+  }
+
   // 之后再读：就是包里原有的那几场
   r = await call('pastEvents');
   eq(r.data.past.map((p) => [p.year, p.name, p.nameEn, p.image]), packaged.map((p) => [p.year, p.name, p.nameEn, p.image]), '第一次读到的就是包里原有的那几场，顺序一样');
