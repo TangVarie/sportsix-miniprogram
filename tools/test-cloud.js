@@ -1304,6 +1304,11 @@ function shopTests() {
     c.onChoose({ currentTarget: { dataset: { id: 'energy-gel' } } });
     eq([c.data.choosing, jumps.slice(-1)[0]], [false, '#小程序://店铺/商品/basic'], '选了以后跳到那一款');
 
+    // 两款用的是同一条链接（店铺里一个商品页能选两款）：不用选，直接跳
+    c = make({ 'energy-gel': '#小程序://店铺/商品/all', 'energy-gel-pro': '#小程序://店铺/商品/all' }, {});
+    c.open();
+    eq([c.data.choosing, jumps.slice(-1)[0]], [false, '#小程序://店铺/商品/all'], '两款是同一条链接：直接跳，不弹出来选');
+
     // 只填了一款的链接：不用选，直接跳；没填的那款在它的产品页上不显示入口
     c = make({ 'energy-gel': '', 'energy-gel-pro': '#小程序://店铺/商品/pro' }, {});
     c.open();
