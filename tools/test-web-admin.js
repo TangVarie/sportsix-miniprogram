@@ -273,7 +273,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.fill('#p-nameEn', 'Seoul Marathon');
     await page.click('#past-save');
     await page.waitForFunction(() => document.getElementById('past-rows').textContent.includes('Seoul Marathon'));
-    eq(cloud.col('past_events').length, 5, '编辑不多出一条');
+    eq(cloud.col('past_events').filter((x) => x.name).length, 5, '编辑不多出一条');
     await shot('past');
     page.once('dialog', (d) => d.accept());
     await page.locator('#past-rows tr', { hasText: '韩国自由跑' }).getByText('删除').click();

@@ -255,16 +255,22 @@ const PAST_SEED = [
   { year: '2025', name: '韩国自由跑', nameEn: 'Hangang StyleRun', image: 'assets/photos/endorsement/2025-hangang-stylerun.jpg' }
 ];
 
+/** past_events 里记「初始的几场已经放完了」的那条记录，不是赛事 */
+const PAST_MARK = '_seeded';
+
 /**
  * 全部往期赛事，年份新的在前，同一年里按 order 从小到大（新加的排在这一年的最前面）。
- * 集合还没建：建好并放进 PAST_SEED。只有亲手把集合建出来的那个请求才放种子：
- * 读取一时出错（集合其实在）时不放，不然运营删掉的那几场会被放回来。
+ *
+ * 第一次用到时建集合、放进 PAST_SEED，放完记一条 PAST_MARK。只要这条记录还没有，就说明初始的几场没放完
+ * （集合刚建，或者上次放到一半出错了），每次读都接着补缺的那几条；补不齐就报错，不把残缺的列表交出去。
+ * 有了这条记录之后不再补：运营删掉的那几场不会被放回来。
  */
 async function listPast() {
+  const col = () => db.collection('past_events');
   const read = async () => {
     const all = [];
     for (let page = 0; page < 10; page++) {
-      const res = await db.collection('past_events').skip(page * 100).limit(100).get();
+      const res = await col().skip(page * 100).limit(100).get();
       all.push(...res.data);
       if (res.data.length < 100) break;
     }
@@ -274,16 +280,24 @@ async function listPast() {
   try {
     all = await read();
   } catch (e) {
-    let created = false;
-    try { await db.createCollection('past_events'); created = true; } catch (e2) { /* 集合已经有了：刚才是读取出错，或者另一个请求刚建好 */ }
-    if (created) {
-      for (let i = 0; i < PAST_SEED.length; i++) {
-        await db.collection('past_events').add({ data: Object.assign({ _id: 'seed-' + (i + 1), order: i, createdAt: db.serverDate() }, PAST_SEED[i]) });
-      }
-    }
+    // 集合还没建（建好再读），或者读取一时出错（集合已经有了，再读一次，还不行就报错）
+    try { await db.createCollection('past_events'); } catch (e2) { /* 集合已经有了 */ }
     all = await read();
   }
-  return all.sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))
+  if (!all.some((p) => p._id === PAST_MARK)) {
+    for (let i = 0; i < PAST_SEED.length; i++) {
+      const id = 'seed-' + (i + 1);
+      if (all.some((p) => p._id === id)) continue;
+      try {
+        await col().add({ data: Object.assign({ _id: id, order: i, createdAt: db.serverDate() }, PAST_SEED[i]) });
+      } catch (e) { /* 另一个请求刚放进去，或者这次没写成：下面重读一遍再看齐不齐 */ }
+    }
+    all = await read();
+    if (!PAST_SEED.every((s, i) => all.some((p) => p._id === 'seed-' + (i + 1)))) throw fail('server_error');
+    try { await col().add({ data: { _id: PAST_MARK, createdAt: db.serverDate() } }); } catch (e) { /* 另一个请求刚记上 */ }
+  }
+  return all.filter((p) => p._id !== PAST_MARK)
+    .sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))
     .map((p) => ({ id: p._id, year: p.year || '', name: p.name || '', nameEn: p.nameEn || '', image: p.image || '' }));
 }
 

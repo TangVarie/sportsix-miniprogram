@@ -445,8 +445,15 @@ async function pastTests() {
   const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
   const packaged = require('../reference/content/events.json').past;
 
-  // 第一次读：集合自己建，放进和包里一样的那几场
+  // 第一次读时放初始的几场，中途有一条没写成：这次报错，不交出残缺的列表；下一次接着补齐
+  cloud.state.addFails = 'before';
   let r = await call('pastEvents');
+  eq(r.code, 'server_error', '初始的几场没放齐：报错，不返回残缺的列表');
+  r = await call('pastEvents');
+  eq([r.ok, r.data.past.length], [true, 4], '下一次读接着补齐');
+
+  // 之后再读：就是包里原有的那几场
+  r = await call('pastEvents');
   eq(r.data.past.map((p) => [p.year, p.name, p.nameEn, p.image]), packaged.map((p) => [p.year, p.name, p.nameEn, p.image]), '第一次读到的就是包里原有的那几场，顺序一样');
   ok(r.data.past.every((p) => p.id), '每场带 id');
 
@@ -477,6 +484,7 @@ async function pastTests() {
   r = await call('pastEvents');
   cloud.state.getError = null;
   ok(r.ok && r.data.past.length === 5 && !r.data.past.some((p) => p.id === 'seed-1'), '读取出错后重读，删掉的没有回来');
+  ok(!r.data.past.some((p) => p.id === '_seeded') && (await call('adminDeletePast', { id: '_seeded' })).code === 'not_found', '记「放完了」的那条记录不算赛事，也删不掉');
   cloud.state.openid = 'user-b';
   eq((await call('pastEvents')).data.past.length, 5, '没注册的用户也能看往期');
 }
