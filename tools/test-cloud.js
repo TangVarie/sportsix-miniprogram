@@ -1331,7 +1331,7 @@ function shopTests() {
     delete require.cache[shopFile];
     // 页面上给用户看的字里不出现店铺的名字（店铺是别的渠道，只带路不宣传）
     const copy = require(shopFile);
-    ok(!/海纳/.test(JSON.stringify([copy.card, copy.menu, copy.sheet, copy.failed])), '入口的文案里不写店铺的名字');
+    ok(!/海纳|优惠/.test(JSON.stringify([copy.card, copy.menu, copy.sheet, copy.failed])), '入口的文案里不写店铺的名字，也不提优惠');
     const live = copy.links;
     ok(Object.keys(live).every((k) => ['energy-gel', 'energy-gel-pro'].includes(k) && (live[k] === '' || live[k].indexOf('#小程序://') === 0)), '配置里的链接格式对');
   } finally {
