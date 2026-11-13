@@ -31,6 +31,8 @@ Page({
     id: '',
     title: '',
     countText: '',
+    // 一共多少人报名。名单太长时比 list 多
+    total: 0,
     cancelled: false,
     loading: true,
     busy: false,
@@ -58,7 +60,8 @@ Page({
           title: d.event.title,
           cancelled: !!d.event.cancelled,
           list: d.signups.map(row),
-          countText: c.count.replace('[人数]', d.signups.length),
+          total: d.total > d.signups.length ? d.total : d.signups.length,
+          countText: d.total > d.signups.length ? c.countPartial.replace('[人数]', d.total).replace('[显示]', d.signups.length) : c.count.replace('[人数]', d.signups.length),
           loading: false
         });
       })
@@ -117,7 +120,7 @@ Page({
     if (this.data.busy) return;
     wx.showModal({
       title: c.cancelEventTitle,
-      content: c.cancelEventConfirm.replace('[人数]', this.data.list.length),
+      content: c.cancelEventConfirm.replace('[人数]', this.data.total || this.data.list.length),
       success: (res) => {
         if (!res.confirm) return;
         this.setData({ busy: true });

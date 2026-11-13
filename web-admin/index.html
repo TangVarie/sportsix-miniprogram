@@ -951,6 +951,7 @@
   /* ---------- 报名名单 ---------- */
   var rosterEvent = null; // 正在看哪场活动的名单
   var rosterList = [];
+  var rosterTotal = 0; // 一共多少人报名。名单太长时比 rosterList 多
   var rosterSeq = 0;
   var rosterBusy = false;
   function closeRoster() {
@@ -962,7 +963,7 @@
   function renderRoster() {
     var body = $('roster-rows');
     body.textContent = '';
-    $('roster-count').textContent = rosterList.length + ' 人报名';
+    $('roster-count').textContent = rosterTotal > rosterList.length ? rosterTotal + ' 人报名，名单太长，这里和导出的表格只有前 ' + rosterList.length + ' 人' : rosterList.length + ' 人报名';
     rosterList.forEach(function (s) {
       var tr = el('tr');
       var who = el('td');
@@ -998,12 +999,14 @@
     return call('adminSignups', { id: rosterEvent.id }).then(function (d) {
       if (mine !== rosterSeq) return;
       rosterList = d.signups || [];
+      rosterTotal = d.total || rosterList.length;
       renderRoster();
     }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); });
   }
   function openRoster(e) {
     rosterEvent = { id: e.id, title: e.title };
     rosterList = [];
+    rosterTotal = 0;
     $('roster-title').textContent = e.title;
     $('roster-count').textContent = '正在读取';
     $('roster-rows').textContent = '';
@@ -1040,7 +1043,7 @@
   $('roster-cancel-event').addEventListener('click', function () {
     if (rosterBusy || !rosterEvent) return;
     var id = rosterEvent.id;
-    if (!window.confirm('取消「' + rosterEvent.title + '」？活动会下架，' + rosterList.length + ' 位报名的人全部撤销，积分退回，每个人都会收到通知。这一步不能撤回。')) return;
+    if (!window.confirm('取消「' + rosterEvent.title + '」？活动会下架，' + Math.max(rosterTotal, rosterList.length) + ' 位报名的人全部撤销，积分退回，每个人都会收到通知。这一步不能撤回。')) return;
     rosterBusy = true;
     var btn = this;
     btn.disabled = true;

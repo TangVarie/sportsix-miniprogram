@@ -507,6 +507,9 @@ async function removeSignup(openid, e, why, by) {
   return true;
 }
 
+/** 报名名单一次最多读多少页（每页 100 人） */
+const ROSTER_PAGES = 50;
+
 /** 报名的事务和别人的撞上时，一共试几次 */
 const SIGNUP_TRIES = 4;
 
@@ -647,11 +650,13 @@ const actions = {
     const e = await findById('events', String(event.id || ''));
     if (!e) throw fail('not_found');
     const all = [];
-    for (let page = 0; page < 50; page++) {
+    for (let page = 0; page < ROSTER_PAGES; page++) {
       const res = await db.collection('signups').where({ eventId: e._id }).skip(page * 100).limit(100).get();
       all.push(...res.data);
       if (res.data.length < 100) break;
     }
+    // 名单最多给 ROSTER_PAGES × 100 人。超出时 total 比 signups 多，页面上要说明没显示全
+    const total = all.length < ROSTER_PAGES * 100 ? all.length : (await db.collection('signups').where({ eventId: e._id }).count()).total;
     all.sort((a, b) => (ms(a.createdAt) || 0) - (ms(b.createdAt) || 0));
     const members = {};
     for (let i = 0; i < all.length; i += 100) {
@@ -660,6 +665,7 @@ const actions = {
     }
     return {
       event: adminEventView(e),
+      total: total,
       signups: all.map((s) => {
         const m = members[s.openid] || {};
         return { memberNo: m.memberNo || '', nickname: m.nickname || '', phone: m.phone || '', cost: Number.isInteger(s.cost) ? s.cost : 0, at: ms(s.createdAt) };
@@ -987,10 +993,12 @@ const actions = {
     if (await findById('signups', id)) return { eventId: e._id, already: true };
 
     // 这场要用积分的：先看够不够，不够就不用往下走了（事务里还会再看一次）
-    if (costOf(e) && !((member.points || 0) >= costOf(e))) throw fail('insufficient_points');
-    await ensureCollection('point_logs');
     // expected：用户在页面上确认过的积分数（老版本的小程序不带这一项，不比）
     const expected = Number.isInteger(event.cost) && event.cost >= 0 ? event.cost : null;
+    // 要用的积分和他确认时看到的不一样了：先说这个，让页面拿新的数重新确认，而不是照旧的数说「积分不够」
+    if (expected !== null && expected !== costOf(e)) throw fail('cost_changed');
+    if (costOf(e) && !((member.points || 0) >= costOf(e))) throw fail('insufficient_points');
+    await ensureCollection('point_logs');
 
     // 报名记录带上本次请求的标记，事务出错时靠它分清是哪种情况；cost 是这次用了多少积分，取消时照这个数退
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2);

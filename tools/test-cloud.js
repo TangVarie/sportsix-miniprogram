@@ -677,6 +677,19 @@ async function signupRecoveryTests() {
   r = await as('user-b', 'signup', { eventId: race6, cost: 400 });
   eq([r.ok, member('user-b').points], [true, 100], '按新的数确认过：扣新的数');
   ok((await as('user-c', 'signup', { eventId: race6 })).ok, '老版本小程序不带确认的数：照常能报');
+  // 涨到比他的积分还多：先说数变了（页面去拿新的数），不是照旧的数说积分不够
+  const race7 = await make('古道');
+  await call('adminSaveEvent', { id: race7, event: { type: '赛事', title: '古道', status: 'published', date: cloud.state.now + 9 * DAY, cost: 9000 } });
+  eq((await as('user-b', 'signup', { eventId: race7, cost: 100 })).code, 'cost_changed', '涨到超过余额：提示数变了');
+  eq((await as('user-b', 'signup', { eventId: race7, cost: 9000 })).code, 'insufficient_points', '按新的数确认后才说积分不够');
+
+  // 名单特别长：只给前 5000 人，但告诉页面一共多少，不能当成全部
+  const big = await make('万人跑');
+  for (let i = 0; i < 5001; i++) cloud.col('signups').push({ _id: 'x' + i + '_' + big, openid: 'x' + i, eventId: big, cost: 0, createdAt: new Date(cloud.state.now) });
+  r = (await call('adminSignups', { id: big })).data;
+  eq([r.signups.length, r.total], [5000, 5001], '名单超过 5000 人：给前 5000 人和总人数');
+  r = (await call('adminSignups', { id: race7 })).data;
+  eq([r.signups.length, r.total], [0, 0], '平常的名单：总人数就是名单的长度');
 
   // 页面上的「接着调」：只要人数在减少就一直做；一直不减少就按没做完报错，不当成做完
   const path = require('path');

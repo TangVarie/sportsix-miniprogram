@@ -61,6 +61,7 @@ module.exports = {
   "signups": {
     "title": "报名名单",
     "count": "[人数] 人报名",
+    "countPartial": "[人数] 人报名，名单太长，这里只显示前 [显示] 人",
     "empty": "还没有人报名",
     "memberNo": "会员编号 [会员编号]",
     "noName": "没填昵称",

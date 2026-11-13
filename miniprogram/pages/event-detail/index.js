@@ -145,7 +145,8 @@ Page({
       .catch((e) => {
         // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
         if (e.code === 'not_member') { go('join'); return; }
-        if (e.code === 'insufficient_points') { this.sayShort(cost); return; }
+        // 积分不够：顺便取一次最新的活动，万一要用的积分也改过，页面上的数跟着变
+        if (e.code === 'insufficient_points') { events.refresh().then(() => this.render()); this.sayShort(cost); return; }
         // 这场要用的积分刚改过：没扣。取一次最新的活动，页面上的数跟着变，再点报名时按新的数确认
         if (e.code === 'cost_changed') events.refresh().then(() => this.render());
         wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
