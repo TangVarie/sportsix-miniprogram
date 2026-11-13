@@ -99,6 +99,9 @@
   <!-- 产品速选对比 -->
   <product-compare id="rv-compare" shown="{{seen.compare}}" current="{{id}}" cross-link="{{p.crossLink}}" bind:open="onOpenProduct" />
 
+  <!-- 购买渠道：一行入口，点了弹出店铺的小程序码 -->
+  <shop-entry product="{{id}}" />
+
   <!-- 成为会员 -->
   <view class="pd-join">
     <view class="pd-join__btn sx-pressable" hover-class="sx-press" bindtap="onJoin">成为会员</view>

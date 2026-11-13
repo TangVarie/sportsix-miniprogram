@@ -1,0 +1,35 @@
+:host { display: block; }
+
+/* 购买渠道入口（设计稿里没有）：描边同活动页的卡片，按钮同「提醒我」的尺寸，用深蓝不用黄绿，不和主按钮抢 */
+.shop-entry { padding: 0 38rpx 46rpx; }
+.shop-entry__card { display: flex; align-items: center; gap: 23rpx; padding: 27rpx 31rpx; border-radius: 31rpx; border: 1px solid #E6E6E7; background: #FFFFFF; }
+.shop-entry__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.shop-entry__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.shop-entry__body { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.shop-entry__btn {
+  flex-shrink: 0; display: flex; align-items: center; height: 77rpx; padding: 0 35rpx; border-radius: 39rpx;
+  background: #010439; color: #FFFFFF; font-size: 27rpx; font-weight: 700;
+}
+/* 深色背景上：透明底、浅色描边、白字，按钮反过来用白底 */
+.shop-entry--dark .shop-entry__card { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .28); }
+.shop-entry--dark .shop-entry__title { color: #FFFFFF; }
+.shop-entry--dark .shop-entry__body { color: #C9CEE8; }
+.shop-entry--dark .shop-entry__btn { background: #FFFFFF; color: #010439; }
+
+/* 弹层 */
+.shop-sheet { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 300; display: flex; align-items: flex-end; background: rgba(1, 4, 57, .6); }
+.shop-sheet__panel {
+  box-sizing: border-box; width: 100%; padding: 46rpx 38rpx calc(38rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: stretch; border-radius: 46rpx 46rpx 0 0; background: #FFFFFF;
+  animation: sxRise .25s ease-out;
+}
+.shop-sheet__title { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #010439; }
+.shop-sheet__row {
+  display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; width: 100%; height: 108rpx; margin-top: 23rpx;
+  padding: 0 35rpx; border-radius: 27rpx; background: #F5F5F5; font-size: 31rpx; font-weight: 900; color: #010439;
+}
+.shop-sheet__arrow { display: block; width: 35rpx; height: 35rpx; }
+.shop-sheet__close {
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 96rpx; margin-top: 31rpx;
+  border-radius: 48rpx; border: 1px solid #C9CEE8; font-size: 29rpx; font-weight: 700; color: #010439;
+}

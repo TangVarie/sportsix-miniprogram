@@ -4,7 +4,8 @@
     "dual-carb": "/components/dual-carb/index",
     "product-key-points": "/components/product-key-points/index",
     "product-scenes": "/components/product-scenes/index",
-    "product-compare": "/components/product-compare/index"
+    "product-compare": "/components/product-compare/index",
+    "shop-entry": "/components/shop-entry/index"
   },
   "singlePage": {
     "navigationBarFit": "squeezed"
