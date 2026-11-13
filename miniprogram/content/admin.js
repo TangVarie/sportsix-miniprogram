@@ -17,6 +17,10 @@ module.exports = {
       "text": "公告"
     },
     {
+      "key": "members",
+      "text": "会员"
+    },
+    {
       "key": "points",
       "text": "积分"
     },
@@ -178,6 +182,32 @@ module.exports = {
     "saved": "公告已保存",
     "defaultTitle": "公告",
     "confirm": "知道了"
+  },
+  "members": {
+    "stats": {
+      "total": "会员总数",
+      "today": "今天新加入",
+      "week": "近 7 天新加入",
+      "month": "近 30 天新加入",
+      "points": "会员手里的积分",
+      "signups": "报名人次",
+      "plans": "存了补给计划",
+      "news": "订阅着新活动通知"
+    },
+    "partial": "会员太多，积分合计只算了最近加入的一部分人",
+    "chartTitle": "近 30 天每天新加入",
+    "chartMax": "最多的一天 [人数] 人",
+    "listTitle": "会员名单",
+    "noName": "没填昵称",
+    "adminTag": "管理员",
+    "memberNo": "会员编号 [会员编号]",
+    "joined": "[日期] 加入",
+    "signups": "报名 [场数] 场",
+    "pointsUnit": "积分",
+    "adjust": "调积分",
+    "more": "再看 30 位",
+    "empty": "还没有会员",
+    "refresh": "刷新"
   },
   "points": {
     "queryPlaceholder": "手机号或会员编号",

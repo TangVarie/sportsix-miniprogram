@@ -463,6 +463,29 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     ok(await page.isEnabled('#find-submit'), '查找按钮可用');
     slow.adminFindMember = 0;
 
+    // ----- 会员看板 -----
+    for (let i = 0; i < 35; i++) {
+      cloud.col('members').push({ _id: 'extra-' + i, openid: 'extra-' + i, phone: '1360000' + (1000 + i), memberNo: String(300000 + i), points: 10, createdAt: new Date(now - (i % 20) * 24 * 3600 * 1000 - 3600 * 1000) });
+    }
+    const totalMembers = cloud.col('members').length;
+    await page.click('[data-tab="members"]');
+    await page.waitForFunction(() => document.querySelectorAll('#mb-rows tr').length === 30);
+    eq(await page.textContent('#mb-stats .stat:first-child .stat__num'), String(totalMembers), '看板上的会员总数');
+    eq(await page.locator('#mb-chart .chart__col').count(), 30, '图上 30 天一天一根');
+    ok(await page.isVisible('#mb-more'), '名单没完时有「再看」');
+    ok(!(await page.textContent('#mb-rows')).includes(memberB.phone), '名单里的手机号是打码的');
+    await page.click('#mb-more');
+    await page.waitForFunction((n) => document.querySelectorAll('#mb-rows tr').length === n, totalMembers);
+    ok(await page.isHidden('#mb-more'), '读完了就没有「再看」');
+    if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true });
+    await page.click('#mb-rows button[data-no="' + memberB.memberNo + '"]');
+    await page.waitForSelector('#adjust-form:not([hidden])');
+    ok((await page.textContent('#m-no')).includes(memberB.memberNo), '点「调积分」带着这位会员去积分那一栏');
+    broken.adminMemberStats = true;
+    await page.click('[data-tab="members"]');
+    await expectToast('网络异常，请稍后再试', '看板读不出来有提示');
+    broken.adminMemberStats = false;
+
     // ----- 退出登录 -----
     await page.click('#logout');
     await page.waitForSelector('#view-login:not([hidden])');

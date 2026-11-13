@@ -157,7 +157,7 @@ const WEB_CODE_DIGITS = 12;
 const WEB_SESSION_TTL = 12 * 3600 * 1000;
 /** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
 const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice',
-  'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
+  'adminFindMember', 'adminAdjustPoints', 'adminMemberStats', 'adminMembers', 'adminUploadCover', 'adminFileUrls'];
 
 /** admin_web 集合里的一条记录。集合还没建时当作没有 */
 async function webDoc(id) {
@@ -223,6 +223,13 @@ function imageExt(buf) {
 }
 
 /* ---------- 运营后台 ---------- */
+
+/** 会员看板：一天多少毫秒、北京时间比 UTC 早多少、统计时一页读多少人最多读几页、名单一页多少人 */
+const DAY = 24 * 3600 * 1000;
+const TZ_OFFSET = 8 * 3600 * 1000;
+const STATS_PAGE_SIZE = 1000;
+const STATS_PAGES = 20;
+const MEMBERS_PAGE = 30;
 
 /** 只有管理员能调 admin 开头的接口 */
 async function requireAdmin(openid) {
@@ -897,6 +904,69 @@ const actions = {
     const urls = {};
     (res.fileList || []).forEach((f) => { if (f.tempFileURL) urls[f.fileID] = f.tempFileURL; });
     return { urls: urls };
+  },
+
+  /**
+   * 会员看板上的数字：总数、今天和近 7 天、近 30 天新加入的人数、近 30 天每天加入多少、
+   * 大家手里一共有多少积分、报名人次、订阅着新活动通知的人数。
+   * 天按北京时间分。会员是一页页读出来算的，最多读 STATS_PAGES 页，超出时 partial 为 true（积分合计只算了读到的这些人）。
+   */
+  async adminMemberStats(event, openid) {
+    await requireAdmin(openid);
+    const now = Date.now();
+    const dayStart = (t) => Math.floor((t + TZ_OFFSET) / DAY) * DAY - TZ_OFFSET;
+    const today = dayStart(now);
+    const from = today - 29 * DAY;
+    const daily = [];
+    for (let i = 0; i < 30; i++) daily.push({ day: from + i * DAY, count: 0 });
+    let points = 0; let read = 0; let named = 0; let week = 0; let partial = false;
+    for (let page = 0; ; page++) {
+      if (page >= STATS_PAGES) { partial = true; break; }
+      const res = await db.collection('members').orderBy('createdAt', 'desc').skip(page * STATS_PAGE_SIZE).limit(STATS_PAGE_SIZE).get();
+      res.data.forEach((m) => {
+        read += 1;
+        points += Number(m.points) || 0;
+        if (m.nickname) named += 1;
+        const at = ms(m.createdAt);
+        if (at === null || at < from) return;
+        const i = Math.floor((dayStart(at) - from) / DAY);
+        if (daily[i]) daily[i].count += 1;
+        if (at >= today - 6 * DAY) week += 1;
+      });
+      if (res.data.length < STATS_PAGE_SIZE) break;
+    }
+    const total = (await db.collection('members').count()).total;
+    const signups = (await db.collection('signups').count()).total;
+    const plans = (await db.collection('plans').count()).total;
+    const news = await newsWaiting();
+    return {
+      total: total, today: daily[29].count, week: week, month: daily.reduce((n, d) => n + d.count, 0),
+      daily: daily, points: points, named: named, signups: signups, plans: plans, newsWaiting: news,
+      partial: partial && total > read
+    };
+  },
+
+  /**
+   * 会员名单，新加入的在前，一次 MEMBERS_PAGE 个。手机号是打码的。
+   * 每个人带上报名过几场。返回 more 表示后面还有。
+   */
+  async adminMembers(event, openid) {
+    await requireAdmin(openid);
+    const skip = Math.max(0, parseInt(event.skip, 10) || 0);
+    const res = await db.collection('members').orderBy('createdAt', 'desc').skip(skip).limit(MEMBERS_PAGE + 1).get();
+    const list = res.data.slice(0, MEMBERS_PAGE);
+    const counts = {};
+    if (list.length) {
+      const ids = list.map((m) => m._id);
+      // 这一页的人各报了几场：一次查出来再数。每人报名的场数有限，1000 条够用
+      const su = await db.collection('signups').where({ openid: _.in(ids) }).limit(1000).get();
+      su.data.forEach((x) => { counts[x.openid] = (counts[x.openid] || 0) + 1; });
+    }
+    return {
+      members: list.map((m) => Object.assign(adminMemberView(m), { joinedAt: ms(m.createdAt), signups: counts[m._id] || 0, admin: m.admin === true })),
+      more: res.data.length > MEMBERS_PAGE,
+      next: skip + list.length
+    };
   },
 
   /** 按手机号或会员编号找会员 */

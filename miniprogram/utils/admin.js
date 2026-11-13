@@ -75,6 +75,15 @@ function adjustPoints(memberNo, delta, reason) {
   return cloud.call('adminAdjustPoints', { memberNo: memberNo, delta: delta, reason: reason }).then((d) => d.member);
 }
 
+/** 会员看板上的数字：总数、新加入的人数、近 30 天每天多少、积分合计等 */
+function memberStats() {
+  return cloud.call('adminMemberStats');
+}
+/** 会员名单的一页：{ members, more, next }，新加入的在前。skip 传上一页给的 next */
+function members(skip) {
+  return cloud.call('adminMembers', { skip: skip || 0 });
+}
+
 /** 取电脑端后台的登录码：{ code, expiresIn }。12 位数字，5 分钟内有效，只能用一次 */
 function webCode() {
   return cloud.call('adminWebCode');
@@ -112,4 +121,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };

@@ -46,6 +46,45 @@ function pastRow(p) {
   return { id: p.id, year: p.year, name: p.name, nameEn: p.nameEn, image: p.image, src: assetUrl(p.image), home: p.home !== false };
 }
 
+/** 看板上按北京时间写几月几日（云端的一天是按北京时间分的） */
+function bjDay(ms) {
+  const d = new Date(ms + 8 * 3600 * 1000);
+  return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+}
+
+/** 云端的统计 → 看板上的数字卡片和柱状图 */
+function boardView(d) {
+  const c = copy.members;
+  const days = d.daily || [];
+  const max = days.reduce((m, x) => Math.max(m, x.count), 0);
+  return {
+    stats: [
+      ['total', d.total], ['today', d.today], ['week', d.week], ['month', d.month],
+      ['points', d.points], ['signups', d.signups], ['plans', d.plans], ['news', d.newsWaiting]
+    ].map((x) => ({ key: x[0], label: c.stats[x[0]], num: String(x[1] || 0) })),
+    partial: !!d.partial,
+    // 柱子的高度是占最高那天的百分之几；一个人都没有的那天留一道细线
+    bars: days.map((x) => ({ day: x.day, zero: !x.count, height: max && x.count ? Math.max(4, Math.round(x.count / max * 100)) : 2 })),
+    maxText: c.chartMax.replace('[人数]', max),
+    from: days.length ? bjDay(days[0].day) : '',
+    to: days.length ? bjDay(days[days.length - 1].day) : ''
+  };
+}
+
+/** 名单里的一位会员 → 一行的显示数据 */
+function memberRow(m) {
+  const c = copy.members;
+  return {
+    memberNo: m.memberNo,
+    name: m.nickname || c.noName,
+    noName: !m.nickname,
+    admin: !!m.admin,
+    meta: [c.memberNo.replace(/\[[^\]]+\]/, m.memberNo || '—'), m.phoneMasked].filter(Boolean).join(' · '),
+    sub: [m.joinedAt ? c.joined.replace('[日期]', format.date(m.joinedAt)) : '', m.signups ? c.signups.replace('[场数]', m.signups) : ''].filter(Boolean).join(' · '),
+    points: String(m.points || 0)
+  };
+}
+
 /** 查到的会员 → 卡片上的显示数据 */
 function memberCard(m) {
   return {
@@ -75,6 +114,11 @@ Page({
     // 往期的赞助赛事。pastForm 不是 null 时显示表单（新加或编辑），否则显示列表
     past: [],
     pastLoaded: false,
+    // 会员看板：board 是数字和图，members 是名单，membersMore 表示后面还有
+    board: null,
+    members: [],
+    membersMore: false,
+    membersLoading: false,
     pastForm: null,
     uploading: false,
     notice: { title: '', content: '', enabled: false },
@@ -124,6 +168,53 @@ Page({
     this.setData({ tab: tab });
     if (tab === 'notice' && !this.data.noticeLoaded) this.loadNotice();
     if (tab === 'past' && !this.data.pastLoaded) this.loadPast();
+    if (tab === 'members' && !this.data.board) this.loadMembers();
+  },
+
+  /* ---------- 会员看板 ---------- */
+
+  /** 读看板上的数字和名单的第一页 */
+  loadMembers() {
+    const mine = this.memberSeq = (this.memberSeq || 0) + 1;
+    this.setData({ membersLoading: true });
+    return Promise.all([admin.memberStats(), admin.members(0)])
+      .then((r) => {
+        if (mine !== this.memberSeq) return;
+        this.memberNext = r[1].next;
+        this.setData({ board: boardView(r[0]), members: (r[1].members || []).map(memberRow), membersMore: !!r[1].more, membersLoading: false });
+      })
+      .catch((e) => { if (mine === this.memberSeq) { this.setData({ membersLoading: false }); toast(admin.errorText(e)); } });
+  },
+
+  onMembersRefresh() {
+    if (this.data.membersLoading) return;
+    tick();
+    this.loadMembers();
+  },
+
+  onMembersMore() {
+    if (this.data.membersLoading) return;
+    const mine = this.memberSeq;
+    this.setData({ membersLoading: true });
+    admin.members(this.memberNext)
+      .then((d) => {
+        // 中间刷新过的话，名单已经从头读了，这一页不要了
+        if (mine !== this.memberSeq) return;
+        // 读这一页的时候有新人加入，名单会整体往后挪：已经在页面上的不再加一遍
+        const have = {};
+        this.data.members.forEach((m) => { have[m.memberNo] = true; });
+        const add = (d.members || []).map(memberRow).filter((m) => !m.memberNo || !have[m.memberNo]);
+        this.memberNext = d.next;
+        this.setData({ members: this.data.members.concat(add), membersMore: !!d.more, membersLoading: false });
+      })
+      .catch((e) => { if (mine === this.memberSeq) { this.setData({ membersLoading: false }); toast(admin.errorText(e)); } });
+  },
+
+  /** 「调积分」：带着会员编号去积分那一栏查出来 */
+  onMemberAdjust(e) {
+    tick();
+    this.setData({ tab: 'points', query: e.currentTarget.dataset.no, member: null });
+    this.onFind();
   },
 
   /* ---------- 活动 ---------- */
