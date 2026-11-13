@@ -28,7 +28,7 @@
 .hm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 8rpx 38rpx 46rpx; }
 
 /* 两款能量胶的入口卡（设计稿里没有，后加的）：接在三个数字下面，仍在深色首屏里 */
-.hm-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 23rpx; padding: 0 38rpx 58rpx; }
+.hm-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 23rpx; padding: 0 38rpx 23rpx; }
 .hm-pick {
   position: relative; box-sizing: border-box; height: 285rpx; padding: 31rpx 27rpx; border-radius: 31rpx; overflow: hidden;
   border: 1px solid #2A3373; background: rgba(255, 255, 255, .06); color: #FFFFFF;

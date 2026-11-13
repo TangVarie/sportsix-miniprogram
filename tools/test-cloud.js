@@ -1257,6 +1257,87 @@ async function clientTests() {
 }
 
 /** 字体：资源在云存储时走「下载到本机 → Data URL」，不依赖跨域许可；任何一步失败都退回 https 地址 */
+/** 购买渠道的入口：点了跳到店铺小程序里对应的商品 */
+function shopTests() {
+  const path = require('path');
+  const root = path.resolve(__dirname, '../miniprogram');
+  const file = path.join(root, 'components/shop-entry/index.js');
+  const shopFile = path.join(root, 'content/shop.js');
+  const jumps = [];
+  const toasts = [];
+  let result = null; // 下一次跳转的结果：null 是成功，否则是 fail 回调收到的 errMsg
+  const realWx = global.wx;
+  const realComponent = global.Component;
+  global.wx = {
+    vibrateShort() {},
+    showToast: (o) => toasts.push(o.title),
+    navigateToMiniProgram: (o) => { jumps.push(o.shortLink); if (result) o.fail({ errMsg: result }); }
+  };
+  /** 按给定的链接配置加载组件，返回一个能调方法的实例 */
+  const make = (links, props) => {
+    [file, shopFile].forEach((f) => { delete require.cache[f]; });
+    const shop = require(shopFile);
+    const saved = Object.assign({}, shop.links);
+    Object.assign(shop.links, links);
+    let def = null;
+    global.Component = (d) => { def = d; };
+    require(file);
+    Object.assign(shop.links, saved);
+    const inst = Object.assign({ data: Object.assign({}, def.data, { product: '', dark: false, bare: false }, props) }, def.methods);
+    inst.setData = (d) => Object.assign(inst.data, d);
+    if (props && props.product) def.observers.product.call(inst, props.product);
+    return inst;
+  };
+  try {
+    const both = { 'energy-gel': '#小程序://店铺/商品/basic', 'energy-gel-pro': '#小程序://店铺/商品/pro' };
+
+    // 产品详情页：直接跳这一款
+    let c = make(both, { product: 'energy-gel-pro' });
+    c.open();
+    eq([jumps.slice(-1)[0], c.data.choosing, c.data.available], ['#小程序://店铺/商品/pro', false, true], '产品页的入口直接跳到这款的商品页');
+
+    // 首页、「我的」：两款都有链接时先让用户选
+    c = make(both, {});
+    const before = jumps.length;
+    c.open();
+    eq([c.data.choosing, jumps.length - before, c.data.options.map((o) => o.name)], [true, 0, ['能量胶BASIC', '能量胶PRO']], '没指定产品、两款都有链接：弹出来选一款');
+    c.onChoose({ currentTarget: { dataset: { id: 'energy-gel' } } });
+    eq([c.data.choosing, jumps.slice(-1)[0]], [false, '#小程序://店铺/商品/basic'], '选了以后跳到那一款');
+
+    // 两款用的是同一条链接（店铺里一个商品页能选两款）：不用选，直接跳
+    c = make({ 'energy-gel': '#小程序://店铺/商品/all', 'energy-gel-pro': '#小程序://店铺/商品/all' }, {});
+    c.open();
+    eq([c.data.choosing, jumps.slice(-1)[0]], [false, '#小程序://店铺/商品/all'], '两款是同一条链接：直接跳，不弹出来选');
+
+    // 只填了一款的链接：不用选，直接跳；没填的那款在它的产品页上不显示入口
+    c = make({ 'energy-gel': '', 'energy-gel-pro': '#小程序://店铺/商品/pro' }, {});
+    c.open();
+    eq([c.data.choosing, jumps.slice(-1)[0]], [false, '#小程序://店铺/商品/pro'], '只有一款有链接：直接跳');
+    c = make({ 'energy-gel': '', 'energy-gel-pro': '#小程序://店铺/商品/pro' }, { product: 'energy-gel' });
+    const n = jumps.length;
+    c.open();
+    eq([c.data.available, jumps.length], [false, n], '这款没填链接：入口不显示，也不会跳');
+
+    // 用户在微信的确认框里点了取消：不提示；别的原因没打开：提示一句
+    c = make(both, { product: 'energy-gel' });
+    result = 'navigateToMiniProgram:fail cancel';
+    c.open();
+    eq(toasts.length, 0, '用户取消跳转：不提示');
+    result = 'navigateToMiniProgram:fail invalid shortLink';
+    c.open();
+    eq(toasts, ['没打开，请稍后再试'], '没打开：提示一句');
+
+    // 线上的配置：填了的链接都是「#小程序://」开头
+    delete require.cache[shopFile];
+    const live = require(shopFile).links;
+    ok(Object.keys(live).every((k) => ['energy-gel', 'energy-gel-pro'].includes(k) && (live[k] === '' || live[k].indexOf('#小程序://') === 0)), '配置里的链接格式对');
+  } finally {
+    global.wx = realWx;
+    global.Component = realComponent;
+    [file, shopFile].forEach((f) => { delete require.cache[f]; });
+  }
+}
+
 async function fontTests() {
   const path = require('path');
   const { createEnv, ROOT } = require('./preview/runtime.js');
@@ -1334,6 +1415,7 @@ async function fontTests() {
 
 (async () => {
   await fontTests();
+  shopTests();
   await functionTests();
   await adminTests();
   await webTests();

@@ -1,4 +1,5 @@
 const member = require('../../content/member.js');
+const shopCopy = require('../../content/shop.js');
 const home = require('../../content/home.js');
 const store = require('../../utils/store.js');
 const cloud = require('../../utils/cloud.js');
@@ -20,7 +21,9 @@ const { assetUrl } = require('../../utils/assets.js');
  */
 
 // 菜单。加群的方式还没定（docs/04-open-items.md），config.groupReady 为 false 时不显示「加入社群」
-const MENU = member.me.menu.filter((m) => config.groupReady || m.icon !== 'group');
+// 菜单最上面加一项购买渠道（文案和链接在 shop.json），点了去店铺。一款的链接都没填时不加这一项
+const HAS_SHOP = Object.keys(shopCopy.links).some((k) => shopCopy.links[k]);
+const MENU = (HAS_SHOP ? [{ icon: 'gift', text: shopCopy.menu }] : []).concat(member.me.menu.filter((m) => config.groupReady || m.icon !== 'group'));
 // 管理员（会员记录上有 admin: true）多一行「运营后台」
 const ADMIN_ROW = { icon: 'shield', text: adminCopy.entry };
 
@@ -343,6 +346,7 @@ Page({
     const key = e.currentTarget.dataset.key;
     if (key === 'doc') { go('doc', { type: 'privacy' }); return; }
     if (key === 'shield') { go('admin'); return; }
+    if (key === 'gift') { const entry = this.selectComponent('#shop'); if (entry) entry.open(); return; }
     if (key === 'chat') {
       const item = member.me.menu.find((m) => m.icon === 'chat');
       wx.showModal({ title: item.text, content: legal.fill.contact, showCancel: false });

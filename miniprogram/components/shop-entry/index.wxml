@@ -1,0 +1,21 @@
+<view wx:if="{{!bare && available}}" class="shop-entry {{dark ? 'shop-entry--dark' : ''}}">
+  <view class="shop-entry__card sx-pressable" hover-class="sx-press" bindtap="open">
+    <view class="shop-entry__text">
+      <text class="shop-entry__title">{{shop.card.title}}</text>
+      <text class="shop-entry__body">{{shop.card.body}}</text>
+    </view>
+    <view class="shop-entry__btn">{{shop.card.action}}</view>
+  </view>
+</view>
+
+<!-- 弹层：选一款，跳到店铺里这款的商品页 -->
+<view wx:if="{{choosing}}" class="shop-sheet" catchtouchmove="noop" bindtap="close">
+  <view class="shop-sheet__panel" catchtap="noop">
+    <text class="shop-sheet__title">{{shop.sheet.title}}</text>
+    <view wx:for="{{options}}" wx:key="id" class="shop-sheet__row sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onChoose">
+      <text>{{item.name}}</text>
+      <image class="shop-sheet__arrow" src="/assets/icons/chevron-navy.svg" />
+    </view>
+    <view class="shop-sheet__close sx-pressable" hover-class="sx-press" bindtap="close">{{shop.sheet.close}}</view>
+  </view>
+</view>

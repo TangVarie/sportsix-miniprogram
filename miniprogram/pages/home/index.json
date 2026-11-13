@@ -2,7 +2,8 @@
   "navigationBarTitleText": "SPORTSIX",
   "usingComponents": {
     "dual-carb": "/components/dual-carb/index",
-    "member-cta": "/components/member-cta/index"
+    "member-cta": "/components/member-cta/index",
+    "shop-entry": "/components/shop-entry/index"
   },
   "singlePage": {
     "navigationBarFit": "squeezed"
