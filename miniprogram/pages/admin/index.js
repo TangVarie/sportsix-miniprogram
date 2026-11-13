@@ -230,7 +230,9 @@ Page({
 
   onPastSave() {
     const f = this.data.pastForm;
-    if (!f || this.data.busy || this.data.uploading) return;
+    // 照片还在传的时候点保存：说一句，不能没反应
+    if (f && this.data.uploading) { toast(copy.errors.uploading_wait); return; }
+    if (!f || this.data.busy) return;
     // 先在本机拦一下，省一次来回；云函数里还会再检查
     if (!/^(19|20)\d{2}$/.test(String(f.year).trim())) { toast(copy.errors.bad_year); return; }
     if (!String(f.name || '').trim()) { toast(copy.errors.missing_name); return; }

@@ -26,6 +26,22 @@ const RANGE = {
   kg: { min: LIMITS.minKg, max: LIMITS.maxKg }
 };
 const clamp = (v, r) => Math.min(r.max, Math.max(r.min, v));
+/** 加减到头时提示的话（content/messages 的 fuel） */
+const LIMIT_TEXT = {
+  minutes: { min: messages.fuel.minMinutes, max: messages.fuel.maxMinutes },
+  kg: { min: messages.fuel.minKg, max: messages.fuel.maxKg }
+};
+/** 到了哪一头就提示哪一句：不能点了没反应 */
+function sayLimit(field, value) {
+  const r = RANGE[field];
+  wx.showToast({ title: value >= r.max ? LIMIT_TEXT[field].max : LIMIT_TEXT[field].min, icon: 'none' });
+}
+/** 点时长弹出的选择器：小时一列（0 到上限），分钟一列（每 15 分钟一档）。长时间的不用一下一下点加号 */
+const two = (n) => (n < 10 ? '0' + n : '' + n);
+const TIME_RANGE = [
+  Array.from({ length: LIMITS.maxMinutes / 60 + 1 }, (x, i) => i + ' 小时'),
+  Array.from({ length: 60 / LIMITS.minutesStep }, (x, i) => two(i * LIMITS.minutesStep) + ' 分')
+];
 
 /** 把外来的输入（已保存的计划）整理成合法的 input：缺的补默认值，越界的夹住 */
 function normalize(raw) {
@@ -68,10 +84,14 @@ function view(input) {
   return {
     input: input,
     durationLabel: formatTime(input.minutes),
+    // 时长选择器当前停在哪一格：[小时, 第几个 15 分钟]
+    timeValue: [Math.floor(input.minutes / 60), Math.floor(input.minutes % 60 / LIMITS.minutesStep)],
     // 各个分段选择当前选中的是第几项，深蓝底按它滑到位
     on: selectedIndexes(input),
     // 点了哪一格（时间轴上对应的点会高亮）。输入一变就取消
     active: -1,
+    // 支数多（超长距离）时时间轴上的点画小一点，不然挤成一条
+    dense: r.total > 24,
     // 徒步、登山、滑雪不分强度：隐藏这一行；input.scene 保持原值，切回其他项目时还是原来的选择
     showScene: !isSteady(input.sport),
     // 选中的强度下面的一句说明
@@ -105,7 +125,8 @@ Page({
     starts: OPTIONS.start,
     caffeines: OPTIONS.caffeineSensitive,
     experiences: OPTIONS.firstTime,
-    weathers: OPTIONS.weather
+    weathers: OPTIONS.weather,
+    timeRange: TIME_RANGE
   }, view(normalize(DEFAULT_INPUT))),
 
   /** 图片加载完（或加载失败）：让它淡入 */
@@ -163,10 +184,25 @@ Page({
     const field = e.currentTarget.dataset.field;
     const delta = Number(e.currentTarget.dataset.delta);
     if (!RANGE[field] || !delta) return;
-    const next = clamp(this.data.input[field] + delta, RANGE[field]);
-    if (next === this.data.input[field]) return; // 到边界了
+    const want = this.data.input[field] + delta;
+    const next = clamp(want, RANGE[field]);
+    // 到头了，或者这一步跨过了头（比如 47:30 再加 1 小时）：停在头上，并说一句为什么
+    if (next !== want) sayLimit(field, next);
+    if (next === this.data.input[field]) return;
     tick();
     this.update({ [field]: next });
+  },
+
+  /** 在时长选择器里选了一个时间。选到范围外的（比如 0 小时 15 分、48 小时 30 分）夹回来并提示 */
+  onTimePick(e) {
+    const v = e.detail.value || [];
+    const want = Number(v[0]) * 60 + Number(v[1]) * LIMITS.minutesStep;
+    const next = clamp(want, RANGE.minutes);
+    if (next !== want) sayLimit('minutes', next);
+    // 夹回来以后和现在一样：选择器已经停在选的那一格了，重设一遍让它回到实际的时长
+    if (next === this.data.input.minutes) { this.setData({ timeValue: view(this.data.input).timeValue }); return; }
+    tick();
+    this.update({ minutes: next });
   },
 
   /** 点某一格：高亮它和时间轴上对应的点，再点一次取消 */

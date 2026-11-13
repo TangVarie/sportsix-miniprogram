@@ -297,6 +297,7 @@ async function adminTests() {
   eq((await call('adminAdjustPoints', { memberNo: noB, delta: -800, reason: '兑换' })).code, 'insufficient', '不够减，不会减成负数');
   r = await call('adminAdjustPoints', { memberNo: noB, delta: -300, reason: '兑换试用装' });
   eq(r.data.member.points, 400, '减积分');
+  eq((await call('adminAdjustPoints', { memberNo: '100002', delta: 100001, reason: '太多' })).code, 'delta_too_large', '一次加太多：说清楚是超了上限，不是没填');
   const logs = cloud.col('point_logs').filter((l) => l.openid === 'user-b');
   eq(logs.map((l) => [l.delta, l.reason]), [[500, 'welcome'], [200, '线下活动签到'], [-300, '兑换试用装']], '每次调整都记一条');
   eq(logs[1].by, 'user-a', '记下是哪位管理员操作的');
@@ -890,6 +891,30 @@ async function clientTests() {
   eq(cloud.col('plans')[0].input.sport, 'trail', '注册后把待保存的计划存到云端');
   eq(lastCall('switchTab').args.url, '/pages/fuel/index', '回到计算页');
   ok(app.globalData.fuelRestore, '计算页按保存的输入还原');
+
+  // 补给计算：加减到头时说一句为什么，不能点了没反应；点时间可以直接选几小时几分
+  {
+    const f = env.openPage('pages/fuel/index', {});
+    const toast = () => (lastCall('showToast') || { args: {} }).args.title;
+    const step = (field, delta) => f.onStep({ currentTarget: { dataset: { field: field, delta: delta } } });
+    f.onTimePick({ detail: { value: [47, 2] } });
+    eq([f.data.input.minutes, f.data.durationLabel, f.data.timeValue], [47 * 60 + 30, '47:30', [47, 2]], '在选择器里选 47 小时 30 分');
+    step('minutes', 60);
+    eq([f.data.input.minutes, toast()], [2880, '最长算到 48 小时，更长的赛事请分段算'], '加 1 小时跨过了上限：停在 48 小时并提示');
+    step('minutes', 15);
+    eq([f.data.input.minutes, toast()], [2880, '最长算到 48 小时，更长的赛事请分段算'], '已经在上限再加：提示');
+    ok(f.data.plan.total > 20 && f.data.plan.reasons.some((x) => x.includes('每小时 1 支')), '48 小时算得出来，说明里讲了 10 小时以后减量');
+    f.onTimePick({ detail: { value: [48, 3] } });
+    eq([f.data.input.minutes, f.data.timeValue, toast()], [2880, [48, 0], '最长算到 48 小时，更长的赛事请分段算'], '选择器里选到 48 小时 45 分：夹回 48 小时并提示');
+    f.onTimePick({ detail: { value: [0, 1] } });
+    eq([f.data.input.minutes, toast()], [30, '最短算 30 分钟'], '选择器里选 15 分钟：夹到 30 分钟并提示');
+    step('minutes', -15);
+    eq([f.data.input.minutes, toast()], [30, '最短算 30 分钟'], '已经最短再减：提示');
+    for (let i = 0; i < 20; i++) step('kg', 5);
+    eq([f.data.input.kg, toast()], [110, '体重最大填 110 公斤'], '体重加到头：提示');
+    for (let i = 0; i < 20; i++) step('kg', -5);
+    eq([f.data.input.kg, toast()], [40, '体重最小填 40 公斤'], '体重减到头：提示');
+  }
 
   // 活动列表：来自云端
   p = env.openPage('pages/events/index', {});

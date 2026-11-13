@@ -3,7 +3,7 @@
  * 这些用例是设计稿里公式的预期结果，改公式时先改这里。
  */
 const assert = require('assert');
-const { planFuel, carbRate, SPORTS, SCENES } = require('./fuel-plan.js');
+const { planFuel, carbRate, SPORTS, SCENES, LIMITS } = require('./fuel-plan.js');
 
 const seq = (r) => r.items.map((i) => i.label + (i.product === 'gel' ? 'G' : 'P')).join(' ');
 let n = 0;
@@ -102,11 +102,49 @@ assert.ok(!says({}, '雨天') && !says({}, '低温') && !says({}, '高温'), '�
 assert.ok(!says({ weather: 'rain' }, '高温') && !says({ weather: 'cold' }, '雨天'), '只出现所选天气的说明');
 n += 6;
 
+// 超长距离（百公里、百英里越野这类）：时长最长 48 小时。
+// 前 10 小时照旧；之后胶减到每小时 1 支，其余靠补给站和固体食物。咖啡因的上限按每 24 小时算。
+assert.strictEqual(LIMITS.maxMinutes, 48 * 60, '时长上限 48 小时');
+const ultra = (minutes, extra) => planFuel(Object.assign({ sport: 'trail', scene: 'race', minutes: minutes, kg: 65 }, extra));
+{
+  const ten = ultra(600);
+  const day = ultra(1440);
+  const two = ultra(2880);
+  // 10 小时以内的结果和以前一样
+  assert.deepStrictEqual([ten.total, ten.gelCount], [18, 4], '越野 10:00 不变');
+  // 10 小时以后每小时 1 支
+  for (const r of [day, two]) {
+    const late = r.items.filter((i) => i.minute >= 600).map((i) => i.minute);
+    for (let i = 1; i < late.length; i++) assert.strictEqual(late[i] - late[i - 1], 60, '10 小时以后每小时 1 支');
+    assert.ok(r.items[r.items.length - 1].minute <= r.input.minutes - 15, '结束前 15 分钟内不再安排');
+  }
+  assert.ok(ten.total < day.total && day.total < two.total, '时间越长带得越多');
+  assert.ok(day.total <= 18 + 14 + 2 && two.total <= 18 + 38 + 2, '超长距离的支数是「前 10 小时照旧，之后每小时 1 支」');
+  // 咖啡因按每 24 小时算：每个 24 小时里不超过每公斤 3mg，第二天可以再用
+  const perDay = (r) => [0, 1].map((d) => r.items.filter((i) => i.product === 'gel' && Math.floor(i.minute / 1440) === d).length);
+  assert.deepStrictEqual(perDay(day), [4, 0], '24 小时：BASIC 4 支，都在第一天');
+  assert.deepStrictEqual(perDay(two), [4, 4], '48 小时：每 24 小时 4 支');
+  assert.deepStrictEqual(perDay(ultra(2880, { start: 'pm' })), [2, 2], '下午出发：每 24 小时最多 2 支');
+  assert.strictEqual(ultra(2880, { start: 'night' }).gelCount, 0, '晚上出发：全程 PRO');
+  assert.strictEqual(ultra(2880, { caffeineSensitive: true }).gelCount, 0, '咖啡因敏感：全程 PRO');
+  // 说明里讲清楚这两条
+  assert.ok(day.reasons.some((x) => x.includes('前 10 小时') && x.includes('每小时 1 支') && x.includes('补给站')), '说明：10 小时以后减量');
+  assert.ok(!day.reasons.some((x) => x.includes('每 24 小时')), '24 小时以内不提「每 24 小时」');
+  assert.ok(two.reasons.some((x) => x.includes('每 24 小时不超过 4 支')), '说明：咖啡因按每 24 小时算');
+  assert.ok(ten.reasons.some((x) => x.startsWith('超过 6 小时')) && !ten.reasons.some((x) => x.includes('前 10 小时')), '10 小时整还是原来的说明');
+  // 别的项目也一样能算到 48 小时
+  for (const sport of SPORTS.map((s) => s.key)) {
+    const r = planFuel({ sport: sport, minutes: 2880 });
+    assert.ok(r.total > 0 && r.total <= 60 && r.durationLabel === '48:00', sport + ' 48 小时');
+  }
+  n += 1;
+}
+
 // 说明文字的写法：量词统一用「支」，句子里不用冒号和连接号（数字范围写「到」）
 const allReasons = [];
 for (const sport of SPORTS.map((s) => s.key)) {
   for (const scene of SCENES.map((s) => s.key)) {
-    for (const minutes of [45, 90, 240, 420]) {
+    for (const minutes of [45, 90, 240, 420, 900, 2880]) {
       for (const extra of [{}, { start: 'pm' }, { start: 'night' }, { caffeineSensitive: true }, { firstTime: true }, { weather: 'hot' }, { weather: 'cold' }, { weather: 'rain' }]) {
         planFuel(Object.assign({ sport, scene, minutes }, extra)).reasons.forEach((x) => allReasons.push(x));
       }
@@ -120,22 +158,26 @@ for (const x of new Set(allReasons)) {
 }
 n += 1;
 
-// 全组合检查：咖啡因不超过每公斤 3mg，相邻两支含咖啡因的间隔不小于 30 分钟，最多 20 支
+// 全组合检查：每 24 小时里咖啡因不超过每公斤 3mg，相邻两支含咖啡因的间隔不小于 30 分钟；
+// 10 小时以内最多 20 支，更长的不超过「20 支加上之后每小时 1 支」
 let combos = 0;
 for (const sport of SPORTS.map((s) => s.key)) {
   for (const scene of ['race', 'long', 'hard']) {
-    for (let minutes = 30; minutes <= 600; minutes += 15) {
+    for (let minutes = 30; minutes <= LIMITS.maxMinutes; minutes += (minutes < 600 ? 15 : 45)) {
       for (const kg of [40, 65, 110]) {
         for (const start of ['am', 'pm', 'night']) {
           for (const caffeineSensitive of [false, true]) {
             for (const firstTime of [false, true]) {
               const r = planFuel({ sport, scene, minutes, kg, start, caffeineSensitive, firstTime });
-              assert.ok(r.caffeineMg <= 3 * kg + 1e-9, '咖啡因超过每公斤 3mg');
-              assert.ok(r.total <= 20, '支数超过 20');
               const gels = r.items.filter((i) => i.product === 'gel').map((i) => i.minute);
+              for (let d = 0; d * 1440 < minutes; d++) {
+                const inDay = gels.filter((m) => Math.floor(m / 1440) === d).length;
+                assert.ok(inDay * 45 <= 3 * kg + 1e-9, '一个 24 小时里咖啡因超过每公斤 3mg');
+                if (start === 'pm') assert.ok(inDay <= 2);
+              }
+              assert.ok(r.total <= 20 + Math.max(0, Math.ceil((minutes - 600) / 60)), '支数太多');
               for (let i = 1; i < gels.length; i++) assert.ok(gels[i] - gels[i - 1] >= 30, '含咖啡因的间隔小于 30 分钟');
               if (caffeineSensitive || start === 'night') assert.strictEqual(r.gelCount, 0);
-              if (start === 'pm') assert.ok(r.gelCount <= 2);
               for (const it of r.items) assert.ok(it.minute < minutes, '补给时刻晚于结束时间');
               combos += 1;
             }
