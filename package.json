@@ -3,13 +3,19 @@
   "private": true,
   "description": "SPORTSIX 微信小程序",
   "scripts": {
-    "test": "node miniprogram/utils/fuel-plan.test.js && node tools/sync-content.js --check && node tools/check-project.js && node tools/test-cloud.js",
+    "test": "node miniprogram/utils/fuel-plan.test.js && node tools/sync-content.js --check && node tools/check-project.js && node tools/test-cloud.js && npm run test:audit",
     "content": "node tools/sync-content.js",
     "assets": "node tools/serve-assets.js",
     "shot": "node tools/preview/shot.js",
     "size": "node tools/check-size.js",
     "check": "node tools/check-project.js",
     "cdn": "node tools/pack-assets.js",
-    "test:web": "node tools/test-web-admin.js"
+    "test:web": "node tools/test-web-admin.js && node tools/test-admin-safety.js --web",
+    "test:audit": "node tools/test-cloud-integrity.js && node tools/test-client-state.js && node tools/test-client-flows.js && node tools/test-fuel-ui.js && node tools/test-admin-safety.js",
+    "check:sdk": "node tools/check-cloud-sdk.js",
+    "verify": "npm test && npm run test:web && npm run size"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

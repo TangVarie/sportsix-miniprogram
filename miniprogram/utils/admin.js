@@ -18,8 +18,8 @@ function notifyEvent(id) {
   return cloud.call('adminNotifyEvent', { id: id });
 }
 /** 新建（id 为空）或修改活动 */
-function saveEvent(id, event) {
-  return cloud.call('adminSaveEvent', { id: id || '', event: event }).then((d) => d.event);
+function saveEvent(id, event, version) {
+  return cloud.call('adminSaveEvent', { id: id || '', event: event, version: version }).then((d) => d.event);
 }
 /** 上架（published）或下架（draft） */
 function setEventStatus(id, status) {
@@ -71,8 +71,41 @@ function findMember(query) {
   return cloud.call('adminFindMember', { query: query }).then((d) => d.member);
 }
 /** 加减积分。delta 为负是减 */
-function adjustPoints(memberNo, delta, reason) {
-  return cloud.call('adminAdjustPoints', { memberNo: memberNo, delta: delta, reason: reason }).then((d) => d.member);
+function adjustPoints(memberNo, delta, reason, operationId) {
+  return cloud.call('adminAdjustPoints', { memberNo: memberNo, delta: delta, reason: reason, operationId: operationId }).then((d) => d.member);
+}
+
+/** 只作去重标记，不作登录凭证。同一笔不确定结果的调整重试时复用。 */
+function newOperationId() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
+}
+
+/** 和云端一致的表单边界，避免小数、负数被 parseInt 悄悄改成另一种含义。 */
+function eventError(e) {
+  if (!String(e.title || '').trim()) return 'missing_title';
+  if (!e.date) return 'missing_date';
+  if (e.quota != null && (!Number.isInteger(e.quota) || e.quota <= 0)) return 'bad_quota';
+  if (!Number.isInteger(e.cost) || e.cost < 0 || e.cost > 1000000) return 'bad_cost';
+  const start = e.memberSignupStart || e.signupStart;
+  if ((e.memberSignupStart && e.signupStart && e.memberSignupStart > e.signupStart) ||
+      (start && start > e.date) || (e.signupEnd && start && e.signupEnd <= start) ||
+      (e.signupEnd && e.signupEnd > e.date)) return 'bad_signup_time';
+  return '';
+}
+
+/** 原生返回手势也提示未保存；旧基础库继续使用页面里的返回确认。 */
+function watchUnsaved(dirty) {
+  try {
+    if (dirty && wx.enableAlertBeforeUnload) wx.enableAlertBeforeUnload({ message: content.editor.unsaved });
+    else if (!dirty && wx.disableAlertBeforeUnload) wx.disableAlertBeforeUnload();
+  } catch (e) { /* 不影响表单 */ }
+}
+
+function confirmDiscard(dirty, next) {
+  if (!dirty) { next(); return; }
+  wx.showModal({ title: content.editor.discardTitle, content: content.editor.unsaved,
+    confirmText: content.editor.discard, cancelText: content.editor.keep,
+    success: (r) => { if (r.confirm) next(); } });
 }
 
 /** 会员看板上的数字：总数、新加入的人数、近 30 天每天多少、积分合计等 */
@@ -121,4 +154,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };

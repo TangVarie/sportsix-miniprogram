@@ -1,6 +1,7 @@
-const { planFuel, isSteady, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
+const { snapshot, VERSION, isSteady, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT, formatTime } = require('../../utils/fuel-plan.js');
 const store = require('../../utils/store.js');
 const messages = require('../../content/messages.js');
+const ui = require('../../content/fuel-ui.js');
 const { baseData, selectTab, go, navTone, headerTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
 
@@ -78,9 +79,41 @@ function selectedIndexes(input) {
   return on;
 }
 
-/** 由 input 算出页面要显示的全部数据 */
-function view(input) {
-  const r = planFuel(effective(input));
+/** 长计划分成最多六小时一段，点和格子始终对应同一段，时刻仍以出发为零点。 */
+function stageView(result, minutes, index) {
+  const count = Math.ceil(minutes / 360);
+  const selected = Math.max(0, Math.min(count - 1, Number(index) || 0));
+  const stages = Array.from({ length: count }, (unused, i) => ({
+    index: i,
+    label: ui.range.replace('[开始]', formatTime(i * 360)).replace('[结束]', formatTime(Math.min(minutes, (i + 1) * 360)))
+  }));
+  const from = selected * 360;
+  const until = Math.min(minutes, from + 360);
+  const selectedItems = count > 1 ? result.items.filter((it) => (selected === 0 ? it.minute < until : it.minute >= from && it.minute < until)) : result.items;
+  const items = selectedItems.map((it) => ({
+    id: it.minute + '|' + it.product,
+    label: it.label,
+    gel: it.product === 'gel',
+    productName: it.productName,
+    position: count === 1 ? it.position : (it.minute < 0 ? 0 : Math.round(((selected === 0 ? 8 : 0) + (it.minute - from) / (until - from) * (selected === 0 ? 92 : 100)) * 10) / 10)
+  }));
+  return {
+    segmented: count > 1,
+    stages: stages,
+    stageIndex: selected,
+    stageCount: ui.stageCount.replace('[支数]', items.length),
+    stageItems: items,
+    stageStart: selected === 0 ? ui.start : formatTime(from),
+    stageEnd: formatTime(count > 1 ? until : minutes),
+    active: -1
+  };
+}
+
+/** 由输入生成展示数据；完整历史快照按保存时的结果展示，不随公式版本静默改变。 */
+function view(input, saved) {
+  const hasSnapshot = saved && saved.formulaVersion && saved.result && Array.isArray(saved.result.items) && Array.isArray(saved.result.reasons);
+  const pack = hasSnapshot ? saved : snapshot(effective(input));
+  const r = pack.result;
   return {
     input: input,
     durationLabel: formatTime(input.minutes),
@@ -88,10 +121,10 @@ function view(input) {
     timeValue: [Math.floor(input.minutes / 60), Math.floor(input.minutes % 60 / LIMITS.minutesStep)],
     // 各个分段选择当前选中的是第几项，深蓝底按它滑到位
     on: selectedIndexes(input),
-    // 点了哪一格（时间轴上对应的点会高亮）。输入一变就取消
-    active: -1,
-    // 支数多（超长距离）时时间轴上的点画小一点，不然挤成一条
-    dense: r.total > 24,
+    // 原始结果快照与展示用格子分开，保存和切换分段都不会遗漏其他时段。
+    resultSnapshot: r,
+    formulaVersion: pack.formulaVersion,
+    restoredSnapshot: !!hasSnapshot,
     // 徒步、登山、滑雪不分强度：隐藏这一行；input.scene 保持原值，切回其他项目时还是原来的选择
     showScene: !isSteady(input.sport),
     // 选中的强度下面的一句说明
@@ -104,16 +137,10 @@ function view(input) {
       caffeineMg: r.caffeineMg,
       kcal: r.kcal,
       durationLabel: r.durationLabel,
-      // id 带上位置和内容：某一格的时刻或款式变了，节点会重建，「弹出」动效重新播放；没变的格子不动
-      items: r.items.map((it, i) => ({
-        id: i + '|' + it.minute + '|' + it.product,
-        label: it.label,
-        gel: it.product === 'gel',
-        productName: it.productName,
-        position: it.position
-      })),
+      days: r.days,
       reasons: r.reasons
-    }
+    },
+    ...stageView(r, input.minutes, 0)
   };
 }
 
@@ -126,6 +153,8 @@ Page({
     caffeines: OPTIONS.caffeineSensitive,
     experiences: OPTIONS.firstTime,
     weathers: OPTIONS.weather,
+    ui: ui,
+    saving: false,
     timeRange: TIME_RANGE,
     // 是不是会员：不是的只显示带几支，时间表和排法说明加入后才有
     member: store.isMember(),
@@ -169,7 +198,7 @@ Page({
     if (app.globalData.fuelRestore) {
       app.globalData.fuelRestore = false;
       const saved = store.getPlan();
-      if (saved && saved.input) this.setData(view(normalize(saved.input)));
+      if (saved && saved.input) this.setData(view(normalize(saved.input), saved));
     }
   },
 
@@ -226,11 +255,19 @@ Page({
     this.setData({ active: this.data.active === index ? -1 : index });
   },
 
+  onStage(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index >= this.data.stages.length || index === this.data.stageIndex) return;
+    tick();
+    this.setData(stageView(this.data.resultSnapshot, this.data.input.minutes, index));
+  },
+
   onSave() {
+    if (this.savingPlan) return this.savingPlan;
     const input = effective(this.data.input);
     if (store.isMember()) {
-      const plan = this.data.plan;
-      store.savePlan(input, { total: plan.total, gelCount: plan.gelCount, proCount: plan.proCount })
+      this.setData({ saving: true });
+      this.savingPlan = store.savePlan(input, this.data.resultSnapshot, this.data.formulaVersion || VERSION)
         .then(() => {
           store.clearPendingPlan(); // 之前没存上的那份不再需要
           wx.showToast({ title: messages.plan.saved, icon: 'success' });
@@ -239,7 +276,12 @@ Page({
           // 云端说还不是会员（本机缓存是旧的）：按未注册处理
           if (e.code === 'not_member') { store.setPendingPlan(input); go('join'); return; }
           wx.showToast({ title: messages.plan.saveFailed, icon: 'none' });
+        })
+        .then(() => {
+          this.savingPlan = null;
+          this.setData({ saving: false });
         });
+      return this.savingPlan;
     } else {
       // 未注册：先记下输入，注册完成后再保存
       store.setPendingPlan(input);

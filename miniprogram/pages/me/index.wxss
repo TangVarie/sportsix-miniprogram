@@ -165,3 +165,7 @@
 }
 .me-name__btn--ok { background: #C2E541; }
 .me-name__btn--busy { opacity: .5; }
+
+.me-history-status { color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
+.me-history-status__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; font-size: 25rpx; }
+.me-history-skeleton { margin-top: 19rpx; height: 100rpx; border-radius: 19rpx; }

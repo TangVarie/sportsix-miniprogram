@@ -1,0 +1,30 @@
+name: Project checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cloudfunctions/api/package-lock.json
+            cloudfunctions/remind/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix cloudfunctions/api
+      - run: npm ci --ignore-scripts --prefix cloudfunctions/remind
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:sdk
+      - run: npm run verify

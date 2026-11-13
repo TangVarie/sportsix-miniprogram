@@ -31,7 +31,7 @@ App({
     // 数字和英文用的 Barlow Condensed（utils/fonts.js）
     loadFonts();
     // 配了云环境时，用云端的会员、计划、提醒、报名覆盖本机缓存；完成后页面会收到通知重读
-    this.refresh();
+    if (!this.globalData.singlePage) this.refresh();
     this.watchUpdate();
   },
 
@@ -57,14 +57,22 @@ App({
    * 不然常用的人一直是「热启动」，要等到下一次冷启动才看得到公告。
    */
   onShow() {
-    if (this.globalData.singlePage || !this.lastSync) return;
-    if (Date.now() - this.lastSync > 5 * 60 * 1000) this.refresh();
+    if (this.globalData.singlePage) return;
+    if (!this.lastSync || Date.now() - this.lastSync > 5 * 60 * 1000) this.refresh();
   },
 
   /** 用云端数据覆盖本机缓存，顺带取公告 */
   refresh() {
-    this.lastSync = Date.now();
-    return store.sync().then(() => this.showInbox()).then(() => this.showNotice());
+    if (this.refreshing) return this.refreshing;
+    const promise = store.sync().then((ok) => {
+      if (!ok) return false;
+      this.lastSync = Date.now();
+      return this.showInbox().then(() => this.showNotice());
+    });
+    this.refreshing = promise;
+    const done = () => { if (this.refreshing === promise) this.refreshing = null; };
+    promise.then(done, done);
+    return promise;
   },
 
   /**

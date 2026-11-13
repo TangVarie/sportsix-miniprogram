@@ -12,6 +12,8 @@
 
 const GEL = { key: 'gel', name: 'BASIC', fullName: '能量胶BASIC', carb: 30, caffeine: 45, kcal: 120 };
 const PRO = { key: 'pro', name: 'PRO', fullName: '能量胶PRO', carb: 21, caffeine: 0, kcal: 85 };
+// 保存完整结果时同时记录版本，旧计划不随之后的公式更新悄悄改变。
+const VERSION = '2026-11-13.1';
 
 /**
  * 项目。页面上排成两行三列。
@@ -205,6 +207,9 @@ function explain(r) {
   const sport = SPORTS.find((x) => x.key === s.sport).label;
   const scene = SCENES.find((x) => x.key === s.scene).label;
   const why = [];
+  // 用户本次选择触发的提醒先保留，产品原理等通用说明有空间再显示。
+  const essential = new Set();
+  const keep = (line) => { essential.add(line); why.push(line); };
   if (r.total === 0) {
     why.push('不足 1 小时的运动，体内储备够用，一般不需要中途补给。');
     return why;
@@ -212,30 +217,39 @@ function explain(r) {
   if (r.carbRate > 0) {
     // 第一句只报每小时多少克。原来后面还跟着一句通用的范围（「更长的 60g 起」），和按强度、项目取的低值对不上，去掉了；
     // 依据写在页面底部的说明和 docs/03-fuel-formula.md 里
-    why.push(r.durationLabel + ' 的' + (isSteady(s.sport) ? sport : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排。');
+    keep(r.durationLabel + ' 的' + (isSteady(s.sport) ? sport : sport + scene) + '，按每小时约 ' + r.carbRate + 'g 碳水安排。');
     // 登山、滑雪各有一条针对项目的说明
     const note = sportOf(s.sport).note;
     if (note) why.push(note);
   } else {
-    why.push('不足 1 小时，只在' + (s.scene === 'race' ? '赛前' : '中段') + '补 1 支。');
+    keep('不足 1 小时，只在' + (s.scene === 'race' ? '赛前' : '中段') + '补 1 支。');
   }
-  if (s.minutes > ULTRA_FROM) why.push('前 10 小时胶按每小时约 ' + r.carbRate + 'g 排，之后减到每小时 1 支，其余靠补给站和固体食物。');
-  else if (s.minutes >= 360) why.push('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
+  if (s.minutes > ULTRA_FROM) keep('前 10 小时胶按每小时约 ' + r.carbRate + 'g 排，之后减到每小时 1 支，其余靠补给站和固体食物。');
+  else if (s.minutes >= 360) keep('超过 6 小时，胶按每小时约 ' + r.carbRate + 'g 排，其余靠补给站和固体食物。');
   if (r.items[0].minute < 0) why.push('开始前 30 分钟先吃 1 支 PRO 打底，它不含咖啡因，HBCD 排空快，不坠胃。');
   if (r.gelCount > 0) {
-    why.push('体重 ' + s.kg + 'kg，含咖啡因的 BASIC ' + (r.days > 1 ? '每 24 小时' : '') + '不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
+    keep('体重 ' + s.kg + 'kg，含咖啡因的 BASIC ' + (r.days > 1 ? '每 24 小时' : '') + '不超过 ' + r.caffeineCapCount + ' 支（' + r.caffeineCapCount * 45 + 'mg，每公斤约 ' +
       (r.caffeineCapCount * 45 / s.kg).toFixed(1) + 'mg），间隔至少 30 分钟。');
   }
-  if (s.start === 'pm' && !s.caffeineSensitive) why.push('下午出发，含咖啡因的' + (r.days > 1 ? '每 24 小时' : '') + '最多 2 支，避免影响晚上睡眠。');
-  if (s.start === 'night') why.push('晚上出发，全程用 0 咖啡因的 PRO。');
-  if (s.caffeineSensitive) why.push('咖啡因敏感，全程用 0 咖啡因的 PRO。');
+  if (s.start === 'pm' && !s.caffeineSensitive) keep('下午出发，含咖啡因的' + (r.days > 1 ? '每 24 小时' : '') + '最多 2 支，避免影响晚上睡眠。');
+  if (s.start === 'night') keep('晚上出发，全程用 0 咖啡因的 PRO。');
+  if (s.caffeineSensitive) keep('咖啡因敏感，全程用 0 咖啡因的 PRO。');
   if (r.gelCount > 0 && r.proCount > 1) why.push('含咖啡因的 BASIC 排在' + (r.days > 1 ? '每 24 小时的前 60%' : '前 60% 的时段') + '，后程换 PRO，它甜度低 26%，肠胃负担更轻。');
   const weather = s.hot ? 'hot' : s.weather;
-  if (weather === 'hot') why.push('高温天出汗多，每支胶的钠只有 20 到 25mg，电解质要另外补。');
-  if (weather === 'cold') why.push('低温天口渴感弱，容易漏掉补给，按时间表吃。');
-  if (weather === 'rain') why.push('雨天体感凉、口渴感弱，容易漏掉补给，按时间表吃。');
-  if (s.firstTime) why.push('第一次用胶，先在训练里试，从半支开始。比赛日不换没练过的补给。');
-  return why.slice(0, 6);
+  if (weather === 'hot') keep('高温天出汗多，每支胶的钠只有 20 到 25mg，电解质要另外补。');
+  if (weather === 'cold') keep('低温天口渴感弱，容易漏掉补给，按时间表吃。');
+  if (weather === 'rain') keep('雨天体感凉、口渴感弱，容易漏掉补给，按时间表吃。');
+  if (s.firstTime) keep('第一次用胶，先在训练里试，从半支开始。比赛日不换没练过的补给。');
+  let spare = Math.max(0, 6 - essential.size);
+  return why.filter((line) => essential.has(line) || spare-- > 0).slice(0, 6);
+}
+
+/** 持久保存的计划包。结果包含原时间表和解释，不依赖将来版本重算。 */
+function snapshot(input) {
+  const r = planFuel(input);
+  const result = Object.assign({}, r);
+  delete result.input;
+  return { input: r.input, result: result, formulaVersion: VERSION };
 }
 
 /*
@@ -253,4 +267,4 @@ function explain(r) {
  * total 为 0 时页面显示「这次不用带胶」。
  */
 
-module.exports = { planFuel, carbRate, caffeineCap, explain, formatTime, isSteady, GEL, PRO, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT };
+module.exports = { planFuel, snapshot, VERSION, carbRate, caffeineCap, explain, formatTime, isSteady, GEL, PRO, SPORTS, SCENES, STARTS, WEATHERS, LIMITS, DEFAULT_INPUT };

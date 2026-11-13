@@ -1,6 +1,6 @@
 <view class="page" style="--sx-safe-top: {{safeTop}}px">
   <view class="pt-header sx-grid-bg sx-in">
-    <view class="pt-back" bindtap="onBack">
+    <view class="pt-back" bindtap="onBack" aria-role="button" aria-label="{{clientCopy.back}}">
       <image class="pt-back__icon" src="/assets/icons/back-white.svg" />
     </view>
     <view class="pt-header__text">
@@ -17,8 +17,12 @@
     </view>
 
     <view class="pt-h2">{{copy.logTitle}}</view>
+    <view wx:if="{{loadError}}" class="pt-status">
+      <text>{{pointsLoaded ? clientCopy.stale : clientCopy.loadFailed}}</text>
+      <view class="pt-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
     <!-- 等云端返回时的占位块 -->
-    <view wx:if="{{loading}}">
+    <view wx:if="{{loading && !pointsLoaded}}">
       <view wx:for="{{[0, 1]}}" wx:key="*this" class="pt-skel sx-skeleton"></view>
     </view>
     <view wx:elif="{{logs.length}}" class="pt-list">
@@ -30,6 +34,6 @@
         <text class="pt-row__delta sx-num {{item.plus ? '' : 'pt-row__delta--minus'}}">{{item.delta}}</text>
       </view>
     </view>
-    <view wx:else class="pt-empty">{{copy.empty}}</view>
+    <view wx:elif="{{!loadError && pointsLoaded}}" class="pt-empty">{{copy.empty}}</view>
   </view>
 </view>

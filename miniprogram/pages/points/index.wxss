@@ -26,3 +26,6 @@
 .pt-row__delta--minus { color: #5E6170; }
 .pt-skel { height: 100rpx; margin-top: 23rpx; border-radius: 19rpx; }
 .pt-empty { margin-top: 31rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+
+.pt-status { margin-top: 23rpx; padding: 23rpx; border-radius: 19rpx; background: #F5F5F5; color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
+.pt-status__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }

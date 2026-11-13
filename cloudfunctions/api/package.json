@@ -4,6 +4,6 @@
   "description": "SPORTSIX 小程序接口：会员、活动、报名、提醒、补给计划",
   "main": "index.js",
   "dependencies": {
-    "wx-server-sdk": "latest"
+    "wx-server-sdk": "4.0.2"
   }
 }

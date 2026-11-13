@@ -6,7 +6,7 @@
       <view class="me-head__avatar sx-rise"><image class="me-head__avatar-icon" src="/assets/icons/user-white.svg" /></view>
       <view class="me-head__text sx-rise" style="animation-delay: .1s">
         <!-- 点名字改昵称 -->
-        <view class="me-head__name-row sx-pressable" hover-class="sx-press" bindtap="onNameEdit">
+        <view class="me-head__name-row sx-pressable" hover-class="sx-press" bindtap="onNameEdit" aria-role="button">
           <text class="me-head__name">{{profile.nickname}}</text>
           <image class="me-head__edit" src="/assets/icons/edit-white.svg" />
         </view>
@@ -22,7 +22,7 @@
         <text class="me-card__no">{{profile.memberNo}}</text>
       </view>
       <!-- 点积分进积分页 -->
-      <view class="me-card__bottom sx-pressable" hover-class="sx-press" bindtap="onPoints">
+      <view class="me-card__bottom sx-pressable" hover-class="sx-press" bindtap="onPoints" aria-role="button">
         <view class="me-card__label-row">
           <text class="me-card__label">{{me.card.pointsLabel}}</text>
           <text class="me-card__note">{{me.card.pointsNote}}</text>
@@ -47,7 +47,7 @@
 
     <view class="me-plan sx-rise" style="animation-delay: .35s">
       <view class="me-h2">{{me.plan.title}}</view>
-      <view class="me-plan__card sx-grid-bg sx-pressable" hover-class="sx-press" bindtap="onPlan">
+      <view class="me-plan__card sx-grid-bg sx-pressable" hover-class="sx-press" bindtap="onPlan" aria-role="button">
         <view class="me-plan__text">
           <text class="me-plan__line1">{{plan.line1}}</text>
           <text class="me-plan__line2">{{plan.line2}}</text>
@@ -59,11 +59,16 @@
       </view>
     </view>
 
-    <!-- 没有任何记录时整个分区不显示 -->
-    <view wx:if="{{myEvents.length}}" class="me-events sx-rise" style="animation-delay: .45s">
+    <view class="me-events sx-rise" style="animation-delay: .45s">
       <view class="me-h2">{{me.events.title}}</view>
+      <view wx:if="{{historyError}}" class="me-history-status">
+        <text>{{myEvents.length ? clientCopy.stale : clientCopy.loadFailed}}</text>
+        <view class="me-history-status__retry" bindtap="onHistoryRetry" aria-role="button">{{clientCopy.retry}}</view>
+      </view>
+      <view wx:if="{{historyLoading && !myEvents.length}}" class="me-history-skeleton sx-skeleton"></view>
+      <view wx:if="{{historyLoaded && !historyLoading && !historyError && !myEvents.length}}" class="me-history-status">{{clientCopy.historyEmpty}}</view>
       <view class="me-events__list">
-        <view wx:for="{{myEvents}}" wx:key="id" class="me-events__row" data-id="{{item.id}}" bindtap="onEvent">
+        <view wx:for="{{myEvents}}" wx:key="id" class="me-events__row" data-id="{{item.id}}" bindtap="onEvent" aria-role="button" aria-disabled="{{!item.available}}">
           <view class="me-events__text">
             <text class="me-events__name">{{item.title}}</text>
             <text wx:if="{{item.meta}}" class="me-events__meta">{{item.meta}}</text>
@@ -71,10 +76,11 @@
           <text class="me-events__state {{item.state === 'signed' ? 'me-events__state--signed' : 'me-events__state--reminded'}}">{{item.stateText}}</text>
         </view>
       </view>
+      <view wx:if="{{historyNextCursor}}" class="me-history-status__retry" bindtap="onHistoryMore" aria-role="button" aria-disabled="{{historyLoading}}">{{clientCopy.loadMore}}</view>
     </view>
 
     <view class="me-menu sx-rise" style="animation-delay: .5s">
-      <view wx:for="{{menu}}" wx:key="icon" class="me-menu__row {{index < menu.length - 1 ? 'me-menu__row--line' : ''}}" data-key="{{item.icon}}" bindtap="onMenu">
+      <view wx:for="{{menu}}" wx:key="icon" class="me-menu__row {{index < menu.length - 1 ? 'me-menu__row--line' : ''}}" data-key="{{item.icon}}" bindtap="onMenu" aria-role="button">
         <image class="me-menu__icon" src="/assets/icons/{{item.icon}}-blue.svg" />
         <text class="me-menu__text">{{item.text}}</text>
         <image class="me-menu__arrow" src="/assets/icons/chevron-grey.svg" />
@@ -116,10 +122,10 @@
       <!-- 云开发且已勾选协议：手机号快速验证组件，同时作为微信要求的「同意隐私政策」按钮；否则是普通按钮（未勾选时不可用，没配云环境时只在本机记录） -->
       <view class="sx-rise" style="animation-delay: .7s">
         <button wx:if="{{cloudMode && agreed}}" class="sx-btn-reset me-join__btn sx-pressable" hover-class="sx-press" open-type="getPhoneNumber|agreePrivacyAuthorization" bindgetphonenumber="onPhone" bindagreeprivacyauthorization="onAgreePrivacy">{{join.button}}</button>
-        <view wx:else class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister">{{join.button}}</view>
+        <view wx:else class="me-join__btn sx-pressable {{agreed ? '' : 'me-join__btn--off'}}" hover-class="{{agreed ? 'sx-press' : 'none'}}" bindtap="onRegister" aria-role="button">{{join.button}}</view>
       </view>
 
-      <view class="me-join__agree sx-rise" style="animation-delay: .8s" bindtap="onAgree">
+      <view class="me-join__agree sx-rise" style="animation-delay: .8s" bindtap="onAgree" aria-role="checkbox" aria-checked="{{agreed}}">
         <view class="{{agreed ? 'sx-check' : 'me-join__box'}}" />
         <view class="me-join__agree-text"><block wx:for="{{agreement}}" wx:key="text"><text wx:if="{{item.doc}}" data-doc="{{item.doc}}" catchtap="onDoc">{{item.text}}</text><text wx:else>{{item.text}}</text></block></view>
       </view>
@@ -133,7 +139,7 @@
       <input class="me-name__input" name="nickname" type="nickname" value="{{nameDraft}}" maxlength="20" focus="{{true}}" cursor-spacing="120"
         placeholder="{{me.profile.edit.placeholder}}" placeholder-class="me-name__ph" bindinput="onNameInput" bindnicknamereview="onNameReview" />
       <view class="me-name__btns">
-        <view class="me-name__btn sx-pressable" hover-class="sx-press" bindtap="onNameCancel">{{me.profile.edit.cancel}}</view>
+        <view class="me-name__btn sx-pressable" hover-class="sx-press" bindtap="onNameCancel" aria-role="button">{{me.profile.edit.cancel}}</view>
         <button class="sx-btn-reset me-name__btn me-name__btn--ok {{nameSaving ? 'me-name__btn--busy' : ''}}" hover-class="sx-press" form-type="submit">{{me.profile.edit.save}}</button>
       </view>
     </form>

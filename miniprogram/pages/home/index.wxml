@@ -21,7 +21,7 @@
       </view>
       <!-- Informed Sport 认证标（白色版，随包）：点了滚到下面的认证说明 -->
       <view class="sx-rise" style="animation-delay: .55s">
-        <view class="hm-hero__cert sx-pressable" hover-class="sx-press" bindtap="onCert">
+        <view class="hm-hero__cert sx-pressable" hover-class="sx-press" bindtap="onCert" aria-role="button" aria-label="{{cert.badge}}">
           <image class="hm-hero__cert-icon" src="/assets/icons/informed-sport-white.png" />
           <text>{{cert.badge}}</text>
         </view>
@@ -39,7 +39,7 @@
 
   <!-- 两款能量胶的入口：紧跟首屏，一眼能看到、能点进详情 -->
   <view class="hm-picks sx-in">
-    <view wx:for="{{picks}}" wx:key="id" class="hm-pick sx-rise sx-pressable" hover-class="sx-press" style="animation-delay: {{0.5 + index * 0.1}}s" data-id="{{item.id}}" data-detail="{{true}}" bindtap="onProduct">
+    <view wx:for="{{picks}}" wx:key="id" class="hm-pick sx-rise sx-pressable" hover-class="sx-press" style="animation-delay: {{0.5 + index * 0.1}}s" data-id="{{item.id}}" data-detail="{{true}}" bindtap="onProduct" aria-role="button" aria-label="{{item.name}}">
       <view class="hm-pick__pack"><image class="hm-pick__img sx-img-fade {{loaded['pick' + index] ? '' : 'sx-img-wait'}}" data-img="pick{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="heightFix" /></view>
       <text class="hm-pick__name">{{item.name}}</text>
       <view class="hm-pick__facts"><text wx:for="{{item.facts}}" wx:for-item="f" wx:key="*this" class="hm-pick__fact">{{f}}</text></view>
@@ -65,7 +65,7 @@
           <view class="hm-kw__graphic">
             <!-- HBCD：分子图加三个词 -->
             <view wx:if="{{item.trio}}" class="hm-kw__hbcd">
-              <image class="hm-kw__molecule" src="{{item.graphic}}" />
+              <image class="hm-kw__molecule" lazy-load="{{true}}" src="{{item.graphic}}" />
               <view class="hm-kw__trio">
                 <view wx:for="{{item.trio}}" wx:for-item="t" wx:key="*this" class="hm-kw__trio-item">{{t}}</view>
               </view>
@@ -84,8 +84,8 @@
 
   <!-- 4 分段补给计算入口 -->
   <view id="rv-fuel" class="hm-fuel {{seen.fuel ? 'sx-in' : 'sx-wait'}}">
-    <view class="hm-fuel__card sx-rise" bindtap="onFuel">
-      <view class="hm-fuel__photo sx-photo"><image class="sx-photo__img hm-fuel__photo-img sx-img-fade {{loaded.fuel ? '' : 'sx-img-wait'}}" data-img="fuel" bindload="onImgLoad" binderror="onImgLoad" src="{{fuelEntry.image}}" mode="aspectFill" /></view>
+    <view class="hm-fuel__card sx-rise" bindtap="onFuel" aria-role="button" aria-label="{{fuelEntry.title}}">
+      <view class="hm-fuel__photo sx-photo"><image class="sx-photo__img hm-fuel__photo-img sx-img-fade {{loaded.fuel ? '' : 'sx-img-wait'}}" lazy-load="{{true}}" data-img="fuel" bindload="onImgLoad" binderror="onImgLoad" src="{{fuelEntry.image}}" mode="aspectFill" /></view>
       <view class="hm-fuel__shade"></view>
       <view class="hm-fuel__text">
         <text class="sx-eyebrow hm-eyebrow--lime">{{fuelEntry.eyebrow}}</text>
@@ -114,7 +114,7 @@
         <!-- 入场动效放在外层，按压放在里层：动效结束后会占住 transform，同一个节点上按压不生效 -->
         <view wx:for="{{stage.products}}" wx:for-item="p" wx:key="id" class="hm-lineup__item sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
           <view class="hm-lineup__card {{p.detail ? 'sx-pressable' : ''}}" hover-class="{{p.detail ? 'sx-press' : 'none'}}" data-id="{{p.id}}" data-detail="{{p.detail}}" bindtap="onProduct">
-            <view class="hm-lineup__pack"><image class="hm-lineup__img hm-lineup__img--{{p.id}} sx-img-fade {{loaded['lu-' + p.id] ? '' : 'sx-img-wait'}}" data-img="lu-{{p.id}}" bindload="onImgLoad" binderror="onImgLoad" src="{{p.image}}" mode="heightFix" /></view>
+            <view class="hm-lineup__pack"><image class="hm-lineup__img hm-lineup__img--{{p.id}} sx-img-fade {{loaded['lu-' + p.id] ? '' : 'sx-img-wait'}}" lazy-load="{{true}}" data-img="lu-{{p.id}}" bindload="onImgLoad" binderror="onImgLoad" src="{{p.image}}" mode="heightFix" /></view>
             <view class="hm-lineup__text">
               <text class="hm-lineup__name">{{p.name}}</text>
               <text class="hm-lineup__role">{{p.role}}</text>
@@ -171,10 +171,14 @@
       <text class="hm-races__partner-label">{{races.partner.label}}</text>
       <text class="hm-races__partner-name">{{races.partner.name}}</text>
     </view>
+    <view wx:if="{{racesStale}}" class="hm-races__status">
+      <text>{{clientCopy.stale}}</text>
+      <view class="hm-races__retry" bindtap="onRacesRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
     <scroll-view class="hm-races__scroll" scroll-x>
       <view class="hm-races__track">
         <view wx:for="{{raceCards}}" wx:key="name" class="hm-races__card sx-rise" style="animation-delay: {{0.05 + index * 0.1}}s">
-          <image class="hm-races__img sx-img-fade {{loaded['race' + index] ? '' : 'sx-img-wait'}}" data-img="race{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
+          <image class="hm-races__img sx-img-fade {{loaded['race' + index] ? '' : 'sx-img-wait'}}" lazy-load="{{true}}" data-img="race{{index}}" bindload="onImgLoad" binderror="onImgLoad" src="{{item.image}}" mode="aspectFill" />
           <view class="hm-races__info">
             <text class="hm-races__year sx-num-700">{{item.year}}</text>
             <view class="hm-races__names">
@@ -190,7 +194,7 @@
 
   <!-- 10 厂房照片、品牌介绍、六大运动核心价值 -->
   <view class="hm-factory js-dark">
-    <image class="hm-factory__img sx-img-fade {{loaded.factory ? '' : 'sx-img-wait'}}" data-img="factory" bindload="onImgLoad" binderror="onImgLoad" src="{{brand.image}}" mode="aspectFill" />
+    <image class="hm-factory__img sx-img-fade {{loaded.factory ? '' : 'sx-img-wait'}}" lazy-load="{{true}}" data-img="factory" bindload="onImgLoad" binderror="onImgLoad" src="{{brand.image}}" mode="aspectFill" />
     <view class="hm-factory__shade"></view>
   </view>
   <view id="rv-brand" class="hm-brand sx-grid-bg js-dark {{seen.brand ? 'sx-in' : 'sx-wait'}}">

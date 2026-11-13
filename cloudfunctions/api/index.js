@@ -43,6 +43,22 @@ async function findById(name, id) {
   return res.data[0] || null;
 }
 
+// 事务读取不存在的文档时 SDK 会抛错；只把明确的「文档不存在」当作空，网络/权限错误必须继续抛出。
+async function transactionDoc(t, name, id) {
+  try { return (await t.collection(name).doc(id).get()).data || null; }
+  catch (e) {
+    if (/document.*(?:not exist|does not exist|not found)/i.test(String(e && (e.errMsg || e.message)))) return null;
+    throw e;
+  }
+}
+
+const randomId = () => crypto.randomBytes(16).toString('hex');
+function operationId(value) {
+  if (value == null || value === '') return randomId(); // 兼容旧客户端，只保证本次请求内重试
+  if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{8,100}$/.test(value)) throw fail('bad_input');
+  return value;
+}
+
 const SEQ_ID = 'memberNo';
 const MEMBER_NO_START = 100001;
 /** 注册送的积分。页面上的说法在 reference/content/member.json 和 messages.json，改的时候一起改 */
@@ -78,24 +94,36 @@ async function nextMemberNo() {
 /**
  * 把会员记录补齐：
  * - 没有编号的（编号规则定下来之前注册的，或注册时取号失败的）补发一个；
- * - 没领过注册积分的（送积分的规则定下来之前注册的）补送一次。
- * 两样都用「还没有标记」做更新条件（numbered、welcomeBonus）：同一个会员的两个请求同时进来时只有一个写得进去，
- * 另一个改用库里已经写好的那份，所以编号不会被后来的请求换掉，积分也不会送两次。没写进去的那个号空着不再用。
- * 补不上不影响别的功能，下次进入时再补。
+ * - 没领过注册积分的补送一次，积分和固定 ID 的赠分流水放在同一个事务中。
+ * - 旧版赠分流水漏记的只恢复流水，不再次加余额。
+ * 编号仍使用条件写入；取号失败可以下次补发，积分事务失败则向调用方报错，重进可恢复。
  */
 async function ensureMember(member) {
   if (!member) return member;
   let m = member;
-  // 两件事各管各的：发编号出了问题，不能连带着把积分也跳过
-  try {
-    if (!m.welcomeBonus) {
-      const res = await db.collection('members').where({ _id: m._id, welcomeBonus: _.exists(false) })
-        .update({ data: { points: _.inc(WELCOME_POINTS), welcomeBonus: true } });
-      if (res.stats.updated) await logPoints(m._id, WELCOME_POINTS, 'welcome');
-      m = await findById('members', m._id) || m;
+  if (m.ledgerVersion !== 1) {
+    await ensureCollection('point_logs');
+    // 兼容旧版随机 ID 的赠分流水。新记录使用固定 ID，旧版漏记的流水可在下次进入时恢复。
+    const old = (await db.collection('point_logs').where({ openid: m._id, reason: 'welcome' }).limit(1).get()).data[0];
+    const logId = 'welcome_' + sha(m._id);
+    try {
+      await db.runTransaction(async (t) => {
+        const current = await transactionDoc(t, 'members', m._id);
+        if (!current || current.ledgerVersion === 1) return;
+        const log = await transactionDoc(t, 'point_logs', logId);
+        const data = { ledgerVersion: 1, welcomeBonus: true };
+        if (!current.welcomeBonus) data.points = _.inc(WELCOME_POINTS);
+        if (!old && !log) await t.collection('point_logs').doc(logId).set({ data: {
+          openid: m._id, delta: WELCOME_POINTS, reason: 'welcome', createdAt: current.createdAt || db.serverDate()
+        } });
+        await t.collection('members').doc(m._id).update({ data: data });
+      });
+    } catch (e) {
+      // 提交结果丢失时以数据库中的事务标记确认；失败时不返回虚假的赠分成功。
+      const confirmed = await findById('members', m._id);
+      if (!confirmed || confirmed.ledgerVersion !== 1) throw e;
     }
-  } catch (e) {
-    console.error('ensureMember welcomeBonus', e);
+    m = await findById('members', m._id) || m;
   }
   try {
     if (!m.memberNo) {
@@ -110,26 +138,6 @@ async function ensureMember(member) {
     console.error('ensureMember memberNo', e);
   }
   return m;
-}
-
-/**
- * 记一条积分记录（积分页上列出来的那些）。reason 是原因：'welcome' 是注册赠送，其他的直接写给用户看的文字。
- * 集合第一次用到时自己建。记不上不影响积分本身。
- */
-async function logPoints(openid, delta, reason, by) {
-  const data = { openid: openid, delta: delta, reason: reason, createdAt: db.serverDate() };
-  // 运营手动调整的，记下是哪位管理员操作的
-  if (by) data.by = by;
-  try {
-    await db.collection('point_logs').add({ data: data });
-  } catch (e) {
-    try {
-      await db.createCollection('point_logs');
-      await db.collection('point_logs').add({ data: data });
-    } catch (e2) {
-      console.error('logPoints', e2);
-    }
-  }
 }
 
 /** 整理一段用户或运营填的文字：去掉控制字符和首尾空格，截到 max 个字。multiline 为真时保留换行 */
@@ -355,11 +363,16 @@ function eventData(input) {
     cost: Number.isInteger(e.cost) && e.cost > 0 ? e.cost : 0,
     contact: cleanText(e.contact, 100)
   };
-  if (data.cost > 1000000) throw fail('bad_cost');
+  if ((e.cost != null && e.cost !== '' && (!Number.isInteger(e.cost) || e.cost < 0)) || data.cost > 1000000) throw fail('bad_cost');
   if (!data.type) throw fail('bad_type');
   if (!data.title) throw fail('missing_title');
   if (!data.date) throw fail('missing_date');
   if (data.signupStart && data.signupEnd && data.signupEnd <= data.signupStart) throw fail('bad_signup_time');
+  if (e.quota != null && e.quota !== '' && (!Number.isInteger(e.quota) || e.quota <= 0)) throw fail('bad_quota');
+  const opens = data.memberSignupStart || data.signupStart;
+  if ((data.memberSignupStart && data.signupStart && data.memberSignupStart > data.signupStart) ||
+      (opens && opens > data.date) || (data.signupEnd && data.signupEnd > data.date) ||
+      (opens && data.signupEnd && data.signupEnd <= opens)) throw fail('bad_signup_time');
   return data;
 }
 
@@ -377,7 +390,8 @@ async function raiseSignupCount(eventId) {
 
 /** 公告。集合还没建时当作没有 */
 async function readNotice() {
-  try { return await findById('settings', 'notice'); } catch (e) { return null; }
+  await ensureCollection('settings');
+  return findById('settings', 'notice');
 }
 /** 给小程序的公告：开着并且有内容才给。version 是最后一次保存的时间，小程序每个版本只弹一次 */
 function noticeView(n) {
@@ -410,6 +424,11 @@ function memberView(m) {
 function eventView(e) {
   return {
     id: e._id,
+    status: e.status === 'published' ? 'published' : 'draft',
+    cancelled: e.cancelled === true,
+    signupCount: e.signupCount || 0,
+    version: Number.isInteger(e.version) ? e.version : 0,
+    updatedAt: ms(e.updatedAt),
     type: e.type,
     title: e.title,
     date: ms(e.date),
@@ -442,7 +461,11 @@ async function ensureCollection(name) {
   try {
     await db.collection(name).limit(1).get();
   } catch (e) {
-    try { await db.createCollection(name); } catch (e2) { /* 别的请求刚建好 */ }
+    // 瞬时读取失败不能被误认为初始化成功。
+    if (!/collection.*(?:not exist|does not exist)/i.test(String(e && (e.errMsg || e.message)))) throw e;
+    try { await db.createCollection(name); } catch (e2) {
+      if (!/exist/i.test(String(e2 && (e2.errMsg || e2.message)))) throw e2;
+    }
   }
   ensured[name] = true;
 }
@@ -472,8 +495,7 @@ async function removeSignup(openid, e, why, by) {
       removed = false;
       // 在事务里再读一次这条报名：上面读到之后，它可能已经被另一个请求撤掉，他又重新报了一次（积分数可能不一样了）。
       // 只撤上面读到的那一次报名（token 对得上），不碰他后来重新报的
-      let now = null;
-      try { now = (await t.collection('signups').doc(id).get()).data; } catch (err) { now = null; }
+      const now = await transactionDoc(t, 'signups', id);
       if (!now || now.token !== s.token) return;
       const rm = await t.collection('signups').doc(id).remove();
       if (!rm.stats.removed) return;
@@ -522,6 +544,21 @@ const SIGNUP_TRIES = 4;
 
 /** 会员报名从 memberSignupStart 开始；没填就用 signupStart */
 const signupOpensAt = (e) => ms(e.memberSignupStart) || ms(e.signupStart);
+const signupClosesAt = (e) => Math.min(ms(e.signupEnd) || Infinity, ms(e.date) || Infinity);
+
+function checkEventVersion(input, current) {
+  const version = input.version == null && input.event ? input.event.version : input.version;
+  const updatedAt = input.updatedAt == null && input.event ? input.event.updatedAt : input.updatedAt;
+  if ((version != null && version !== (current.version || 0)) ||
+      (version == null && updatedAt != null && updatedAt !== ms(current.updatedAt))) throw fail('conflict');
+}
+
+function planView(plan) {
+  if (!plan) return null;
+  const view = { input: plan.input, savedAt: ms(plan.savedAt) };
+  if (plan.formulaVersion) { view.formulaVersion = plan.formulaVersion; view.result = plan.result; }
+  return view;
+}
 
 const PLAN_KEYS = { sport: 'string', scene: 'string', start: 'string', minutes: 'number', kg: 'number', caffeineSensitive: 'boolean', hot: 'boolean', firstTime: 'boolean' };
 
@@ -546,7 +583,7 @@ const actions = {
       news: !!news && news.sent === false,
       // 运营在后台设的公告，打开小程序时弹一次
       notice: noticeView(await readNotice()),
-      plan: plan ? { input: plan.input, savedAt: ms(plan.savedAt) } : null,
+      plan: planView(plan),
       reminders: reminders.data.map((r) => r.eventId),
       signups: signups.data.map((s) => s.eventId)
     };
@@ -566,10 +603,10 @@ const actions = {
       throw fail('phone_failed');
     }
     if (!info || !info.purePhoneNumber) throw fail('phone_failed');
-    // 注册送 WELCOME_POINTS 积分；编号在建好会员后发，取号失败不影响注册，下次进入时补发
+    // 先建立可恢复的基础会员；ensureMember 在事务中发赠分并写流水，避免有余额没有账目。
     const doc = {
       openid: openid, phone: info.purePhoneNumber, countryCode: info.countryCode || '', nickname: '',
-      memberNo: null, points: WELCOME_POINTS, welcomeBonus: true, createdAt: db.serverDate()
+      memberNo: null, points: 0, createdAt: db.serverDate()
     };
     // 用 add 而不是 set：同一个人的两个注册请求同时进来时，后到的那个写不进去，不会把先建好的记录（连同编号）盖掉
     let created = true;
@@ -579,7 +616,6 @@ const actions = {
       created = false;
       if (!(await findById('members', openid))) throw e;
     }
-    if (created) await logPoints(openid, WELCOME_POINTS, 'welcome');
     return { member: memberView(await ensureMember(await findById('members', openid))), isNew: created };
   },
 
@@ -596,15 +632,9 @@ const actions = {
   async points(event, openid) {
     const member = await ensureMember(await findById('members', openid));
     if (!member) throw fail('not_member');
-    let logs = [];
-    try {
-      const res = await db.collection('point_logs').where({ openid: openid }).orderBy('createdAt', 'desc').limit(50).get();
-      logs = res.data.map((l) => ({ id: l._id, delta: l.delta, reason: l.reason, at: ms(l.createdAt) }));
-    } catch (e) { /* 集合还没建：没有记录 */ }
-    // 送过注册积分但没记上（记录功能上线之前送的，或当时没记成）：补一条给页面看，不写库
-    if (member.welcomeBonus && !logs.some((l) => l.reason === 'welcome')) {
-      logs.push({ id: 'welcome', delta: WELCOME_POINTS, reason: 'welcome', at: ms(member.createdAt) });
-    }
+    await ensureCollection('point_logs');
+    const res = await db.collection('point_logs').where({ openid: openid }).orderBy('createdAt', 'desc').limit(50).get();
+    const logs = res.data.map((l) => ({ id: l._id, delta: l.delta, reason: l.reason, at: ms(l.createdAt) }));
     return { member: memberView(member), logs: logs };
   },
 
@@ -627,10 +657,84 @@ const actions = {
     }
     // 天气是后加的输入，旧版本的小程序不会带
     if (typeof event.input.weather === 'string') input.weather = event.input.weather;
+    if (!['road', 'trail', 'bike', 'hike', 'climb', 'ski'].includes(input.sport) ||
+        !['long', 'hard', 'race'].includes(input.scene) || !['am', 'pm', 'night'].includes(input.start) ||
+        !Number.isInteger(input.minutes) || input.minutes < 30 || input.minutes > 2880 ||
+        !Number.isFinite(input.kg) || input.kg < 40 || input.kg > 110 ||
+        (input.weather !== undefined && !['normal', 'hot', 'cold', 'rain'].includes(input.weather))) throw fail('bad_input');
     const r = event.result || {};
-    const result = { total: Number(r.total) || 0, gelCount: Number(r.gelCount) || 0, proCount: Number(r.proCount) || 0 };
-    await db.collection('plans').doc(openid).set({ data: { openid: openid, input: input, result: result, savedAt: db.serverDate() } });
-    return { plan: { input: input, savedAt: Date.now() } };
+    const result = {};
+    for (const k of ['total', 'gelCount', 'proCount']) {
+      const value = r[k] == null ? 0 : Number(r[k]);
+      if (!Number.isInteger(value) || value < 0 || value > 200) throw fail('bad_input');
+      result[k] = value;
+    }
+    const data = { openid: openid, input: input, result: result, savedAt: db.serverDate() };
+    if (event.formulaVersion != null) {
+      if (typeof event.formulaVersion !== 'string' || !/^[a-zA-Z0-9._-]{1,64}$/.test(event.formulaVersion)) throw fail('bad_input');
+      // 只保存有界的完整展示快照；不把客户端字段用于积分或其他权威业务计算。
+      for (const k of ['totalCarb', 'caffeineMg', 'kcal', 'carbRate', 'caffeineCapMg', 'caffeineCapCount', 'caffeinePerKg', 'days']) {
+        if (!Number.isFinite(r[k]) || r[k] < 0 || r[k] > 100000) throw fail('bad_input');
+        result[k] = r[k];
+      }
+      if (typeof r.durationLabel !== 'string' || r.durationLabel.length > 20 || !Array.isArray(r.items) || r.items.length > 200 ||
+          !Array.isArray(r.reasons) || r.reasons.length > 10 || result.total !== result.gelCount + result.proCount || result.total !== r.items.length) throw fail('bad_input');
+      result.durationLabel = r.durationLabel;
+      result.items = r.items.map((item) => {
+        if (!item || !Number.isFinite(item.minute) || item.minute < -30 || item.minute > input.minutes ||
+            !['gel', 'pro'].includes(item.product) || !Number.isFinite(item.position) || item.position < 0 || item.position > 100 ||
+            typeof item.label !== 'string' || item.label.length > 80 || typeof item.productName !== 'string' || item.productName.length > 40) throw fail('bad_input');
+        return { minute: item.minute, label: item.label, product: item.product, productName: item.productName, position: item.position };
+      });
+      result.reasons = r.reasons.map((reason) => { if (typeof reason !== 'string' || reason.length > 1000) throw fail('bad_input'); return reason; });
+      if (Buffer.byteLength(JSON.stringify(result)) > 64000) throw fail('bad_input');
+      data.formulaVersion = event.formulaVersion;
+    }
+    await db.collection('plans').doc(openid).set({ data: data });
+    return { plan: planView(await findById('plans', openid)) };
+  },
+
+  /** 分享卡片、历史记录按 ID 读取；下架活动仅报名/提醒过的本人可读。 */
+  async event(event, openid) {
+    const id = typeof event.id === 'string' ? event.id : '';
+    const e = id && await findById('events', id);
+    if (!e) throw fail('not_found');
+    if (e.status !== 'published') {
+      const own = await findById('signups', openid + '_' + id) || await findById('reminders', openid + '_' + id);
+      if (!own || own.openid !== openid) throw fail('not_found');
+    }
+    return { event: eventView(e), readOnly: e.status !== 'published' || e.cancelled === true || Date.now() >= signupClosesAt(e) };
+  },
+
+  /** 本人的活动历史独立于公开列表；分批读取并批量关联活动，避免每条历史各查一次。 */
+  async myEvents(event, openid) {
+    const cursor = event.cursor ? String(event.cursor) : 's:0';
+    if (!/^[sr]:\d{1,8}$/.test(cursor)) throw fail('bad_input');
+    let [phase, position] = cursor.split(':');
+    let offset = Number(position);
+    let nextCursor = null;
+    const source = [];
+    while (source.length < 100) {
+      const remaining = 100 - source.length;
+      const collection = phase === 's' ? 'signups' : 'reminders';
+      const res = await db.collection(collection).where({ openid: openid }).orderBy('createdAt', 'desc').skip(offset).limit(remaining + 1).get();
+      source.push(...res.data.slice(0, remaining).map((r) => ({ row: r, state: phase === 's' ? 'signed' : 'reminded' })));
+      if (res.data.length > remaining) { nextCursor = phase + ':' + (offset + remaining); break; }
+      if (phase === 'r') break;
+      phase = 'r'; offset = 0;
+      nextCursor = 'r:0';
+    }
+    if (phase === 'r' && source.length < 100) nextCursor = null;
+    const eventIds = [...new Set(source.map((r) => r.row.eventId))];
+    const events = eventIds.length ? (await db.collection('events').where({ _id: _.in(eventIds) }).limit(100).get()).data : [];
+    const byId = Object.fromEntries(events.map((e) => [e._id, e]));
+    const reminded = source.filter((r) => r.state === 'reminded').map((r) => openid + '_' + r.row.eventId);
+    const signed = reminded.length ? (await db.collection('signups').where({ _id: _.in(reminded) }).limit(100).get()).data : [];
+    const signedIds = new Set(signed.map((s) => s.eventId));
+    const records = source.filter((r) => r.state === 'signed' || !signedIds.has(r.row.eventId)).map(({ row, state }) => ({
+      id: row.eventId, event: byId[row.eventId] ? eventView(byId[row.eventId]) : null, state: state, createdAt: ms(row.createdAt)
+    }));
+    return { records: records, nextCursor: nextCursor };
   },
 
   /** 即将开始的活动：已发布、活动日期还没过（留一天余量） */
@@ -702,7 +806,13 @@ const actions = {
     const e = await findById('events', id);
     if (!e) throw fail('not_found');
     // 每次都下架：取消过的活动可能又被上架了，再取消时也得先下架，不然撤完了还能接着报
-    if (!e.cancelled || e.status !== 'draft') await db.collection('events').doc(id).update({ data: { status: 'draft', cancelled: true, cancelledAt: db.serverDate(), updatedAt: db.serverDate() } });
+    await db.runTransaction(async (t) => {
+      const current = await transactionDoc(t, 'events', id);
+      if (!current) throw fail('not_found');
+      if (!current.cancelled || current.status !== 'draft') await t.collection('events').doc(id).update({ data: {
+        status: 'draft', cancelled: true, version: (current.version || 0) + 1, cancelledAt: db.serverDate(), updatedAt: db.serverDate()
+      } });
+    });
     const batch = await db.collection('signups').where({ eventId: id }).limit(40).get();
     for (const s of batch.data) {
       // 某一个人没撤成（数据库一时出错）不拖累别人：他还留在名单里，算在 remaining 里，下一次调用再撤
@@ -809,14 +919,18 @@ const actions = {
     const data = eventData(event.event);
     let id = event.id ? String(event.id) : '';
     if (id) {
-      if (!(await findById('events', id))) throw fail('not_found');
       // 取消过的活动在表单里重新上架：就不再是「已取消」了
       if (data.status === 'published') data.cancelled = false;
-      await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+      await db.runTransaction(async (t) => {
+        const current = await transactionDoc(t, 'events', id);
+        if (!current) throw fail('not_found');
+        checkEventVersion(event, current);
+        await t.collection('events').doc(id).update({ data: Object.assign({}, data, { version: (current.version || 0) + 1, updatedAt: db.serverDate() }) });
+      });
       // 有名额限制时，已报名人数不能比报名记录少（以前不限名额时报的名可能没记数）
       if (data.quota) await raiseSignupCount(id);
     } else {
-      const res = await db.collection('events').add({ data: Object.assign(data, { signupCount: 0, createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
+      const res = await db.collection('events').add({ data: Object.assign(data, { version: 1, signupCount: 0, createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
       id = res._id;
     }
     return { event: adminEventView(await findById('events', id)) };
@@ -826,12 +940,16 @@ const actions = {
   async adminSetEventStatus(event, openid) {
     await requireAdmin(openid);
     const id = String(event.id || '');
-    if (!(await findById('events', id))) throw fail('not_found');
     const status = event.status === 'published' ? 'published' : 'draft';
     const data = { status: status, updatedAt: db.serverDate() };
     // 取消过的活动重新上架：就不再是「已取消」了
     if (status === 'published') data.cancelled = false;
-    await db.collection('events').doc(id).update({ data: data });
+    await db.runTransaction(async (t) => {
+      const current = await transactionDoc(t, 'events', id);
+      if (!current) throw fail('not_found');
+      checkEventVersion(event, current);
+      await t.collection('events').doc(id).update({ data: Object.assign({}, data, { version: (current.version || 0) + 1 }) });
+    });
     return { event: adminEventView(await findById('events', id)) };
   },
 
@@ -994,11 +1112,26 @@ const actions = {
     if (Math.abs(delta) > 100000) throw fail('delta_too_large');
     const reason = cleanText(event.reason, 30);
     if (!reason) throw fail('missing_reason');
-    const cond = { _id: target._id };
-    if (delta < 0) cond.points = _.gte(-delta);
-    const done = await db.collection('members').where(cond).update({ data: { points: _.inc(delta) } });
-    if (!done.stats.updated) throw fail('insufficient');
-    await logPoints(target._id, delta, reason, openid);
+    const op = operationId(event.operationId);
+    const id = 'adjust_' + sha(openid + ':' + op);
+    const signature = sha(JSON.stringify([target._id, delta, reason]));
+    await ensureCollection('point_logs');
+    try {
+      await db.runTransaction(async (t) => {
+        const previous = await transactionDoc(t, 'point_logs', id);
+        if (previous) { if (previous.signature !== signature) throw fail('operation_conflict'); return; }
+        const current = await transactionDoc(t, 'members', target._id);
+        if (!current) throw fail('not_found');
+        if ((current.points || 0) + delta < 0) throw fail('insufficient');
+        await t.collection('members').doc(target._id).update({ data: { points: _.inc(delta) } });
+        await t.collection('point_logs').doc(id).set({ data: {
+          openid: target._id, delta: delta, reason: reason, by: openid, signature: signature, operationId: op, createdAt: db.serverDate()
+        } });
+      });
+    } catch (e) {
+      const confirmed = await findById('point_logs', id);
+      if (!confirmed || confirmed.signature !== signature) throw e;
+    }
     return { member: adminMemberView(await findById('members', target._id)) };
   },
 
@@ -1007,10 +1140,23 @@ const actions = {
     const e = await findById('events', event.eventId);
     if (!e || e.status !== 'published') throw fail('not_found');
     if (!event.templateId) throw fail('missing_template');
-    await db.collection('reminders').doc(openid + '_' + e._id).set({
-      data: { openid: openid, eventId: e._id, templateId: String(event.templateId), sent: false, createdAt: db.serverDate() }
+    const batchId = operationId(event.batchId);
+    const id = openid + '_' + e._id;
+    await db.runTransaction(async (t) => {
+      const current = await transactionDoc(t, 'reminders', id);
+      // 同一次授权重试不能重新消费；旧版无批次请求也不能重置尚未发送或正在发送的记录。
+      const batches = current && Array.isArray(current.batches) ? current.batches.slice() : [];
+      if (current && current.batchId && !batches.includes(current.batchId)) batches.push(current.batchId);
+      if (current && (batches.includes(batchId) || current.sent === false || current.status === 'sending')) return;
+      if (batches.length >= 100) throw fail('bad_input');
+      batches.push(batchId);
+      await t.collection('reminders').doc(id).set({ data: {
+        openid: openid, eventId: e._id, templateId: String(event.templateId), batchId: batchId, batches: batches,
+        sent: false, status: 'waiting', createdAt: db.serverDate()
+      } });
     });
-    return { eventId: e._id };
+    const saved = await findById('reminders', id);
+    return { eventId: e._id, batchId: saved && saved.batchId || batchId, reminded: !!saved && saved.sent === false };
   },
 
   /**
@@ -1021,6 +1167,20 @@ const actions = {
   async subscribeNews(event, openid) {
     if (!event.templateId) throw fail('missing_template');
     const data = { openid: openid, templateId: String(event.templateId), sent: false, status: 'waiting', eventId: '', job: '', subscribedAt: db.serverDate() };
+    if (event.batchId) {
+      const batchId = operationId(event.batchId);
+      await ensureCollection('news_subs');
+      await ensureCollection('subscription_batches');
+      const marker = sha('news:' + openid + ':' + batchId);
+      await db.runTransaction(async (t) => {
+        if (await transactionDoc(t, 'subscription_batches', marker)) return;
+        const current = await transactionDoc(t, 'news_subs', openid);
+        if (!current || current.sent === true) await t.collection('news_subs').doc(openid).set({ data: Object.assign({}, data, { batchId: batchId }) });
+        await t.collection('subscription_batches').doc(marker).set({ data: { openid: openid, batchId: batchId, createdAt: db.serverDate() } });
+      });
+      const current = await findById('news_subs', openid);
+      return { news: !!current && current.sent === false };
+    }
     const subs = db.collection('news_subs');
     // 写的时候不能照着刚才读到的样子直接盖上去：同一个人的两个请求同时进来（比如两台手机），
     // 先到的那个写好之后可能已经被划给了某场活动，后到的再盖一遍就把他从那场里挤出去了。所以：
@@ -1059,7 +1219,7 @@ const actions = {
     const now = Date.now();
     const opens = signupOpensAt(e);
     if (opens && now < opens) throw fail('not_open');
-    if (e.signupEnd && now > ms(e.signupEnd)) throw fail('closed');
+    if (now >= signupClosesAt(e)) throw fail('closed');
 
     const id = openid + '_' + e._id;
     if (await findById('signups', id)) return { eventId: e._id, already: true };
@@ -1079,8 +1239,14 @@ const actions = {
     const attempt = () => db.runTransaction(async (t) => {
       refused = '';
       // 活动和会员在事务里重新读：这时活动可能刚被下架或取消、刚改了要用的积分，名额可能刚被别人占掉，积分可能刚用在别处
-      const ev = (await t.collection('events').doc(e._id).get()).data;
-      if (ev.status !== 'published') { refused = 'not_found'; return; }
+      const existing = await transactionDoc(t, 'signups', id);
+      if (existing) { refused = 'already'; return; }
+      const ev = await transactionDoc(t, 'events', e._id);
+      if (!ev || ev.status !== 'published' || ev.cancelled === true) { refused = 'not_found'; return; }
+      const currentTime = Date.now();
+      const currentOpens = signupOpensAt(ev);
+      if (currentOpens && currentTime < currentOpens) { refused = 'not_open'; return; }
+      if (currentTime >= signupClosesAt(ev)) { refused = 'closed'; return; }
       const cost = costOf(ev);
       // 要用的积分和他确认时看到的不一样了：不扣，让页面拿新的数重新确认
       if (expected !== null && expected !== cost) { refused = 'cost_changed'; return; }
@@ -1127,7 +1293,7 @@ exports.main = async (event) => {
   let OPENID = '';
   try { OPENID = cloud.getWXContext().OPENID || ''; } catch (e) { /* 网页来的调用没有微信身份 */ }
   const action = event && event.action;
-  const handler = actions[action];
+  const handler = typeof action === 'string' && Object.prototype.hasOwnProperty.call(actions, action) ? actions[action] : null;
   try {
     // 没有微信身份：只有电脑端后台的网页会这样调。只认登录，和带着登录凭证调后台接口
     if (!OPENID) {

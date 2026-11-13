@@ -123,6 +123,18 @@
 .fuel-line__start, .fuel-line__end { position: absolute; top: 46rpx; font-size: 21rpx; line-height: 31rpx; color: #C9CEE8; }
 .fuel-line__start { left: 8%; margin-left: -15rpx; }
 .fuel-line__end { right: 0; }
+.fuel-line--stage .fuel-line__track { left: 0; }
+.fuel-line--stage .fuel-line__start { left: 0; margin-left: 0; }
+
+/* 长计划只画选中六小时段，整场数量仍留在上面的统计中。 */
+.fuel-stages { display: flex; flex-direction: column; gap: 12rpx; min-width: 0; }
+.fuel-stages__head { display: flex; align-items: center; justify-content: space-between; gap: 15rpx; font-size: 25rpx; line-height: 38rpx; font-weight: 700; }
+.fuel-stages__count { color: #C2E541; white-space: nowrap; }
+.fuel-stages__hint { font-size: 21rpx; line-height: 33rpx; color: #C9CEE8; }
+.fuel-stages__scroll { width: 100%; white-space: nowrap; }
+.fuel-stages__tabs { display: flex; gap: 12rpx; padding: 8rpx 0; }
+.fuel-stages__tab { flex-shrink: 0; padding: 12rpx 19rpx; border: 1px solid #4A5390; border-radius: 19rpx; color: #FFFFFF; font-size: 23rpx; line-height: 35rpx; }
+.fuel-stages__tab--on { color: #010439; border-color: #C2E541; background: #C2E541; font-weight: 700; }
 
 /* 五列格子：能量胶黄绿底，PRO 深色描边 */
 .fuel-cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12rpx; }
@@ -153,6 +165,7 @@
 .fuel-actions { display: flex; gap: 23rpx; padding: 31rpx 38rpx 0; }
 .fuel-actions__save, .fuel-actions__more { display: flex; align-items: center; justify-content: center; height: 100rpx; border-radius: 50rpx; color: #010439; }
 .fuel-actions__save { flex: 1.4; background: #C2E541; font-size: 31rpx; font-weight: 900; }
+.fuel-actions__save--busy { opacity: .65; }
 .fuel-actions__more { flex: 1; box-sizing: border-box; border: 3rpx solid #010439; font-size: 29rpx; font-weight: 700; }
 .fuel-foot { margin: 27rpx 38rpx 38rpx; font-size: 21rpx; line-height: 33rpx; color: #5E6170; }
 

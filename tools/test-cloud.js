@@ -14,6 +14,17 @@ console.error = () => {};
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 let n = 0;
+let completed = false;
+let currentStage = '初始化';
+// 未解决的 Promise 不会让 Node 保持运行，必须避免测试中途退出却被 CI 当成通过。
+process.on('beforeExit', () => {
+  if (!completed) { console.log('云开发测试未完成：' + currentStage); process.exitCode = 1; }
+});
+const watchdog = setTimeout(() => {
+  console.log('云开发测试超时：' + currentStage);
+  process.exit(1);
+}, 30000);
+watchdog.unref();
 const ok = (cond, name) => { assert.ok(cond, name); n += 1; };
 const eq = (a, b, name) => { assert.deepStrictEqual(a, b, name); n += 1; };
 
@@ -633,7 +644,11 @@ async function signupRecoveryTests() {
   const race3 = await make('山路');
   await as('user-b', 'signup', { eventId: race3 });
   await as('user-c', 'signup', { eventId: race3 });
-  cloud.state.txFails = 'before';
+  let cancelTransactions = 0;
+  cloud.state.beforeTx = () => {
+    // 第一个事务是下架活动；让第二个、即第一位会员退款的事务失败。
+    if (++cancelTransactions === 2) { cloud.state.txFails = 'before'; cloud.state.beforeTx = null; }
+  };
   r = await call('adminCancelEvent', { id: race3 });
   eq([r.ok, r.data.remaining, member('user-b').points + member('user-c').points], [true, 1, 900], '一个没撤成：算在还剩的人数里，另一个已经退了');
   r = await call('adminCancelEvent', { id: race3 });
@@ -1299,15 +1314,16 @@ async function clientTests() {
   ok(texts.length === 8 && !texts.join('|').includes('['), '详情页不带方括号占位');
   p.onSignup();
   await tick();
-  eq([p.data.signed, lastCall('showToast').args.title], [false, '报名还没有开放'], '没开放时报名失败并提示');
+  eq([p.data.signed, lastCall('showToast').args.title], [false, '报名未开放'], '没开放时页面直接说明当前状态');
   cloud.state.now += DAY + HOUR;
-  p.onSignup();
+  await cloud.run(() => p.onSignup()); // 页面状态与云端使用同一测试时钟
   await tick();
   ok(p.data.signed, '报名成功');
   eq(lastCall('showToast').args.title, '报名成功', '报名成功有提示');
 
   // 我的：活动里先显示已报名
   p = env.openPage('pages/me/index', {});
+  await tick(); // 个人活动通过独立历史接口读取，不再依赖公开列表缓存
   eq(p.data.myEvents.map((e) => [e.id, e.state]), [['race', 'signed']], '我的活动：同一场只显示已报名');
   ok(p.data.plan.saved, '我的补给计划');
 
@@ -1934,20 +1950,14 @@ async function fontTests() {
 }
 
 (async () => {
-  await fontTests();
-  shopTests();
-  await signupClientTests();
-  await functionTests();
-  await adminTests();
-  await webTests();
-  await signupFailureTests();
-  await remindTests();
-  await newsTests();
-  await pastTests();
-  await signupRecoveryTests();
-  await memberBoardTests();
-  await paidSignupTests();
-  await clientTests();
+  for (const run of [fontTests, shopTests, signupClientTests, functionTests, adminTests, webTests,
+    signupFailureTests, remindTests, newsTests, pastTests, signupRecoveryTests, memberBoardTests,
+    paidSignupTests, clientTests]) {
+    currentStage = run.name;
+    await run();
+  }
+  completed = true;
+  clearTimeout(watchdog);
   console.log('云开发测试通过：' + n + ' 项');
   process.exit(0);
 })().catch((e) => { console.log(e); process.exit(1); });

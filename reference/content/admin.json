@@ -80,7 +80,9 @@
     "cancelEventTitle": "取消整场活动",
     "cancelEventConfirm": "活动会下架，[人数] 位报名的人全部撤销，积分退回，每个人都会收到通知。这一步不能撤回。",
     "cancelEventDone": "活动已取消",
-    "cancelling": "正在处理，还剩 [人数] 人"
+    "cancelling": "正在处理，还剩 [人数] 人",
+    "loadFailed": "没有读到当前内容，请重试",
+    "retry": "重新读取"
   },
   "past": {
     "hint": "活动页「往期」里的赞助赛事。保存后小程序里马上能看到，不用重新发版。",
@@ -164,7 +166,11 @@
     "changeCover": "换一张",
     "uploading": "正在上传",
     "save": "保存",
-    "saved": "已保存"
+    "saved": "已保存",
+    "loading": "正在读取，请稍等",
+    "loadFailed": "没有读到当前内容，请重试",
+    "retry": "重新读取",
+    "conflict": "活动已被其他管理员修改。你的填写已保留，重新读取后再编辑。"
   },
   "notice": {
     "labels": {
@@ -180,7 +186,10 @@
     "save": "保存",
     "saved": "公告已保存",
     "defaultTitle": "公告",
-    "confirm": "知道了"
+    "confirm": "知道了",
+    "loading": "正在读取，请稍等",
+    "loadFailed": "没有读到当前内容，请重试",
+    "retry": "重新读取"
   },
   "members": {
     "stats": {
@@ -229,12 +238,12 @@
     "bad_type": "请选择类型",
     "missing_title": "请填写名称",
     "missing_date": "请选择活动时间",
-    "bad_signup_time": "报名结束要晚于报名开始",
+    "bad_signup_time": "请检查报名时间，会员开始不晚于公开开始，结束晚于开始且不晚于活动时间",
     "not_published": "活动上架后才能通知",
     "event_ended": "活动已经结束了",
     "notified": "这场活动已经通知过了",
     "no_subscribers": "还没有人订阅新活动通知",
-    "bad_cost": "积分数太大了",
+    "bad_cost": "报名积分请填 0 到 1000000 的整数",
     "not_signed": "这个人已经不在名单里了",
     "cancel_incomplete": "还有人没处理完，请再点一次「取消整场活动」",
     "bad_year": "年份填四位数字",
@@ -242,13 +251,17 @@
     "missing_image": "请选择照片",
     "missing_content": "请填写公告内容",
     "missing_query": "请填写手机号或会员编号",
-    "bad_delta": "请填写数量",
+    "bad_delta": "请填写正整数数量",
     "delta_too_large": "一次最多调整 100000 积分",
     "uploading_wait": "图片还在上传，等一下再保存",
     "missing_reason": "请填写原因",
     "insufficient": "积分不够减",
     "upload": "图片上传失败，请再试一次",
-    "network": "网络异常，请稍后再试"
+    "network": "网络异常，请稍后再试",
+    "bad_quota": "名额请填正整数，留空表示不限",
+    "conflict": "活动已被修改，请重新读取后再编辑",
+    "operation_conflict": "这笔调整的内容已变更，请重新填写",
+    "load_first": "当前内容还没读到，请稍后再试"
   },
   "web": {
     "title": "在电脑上用后台",
@@ -263,5 +276,14 @@
     "get": "获取登录码",
     "again": "重新获取",
     "codeHint": "5 分钟内有效，只能用一次。登录一次管 12 小时。"
+  },
+  "editor": {
+    "loading": "正在读取，请稍等",
+    "loadFailed": "没有读到当前内容，请重试",
+    "retry": "重新读取",
+    "unsaved": "修改还没有保存，离开会丢失。",
+    "discardTitle": "放弃未保存的修改",
+    "discard": "放弃修改",
+    "keep": "继续编辑"
   }
 }

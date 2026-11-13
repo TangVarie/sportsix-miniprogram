@@ -10,6 +10,8 @@
     <view class="as-event">{{title}}</view>
     <view wx:if="{{!loading}}" class="as-count">{{countText}}</view>
     <view wx:if="{{progress}}" class="as-count">{{progress}}</view>
+    <view wx:if="{{loadFailed}}" class="as-empty">{{copy.loadFailed}}</view>
+    <view wx:if="{{loadFailed}}" class="as-btn as-btn--line" bindtap="onRetry">{{copy.retry}}</view>
 
     <view wx:if="{{loading}}">
       <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="as-skel sx-skeleton"></view>
@@ -29,9 +31,9 @@
         <view class="as-mini sx-pressable" hover-class="sx-press" data-no="{{item.memberNo}}" bindtap="onCancel">{{copy.cancel}}</view>
       </view>
     </view>
-    <view wx:else class="as-empty">{{copy.empty}}</view>
+    <view wx:elif="{{!loadFailed}}" class="as-empty">{{copy.empty}}</view>
 
     <!-- 取消整场活动：已经取消过、而且名单清空了的不再显示 -->
-    <view wx:if="{{!loading && !(cancelled && !list.length)}}" class="as-btn as-btn--danger sx-pressable {{busy ? 'as-btn--busy' : ''}}" hover-class="sx-press" bindtap="onCancelEvent">{{copy.cancelEvent}}</view>
+    <view wx:if="{{loaded && !loading && !loadFailed && !(cancelled && !list.length)}}" class="as-btn as-btn--danger sx-pressable {{busy ? 'as-btn--busy' : ''}}" hover-class="sx-press" bindtap="onCancelEvent">{{copy.cancelEvent}}</view>
   </view>
 </view>

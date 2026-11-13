@@ -18,12 +18,15 @@ const _ = db.command;
 const PAGE = 100;
 /** 一次执行最多发多少条，留在云函数的超时时间以内；剩下的下一次执行接着发 */
 const MAX_PER_RUN = 300;
+// 云函数配置为 60 秒；提前停止领取新任务，给正在进行的请求和最终状态回写留时间。
+const RUN_BUDGET_MS = 45 * 1000;
 const ms = (d) => (d ? new Date(d).getTime() : null);
 
 /** 活动日期还没过的已发布活动，分页取完 */
-async function listEvents(now) {
+async function listEvents(now, deadline) {
   const all = [];
   for (let skip = 0; ; skip += PAGE) {
+    if (Date.now() >= deadline) return all;
     const res = await db.collection('events')
       .where({ status: 'published', date: _.gte(new Date(now - 24 * 3600 * 1000)) })
       .orderBy('date', 'asc').skip(skip).limit(PAGE).get();
@@ -34,22 +37,26 @@ async function listEvents(now) {
 
 exports.main = async () => {
   const now = Date.now();
+  const deadline = now + RUN_BUDGET_MS;
   let sent = 0;
   let failed = 0;
 
-  for (const e of await listEvents(now)) {
+  for (const e of await listEvents(now, deadline)) {
+    if (Date.now() >= deadline) break;
     const opensAt = ms(e.memberSignupStart) || ms(e.signupStart);
     // 还没开放的不发；报名已经结束的也不再补发
-    if (!opensAt || opensAt > now || (e.signupEnd && ms(e.signupEnd) < now)) continue;
+    const closesAt = Math.min(ms(e.signupEnd) || Infinity, ms(e.date) || Infinity);
+    if (!opensAt || opensAt > now || now >= closesAt) continue;
 
     // 领取过的记录不再是 sent: false，所以每次都从头取，直到取不到为止
-    while (sent + failed < MAX_PER_RUN) {
+    while (sent + failed < MAX_PER_RUN && Date.now() < deadline) {
       const pending = await db.collection('reminders').where({ eventId: e._id, sent: false }).limit(PAGE).get();
       if (!pending.data.length) break;
       for (const r of pending.data) {
-        if (sent + failed >= MAX_PER_RUN) break;
+        if (sent + failed >= MAX_PER_RUN || Date.now() >= deadline) break;
         // 领取：只有还是 sent: false 时才改得动
-        const claim = await db.collection('reminders').where({ _id: r._id, sent: false })
+        const batch = r.batchId === undefined ? _.exists(false) : r.batchId;
+        const claim = await db.collection('reminders').where({ _id: r._id, sent: false, batchId: batch })
           .update({ data: { sent: true, status: 'sending', claimedAt: db.serverDate() } });
         if (!claim.stats.updated) continue;
 
@@ -70,11 +77,12 @@ exports.main = async () => {
           failed += 1;
           console.error('send', r._id, error);
         }
-        await db.collection('reminders').doc(r._id).update({ data: { status: error ? 'failed' : 'sent', sentAt: db.serverDate(), error: error } });
+        await db.collection('reminders').where({ _id: r._id, batchId: batch, sent: true, status: 'sending' })
+          .update({ data: { status: error ? 'failed' : 'sent', sentAt: db.serverDate(), error: error } });
       }
     }
   }
-  const news = await sendNews(now, MAX_PER_RUN - sent - failed);
+  const news = await sendNews(now, MAX_PER_RUN - sent - failed, deadline);
   return { sent: sent, failed: failed, newsSent: news.sent, newsFailed: news.failed };
 };
 
@@ -93,15 +101,16 @@ exports.main = async () => {
  *
  * @param budget 这次执行还能发多少条
  */
-async function sendNews(now, budget) {
+async function sendNews(now, budget, deadline) {
   const total = { sent: 0, failed: 0 };
   let left = budget;
   // 上一次执行停到一半的，先收尾
   const stopping = await db.collection('events').where({ notifyStatus: 'stopping' }).limit(20).get();
-  for (const e of stopping.data) await stopNews(e, {});
+  for (const e of stopping.data) { if (Date.now() >= deadline) break; await stopNews(e, {}); }
 
   const jobs = await db.collection('events').where({ notifyStatus: 'pending' }).limit(20).get();
   for (const e of jobs.data) {
+    if (Date.now() >= deadline) break;
     const job = e.notifyId;
     if (!job) continue;
     // 登记到一半（人还没划好）：等它做完。两分钟还没做完，说明那次登记中断了，停掉
@@ -124,14 +133,14 @@ async function sendNews(now, budget) {
     let failed = 0;
     let finished = false;
     try {
-      while (left > 0) {
+      while (left > 0 && Date.now() < deadline) {
         // 每取一批先看一眼活动：中途被下架或停掉了就不发了，剩下的由下一次执行收尾
         const cur = (await db.collection('events').where({ _id: e._id }).limit(1).get()).data[0];
         if (!cur || cur.notifyId !== job || cur.status !== 'published' || cur.notifyStatus !== 'pending') break;
         const pending = await db.collection('news_subs').where({ job: job, sent: false }).limit(PAGE).get();
         if (!pending.data.length) { finished = true; break; }
         for (const r of pending.data) {
-          if (left <= 0) break;
+          if (left <= 0 || Date.now() >= deadline) break;
           const claim = await db.collection('news_subs').where({ _id: r._id, sent: false, job: job })
             .update({ data: { sent: true, status: 'sending', claimedAt: db.serverDate() } });
           if (!claim.stats.updated) continue;

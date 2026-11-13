@@ -2,7 +2,7 @@
   <view class="ed-header sx-in">
     <view class="ed-header__photo sx-photo"><image class="sx-photo__img ed-header__img sx-img-fade {{loaded.head ? '' : 'sx-img-wait'}}" data-img="head" bindload="onImgLoad" binderror="onImgLoad" src="{{event.image}}" mode="aspectFill" /></view>
     <image wx:if="{{event.graphic}}" class="ed-header__ridge sx-draw" src="{{event.graphic}}" />
-    <view class="ed-back" bindtap="onBack">
+    <view class="ed-back" bindtap="onBack" aria-role="button" aria-label="{{clientCopy.back}}">
       <image class="ed-back__icon" src="/assets/icons/back-white.svg" />
       <text>活动</text>
     </view>
@@ -22,6 +22,10 @@
   </view>
 
   <view class="ed-body">
+    <view wx:if="{{stale}}" class="ed-status">
+      <text>{{clientCopy.stale}}</text>
+      <view class="ed-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
     <view class="ed-rows">
       <view wx:for="{{rowFields}}" wx:key="k" class="ed-row {{index < rowFields.length - 1 ? 'ed-row--line' : ''}}">
         <text class="ed-row__k">{{item.k}}</text>
@@ -64,13 +68,30 @@
   </view>
 
   <view class="ed-bar">
-    <view class="ed-bar__hint">{{detail.reminderHint}}</view>
+    <view class="ed-bar__hint">{{state.key === 'not_open' ? detail.reminderHint : state.readOnly ? state.label : signed ? signedText : state.label}}</view>
     <view class="ed-bar__btns">
-      <view class="ed-btn ed-btn--ghost sx-pressable {{reminded ? 'ed-btn--done' : ''}}" hover-class="sx-press" bindtap="onRemind">
+      <view wx:if="{{state.canRemind || reminded}}" class="ed-btn ed-btn--ghost sx-pressable {{reminded ? 'ed-btn--done' : ''}}" hover-class="sx-press" bindtap="onRemind" aria-role="button" aria-disabled="{{!state.canRemind}}">
         <image class="ed-btn__icon" src="/assets/icons/bell-{{reminded ? 'grey' : 'navy'}}.svg" />
         <text>{{reminded ? remindedText : detail.buttons[0]}}</text>
       </view>
-      <view class="ed-btn ed-btn--primary sx-pressable {{signed ? 'ed-btn--done' : ''}}" hover-class="{{signed ? 'none' : 'sx-press'}}" bindtap="onSignup">{{signed ? signedText : detail.buttons[1]}}</view>
+      <view class="ed-btn ed-btn--primary sx-pressable {{!state.canSignup ? 'ed-btn--done' : ''}}" hover-class="{{state.canSignup ? 'sx-press' : 'none'}}" bindtap="onSignup" aria-role="button" aria-disabled="{{!state.canSignup}}">{{state.signupLabel}}</view>
     </view>
+  </view>
+</view>
+
+<view wx:else class="page ed-page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="ed-header ed-state-head sx-grid-bg">
+    <view class="ed-back" bindtap="onBack" aria-role="button" aria-label="{{clientCopy.back}}">
+      <image class="ed-back__icon" src="/assets/icons/back-white.svg" />
+      <text>活动</text>
+    </view>
+  </view>
+  <view class="ed-status ed-status--block">
+    <view wx:if="{{loading}}" class="ed-state-skeleton sx-skeleton" aria-label="{{clientCopy.loading}}"></view>
+    <block wx:else>
+      <text>{{loadError ? clientCopy.loadFailed : clientCopy.eventUnavailable}}</text>
+      <view wx:if="{{loadError}}" class="ed-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+      <view class="ed-status__retry" bindtap="onEvents" aria-role="button">{{clientCopy.backToEvents}}</view>
+    </block>
   </view>
 </view>

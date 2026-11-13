@@ -19,15 +19,17 @@ function createCloud() {
     onUpdate: null,    // (集合名, 条件) => Promise：条件更新真正执行之前先等它，用来排出特定的先后顺序
     updateError: null, // (集合名) => true 时这次更新做成之后再抛错（模拟结果没传回来）
     txFails: null,     // 事务专用。'before'：没提交就抛错；'after'：提交成功后抛错（结果没传回来）。用一次就清掉；'always'：一直提交不了，直到清掉
+    beforeTxRead: null, // (集合名, 文档ID) => Promise，事务快照读后暂停，验证与普通写入的冲突
+    beforeCommit: null, // () => Promise，事务提交前暂停
     beforeTx: null,    // () => Promise：事务开始之前先等它，用来排出特定的先后顺序
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true, subscription_batches: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
-  let txQueue = Promise.resolve();
-  const col = (name) => {
+  const col = (name, context) => {
     if (state.absent[name]) throw new Error('collection not exists: ' + name);
-    return (state.data[name] = state.data[name] || []);
+    const data = context ? context.data : state.data;
+    return (data[name] = data[name] || []);
   };
   const val = (v) => (v instanceof Date ? v.getTime() : v);
   const isOp = (v) => v && typeof v === 'object' && v.$op;
@@ -55,24 +57,24 @@ function createCloud() {
   }
   const copy = (d) => Object.assign({}, d);
 
-  function query(name, cond, order, max, offset) {
+  function query(name, cond, order, max, offset, context) {
     const q = {
-      where: (c) => query(name, c, order, max, offset),
-      orderBy: (field, dir) => query(name, cond, { field: field, dir: dir }, max, offset),
-      limit: (n) => query(name, cond, order, n, offset),
-      skip: (n) => query(name, cond, order, max, n),
+      where: (c) => query(name, c, order, max, offset, context),
+      orderBy: (field, dir) => query(name, cond, { field: field, dir: dir }, max, offset, context),
+      limit: (n) => query(name, cond, order, n, offset, context),
+      skip: (n) => query(name, cond, order, max, n, context),
       async get() {
         if (state.getError && state.getError(name)) throw new Error('database timeout');
-        let list = col(name).filter((d) => match(d, cond || {}));
+        let list = col(name, context).filter((d) => match(d, cond || {}));
         if (order) list = list.slice().sort((a, b) => (val(a[order.field]) - val(b[order.field])) * (order.dir === 'desc' ? -1 : 1));
         const result = { data: list.slice(offset || 0, (offset || 0) + (max || 20)).map(copy) };
         if (state.afterGet) await state.afterGet(name, cond || {});
         return result;
       },
-      async count() { return { total: col(name).filter((d) => match(d, cond || {})).length }; },
+      async count() { return { total: col(name, context).filter((d) => match(d, cond || {})).length }; },
       async update(o) {
         if (state.onUpdate) await state.onUpdate(name, cond || {});
-        const list = col(name).filter((d) => match(d, cond || {}));
+        const list = col(name, context).filter((d) => match(d, cond || {}));
         list.forEach((d) => apply(d, o.data));
         if (state.updateError && state.updateError(name)) throw new Error('response lost');
         return { stats: { updated: list.length } };
@@ -80,30 +82,30 @@ function createCloud() {
       async add(o) {
         const doc = copy(o.data);
         if (!doc._id) doc._id = 'id' + (++seq);
-        if (col(name).some((d) => d._id === doc._id)) throw new Error('duplicate key: ' + doc._id);
+        if (col(name, context).some((d) => d._id === doc._id)) throw new Error('duplicate key: ' + doc._id);
         const mode = state.addFails;
         state.addFails = null;
         if (mode === 'before') throw new Error('network error');
-        col(name).push(doc);
+        col(name, context).push(doc);
         if (mode === 'after') throw new Error('response lost');
         return { _id: doc._id };
       },
       doc: (id) => ({
         async set(o) {
-          const list = col(name);
+          const list = col(name, context);
           const i = list.findIndex((d) => d._id === id);
           const doc = Object.assign({ _id: id }, o.data);
           if (i >= 0) list[i] = doc; else list.push(doc);
           return { _id: id };
         },
         async remove() {
-          const list = col(name);
+          const list = col(name, context);
           const i = list.findIndex((d) => d._id === id);
           if (i >= 0) list.splice(i, 1);
           return { stats: { removed: i >= 0 ? 1 : 0 } };
         },
         async update(o) {
-          const doc = col(name).find((d) => d._id === id);
+          const doc = col(name, context).find((d) => d._id === id);
           if (doc) apply(doc, o.data);
           return { stats: { updated: doc ? 1 : 0 } };
         }
@@ -130,8 +132,8 @@ function createCloud() {
     },
     collection: (name) => query(name),
     /**
-     * 事务：回调里只能按 _id 操作单条记录（doc 的 get、set、update、remove 和 add），和真的一样不支持 where。
-     * 替身里事务一个一个排队执行；回调抛错就把数据恢复成开始之前的样子。
+     * 乐观隔离事务：在独立快照上操作，成功后原子发布；回滚从不覆盖事务外写入。
+     * 事务与普通读写均可并发。提交前检测快照冲突并重跑回调。
      */
     runTransaction(fn) {
       const run = async () => {
@@ -139,35 +141,47 @@ function createCloud() {
         const mode = state.txFails;
         if (mode !== 'always') state.txFails = null;
         if (mode === 'before' || mode === 'always') throw new Error('transaction failed');
-        const backup = {};
-        Object.keys(state.data).forEach((k) => { backup[k] = state.data[k].map(copy); });
-        const absent = Object.assign({}, state.absent);
-        const t = {
-          collection: (name) => ({
-            add: (o) => query(name).add(o),
-            doc: (id) => Object.assign(query(name).doc(id), {
-              async get() {
-                const doc = col(name).find((d) => d._id === id);
-                if (!doc) throw new Error('document not exists: ' + id);
-                return { data: copy(doc) };
-              }
-            })
-          }),
-          async rollback(reason) { throw reason; }
-        };
-        try {
-          await fn(t);
-        } catch (e) {
-          state.data = backup;
-          state.absent = absent;
-          throw e;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const baseline = JSON.stringify(state.data);
+          const context = { data: structuredClone(state.data) };
+          const t = {
+            collection: (name) => ({
+              add: (o) => query(name, undefined, undefined, undefined, undefined, context).add(o),
+              doc: (id) => Object.assign(query(name, undefined, undefined, undefined, undefined, context).doc(id), {
+                async get() {
+                  if (state.getError && state.getError(name)) throw new Error('database timeout');
+                  const doc = col(name, context).find((d) => d._id === id);
+                  const result = doc ? structuredClone(doc) : null;
+                  if (state.beforeTxRead) await state.beforeTxRead(name, id);
+                  if (!result) throw new Error('document with _id ' + id + ' does not exist');
+                  return { data: result };
+                }
+              })
+            }),
+            async rollback(reason) { throw reason; }
+          };
+          const result = await fn(t);
+          if (state.beforeCommit) await state.beforeCommit();
+          if (JSON.stringify(state.data) !== baseline) continue;
+          // 保留已有对象引用，方便测试继续观察同一条记录；发布过程没有 await，是一次原子步骤。
+          for (const [name, rows] of Object.entries(context.data)) {
+            const live = state.data[name] || (state.data[name] = []);
+            const merged = rows.map((row) => {
+              const existing = live.find((item) => item._id === row._id);
+              if (!existing) return row;
+              for (const key of Object.keys(existing)) delete existing[key];
+              return Object.assign(existing, row);
+            });
+            live.splice(0, live.length, ...merged);
+          }
+          if (mode === 'after') throw new Error('response lost');
+          return result;
         }
-        if (mode === 'after') throw new Error('response lost');
+        throw Object.assign(new Error('transaction conflict'), { code: 'DATABASE_TRANSACTION_CONFLICT' });
       };
-      const p = txQueue.then(run, run);
-      txQueue = p.catch(() => {});
-      return p;
+      return run();
     }
+
   };
 
   const sdk = {

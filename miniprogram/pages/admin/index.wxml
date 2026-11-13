@@ -12,6 +12,8 @@
   <!-- 活动：新建、编辑、上下架 -->
   <view wx:if="{{tab === 'events'}}" class="ad-body">
     <view class="ad-btn ad-btn--line sx-pressable" hover-class="sx-press" bindtap="onCreate">{{copy.events.create}}</view>
+    <view wx:if="{{eventsFailed}}" class="ad-hint">{{copy.editor.loadFailed}}</view>
+    <view wx:if="{{eventsFailed}}" class="ad-mini" bindtap="onEventsRetry">{{copy.editor.retry}}</view>
     <view wx:if="{{loading}}">
       <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
     </view>
@@ -35,7 +37,7 @@
         </view>
       </view>
     </view>
-    <view wx:else class="ad-empty">{{copy.events.empty}}</view>
+    <view wx:elif="{{!eventsFailed}}" class="ad-empty">{{copy.events.empty}}</view>
   </view>
 
   <!-- 往期：活动页「往期」里的赞助赛事 -->
@@ -100,7 +102,11 @@
 
   <!-- 公告：打开小程序时弹一次 -->
   <view wx:if="{{tab === 'notice'}}" class="ad-body">
-    <view class="ad-card">
+    <view wx:if="{{!noticeLoaded}}">
+      <view class="ad-hint">{{noticeFailed ? copy.notice.loadFailed : copy.notice.loading}}</view>
+      <view wx:if="{{noticeFailed}}" class="ad-btn" bindtap="onNoticeRetry">{{copy.notice.retry}}</view>
+    </view>
+    <view wx:else class="ad-card">
       <view class="ad-field">
         <text class="ad-label">{{copy.notice.labels.title}}</text>
         <input class="ad-input" value="{{notice.title}}" maxlength="20" placeholder="{{copy.notice.placeholders.title}}" placeholder-class="ad-ph" data-field="title" bindinput="onNoticeInput" />
@@ -115,12 +121,16 @@
       </view>
     </view>
     <view class="ad-hint">{{copy.notice.hint}}</view>
-    <view class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onNoticeSave">{{copy.notice.save}}</view>
+    <view wx:if="{{noticeLoaded}}" class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onNoticeSave">{{copy.notice.save}}</view>
   </view>
 
   <!-- 会员看板：几个数字、近 30 天每天新加入多少、会员名单 -->
   <view wx:if="{{tab === 'members'}}" class="ad-body">
-    <view wx:if="{{!board}}">
+    <view wx:if="{{!board && membersFailed}}">
+      <view class="ad-hint">{{copy.editor.loadFailed}}</view>
+      <view class="ad-mini" bindtap="onMembersRefresh">{{copy.editor.retry}}</view>
+    </view>
+    <view wx:elif="{{!board}}">
       <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
     </view>
     <block wx:else>

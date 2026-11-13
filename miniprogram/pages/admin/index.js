@@ -106,6 +106,7 @@ Page({
     copy: copy,
     tab: 'events',
     loading: true,
+    eventsFailed: false,
     busy: false,
     events: [],
     // 现在有多少人订阅着新活动通知
@@ -119,10 +120,13 @@ Page({
     members: [],
     membersMore: false,
     membersLoading: false,
+    membersFailed: false,
     pastForm: null,
     uploading: false,
     notice: { title: '', content: '', enabled: false },
     noticeLoaded: false,
+    noticeLoading: false,
+    noticeFailed: false,
     query: '',
     member: null,
     sign: 1,
@@ -145,6 +149,7 @@ Page({
   onShow() {
     // 从编辑页回来，或者第一次进来：重取活动列表
     this.loadEvents();
+    this.watchUnsaved();
   },
 
   onPageScroll(e) {
@@ -157,16 +162,39 @@ Page({
   },
 
   onBack() {
-    if (getCurrentPages().length > 1) wx.navigateBack();
-    else go('me');
+    admin.confirmDiscard(this.unsaved(), () => {
+      admin.watchUnsaved(false);
+      if (getCurrentPages().length > 1) wx.navigateBack();
+      else go('me');
+    });
+  },
+
+  unsaved() {
+    return this.data.uploading ||
+      (this.data.noticeLoaded && this.noticeSnapshot !== JSON.stringify(this.data.notice)) ||
+      (!!this.data.pastForm && this.pastSnapshot !== JSON.stringify(this.data.pastForm)) ||
+      (!!this.data.member && !!(this.data.amount || this.data.reason));
+  },
+
+  watchUnsaved() {
+    admin.watchUnsaved(this.unsaved());
+  },
+
+  onUnload() {
+    this.noticeSeq = (this.noticeSeq || 0) + 1;
+    this.pastEditor = (this.pastEditor || 0) + 1;
+    admin.watchUnsaved(false);
   },
 
   onTab(e) {
     const tab = e.currentTarget.dataset.key;
-    if (tab === this.data.tab) return;
+    if (tab === this.data.tab) {
+      if (tab === 'notice' && this.data.noticeFailed) this.loadNotice();
+      return;
+    }
     tick();
     this.setData({ tab: tab });
-    if (tab === 'notice' && !this.data.noticeLoaded) this.loadNotice();
+    if (tab === 'notice' && (!this.data.noticeLoaded || this.noticeSnapshot === JSON.stringify(this.data.notice))) this.loadNotice(true);
     if (tab === 'past' && !this.data.pastLoaded) this.loadPast();
     if (tab === 'members' && !this.data.board) this.loadMembers();
   },
@@ -176,14 +204,14 @@ Page({
   /** 读看板上的数字和名单的第一页 */
   loadMembers() {
     const mine = this.memberSeq = (this.memberSeq || 0) + 1;
-    this.setData({ membersLoading: true });
+    this.setData({ membersLoading: true, membersFailed: false });
     return Promise.all([admin.memberStats(), admin.members(0)])
       .then((r) => {
         if (mine !== this.memberSeq) return;
         this.memberNext = r[1].next;
         this.setData({ board: boardView(r[0]), members: (r[1].members || []).map(memberRow), membersMore: !!r[1].more, membersLoading: false });
       })
-      .catch((e) => { if (mine === this.memberSeq) { this.setData({ membersLoading: false }); toast(admin.errorText(e)); } });
+      .catch((e) => { if (mine === this.memberSeq) { this.setData({ membersLoading: false, membersFailed: true }); toast(admin.errorText(e)); } });
   },
 
   onMembersRefresh() {
@@ -220,14 +248,20 @@ Page({
   /* ---------- 活动 ---------- */
 
   loadEvents() {
+    const mine = this.eventSeq = (this.eventSeq || 0) + 1;
+    this.setData({ loading: !this.data.events.length, eventsFailed: false });
     return admin.eventsOverview()
-      .then((d) => this.setData({
+      .then((d) => { if (mine !== this.eventSeq) return; this.setData({
         events: d.events.map(eventRow),
         newsWaiting: d.newsWaiting,
         subscribersText: copy.events.subscribers.replace('[人数]', d.newsWaiting),
         loading: false
-      }))
-      .catch((e) => { this.setData({ loading: false }); toast(admin.errorText(e)); });
+      }); })
+      .catch((e) => { if (mine === this.eventSeq) { this.setData({ loading: false, eventsFailed: true }); toast(admin.errorText(e)); } });
+  },
+
+  onEventsRetry() {
+    return this.loadEvents();
   },
 
   onCreate() {
@@ -247,7 +281,7 @@ Page({
       .then(() => {
         toast(status === 'published' ? copy.events.published : copy.events.unpublished);
         // 小程序里的活动列表也跟着更新
-        events.refresh();
+        events.refresh(true);
         return this.loadEvents();
       })
       .catch((err) => toast(admin.errorText(err)))
@@ -264,13 +298,19 @@ Page({
     const row = this.data.events.find((x) => x.id === e.currentTarget.dataset.id);
     if (!row) return;
     const cover = row.raw.cover || '';
-    this.setData({
-      tab: 'past',
-      pastForm: { id: '', year: String(new Date(row.raw.date).getFullYear()), name: row.raw.title, nameEn: '', image: cover, src: assetUrl(cover), home: true }
+    admin.confirmDiscard(this.data.pastForm && this.pastSnapshot !== JSON.stringify(this.data.pastForm), () => {
+      this.setData({
+        tab: 'past',
+        pastForm: { id: '', year: String(new Date(row.raw.date).getFullYear()), name: row.raw.title, nameEn: '', image: cover, src: assetUrl(cover), home: true }
+      });
+      this.pastEditor = (this.pastEditor || 0) + 1;
+      // 从活动带来的内容尚未保存到往期，离开时也要提醒。
+      this.pastSnapshot = '';
+      this.watchUnsaved();
+      if (!this.data.pastLoaded) this.loadPast();
+      if (!cover) toast(copy.events.toPastNoCover);
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     });
-    if (!this.data.pastLoaded) this.loadPast();
-    if (!cover) toast(copy.events.toPastNoCover);
-    wx.pageScrollTo({ scrollTop: 0, duration: 0 });
   },
 
   /** 把这场活动发成公告：用户下次打开小程序时弹出来。先确认一次，因为会换掉现在的公告 */
@@ -291,7 +331,13 @@ Page({
         if (!res.confirm) return;
         this.setData({ busy: true });
         admin.saveNotice(notice)
-          .then((n) => { this.setData({ notice: n, noticeLoaded: true }); toast(copy.events.announced); })
+          .then((n) => {
+            this.noticeSeq = (this.noticeSeq || 0) + 1;
+            this.setData({ notice: n, noticeLoaded: true, noticeLoading: false, noticeFailed: false });
+            this.noticeSnapshot = JSON.stringify(n);
+            this.watchUnsaved();
+            toast(copy.events.announced);
+          })
           .catch((err) => toast(admin.errorText(err)))
           .then(() => this.setData({ busy: false }));
       }
@@ -331,31 +377,46 @@ Page({
   pastChanged(list) {
     this.pastSeq = (this.pastSeq || 0) + 1;
     this.setData({ past: list.map(pastRow), pastLoaded: true });
-    events.refreshPast();
+    events.setPast(list);
   },
 
   onPastCreate() {
     this.setData({ pastForm: { id: '', year: String(new Date().getFullYear()), name: '', nameEn: '', image: '', src: '', home: true } });
+    this.pastEditor = (this.pastEditor || 0) + 1;
+    this.pastSnapshot = JSON.stringify(this.data.pastForm);
+    this.watchUnsaved();
   },
 
   onPastEdit(e) {
     const p = this.data.past.find((x) => x.id === e.currentTarget.dataset.id);
-    if (p) this.setData({ pastForm: Object.assign({}, p) });
+    if (p) {
+      this.setData({ pastForm: Object.assign({}, p) });
+      this.pastEditor = (this.pastEditor || 0) + 1;
+      this.pastSnapshot = JSON.stringify(this.data.pastForm);
+      this.watchUnsaved();
+    }
   },
 
   onPastCancel() {
     if (this.data.busy || this.data.uploading) return;
-    this.setData({ pastForm: null });
+    admin.confirmDiscard(this.pastSnapshot !== JSON.stringify(this.data.pastForm), () => {
+      this.pastEditor = (this.pastEditor || 0) + 1;
+      this.setData({ pastForm: null }); this.watchUnsaved();
+    });
   },
 
   /** 放不放在首页那一排里 */
   onPastHome() {
+    if (!this.data.pastForm || this.data.busy) return;
     tick();
     this.setData({ 'pastForm.home': !this.data.pastForm.home });
+    this.watchUnsaved();
   },
 
   onPastInput(e) {
+    if (!this.data.pastForm || this.data.busy) return;
     this.setData({ ['pastForm.' + e.currentTarget.dataset.field]: e.detail.value });
+    this.watchUnsaved();
   },
 
   /** 选一张照片传到云存储，赛事存的是它的 fileID */
@@ -366,11 +427,13 @@ Page({
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
         if (!file || !this.data.pastForm) return;
+        const mine = this.pastEditor;
         this.setData({ uploading: true });
+        this.watchUnsaved();
         admin.uploadCover(file.tempFilePath)
-          .then((fileID) => { if (this.data.pastForm) this.setData({ 'pastForm.image': fileID, 'pastForm.src': fileID }); })
+          .then((fileID) => { if (mine === this.pastEditor && this.data.pastForm) this.setData({ 'pastForm.image': fileID, 'pastForm.src': fileID }); })
           .catch(() => toast(copy.errors.upload))
-          .then(() => this.setData({ uploading: false }));
+          .then(() => { this.setData({ uploading: false }); this.watchUnsaved(); });
       }
     });
   },
@@ -386,7 +449,7 @@ Page({
     if (!f.image) { toast(copy.errors.missing_image); return; }
     this.setData({ busy: true });
     admin.savePast(f.id, { year: String(f.year).trim(), name: f.name, nameEn: f.nameEn, image: f.image, home: f.home !== false })
-      .then((list) => { this.pastChanged(list); this.setData({ pastForm: null }); toast(copy.past.saved); })
+      .then((list) => { this.pastChanged(list); this.setData({ pastForm: null }); this.watchUnsaved(); toast(copy.past.saved); })
       .catch((e) => toast(admin.errorText(e)))
       .then(() => this.setData({ busy: false }));
   },
@@ -412,26 +475,44 @@ Page({
 
   /* ---------- 公告 ---------- */
 
-  loadNotice() {
-    admin.getNotice()
-      .then((n) => this.setData({ notice: n, noticeLoaded: true }))
-      .catch((e) => toast(admin.errorText(e)));
+  loadNotice(force) {
+    if (this.data.noticeLoading || (this.data.noticeLoaded && force !== true)) return;
+    const mine = this.noticeSeq = (this.noticeSeq || 0) + 1;
+    this.setData({ noticeLoading: true, noticeFailed: false, noticeLoaded: false });
+    return admin.getNotice()
+      .then((n) => {
+        if (mine !== this.noticeSeq) return;
+        this.setData({ notice: n, noticeLoaded: true });
+        this.noticeSnapshot = JSON.stringify(n);
+        this.watchUnsaved();
+      })
+      .catch((e) => { if (mine === this.noticeSeq) { this.setData({ noticeFailed: true }); toast(admin.errorText(e)); } })
+      .then(() => { if (mine === this.noticeSeq) this.setData({ noticeLoading: false }); });
+  },
+
+  onNoticeRetry() {
+    return this.loadNotice();
   },
 
   onNoticeInput(e) {
+    if (!this.data.noticeLoaded || this.data.busy) return;
     this.setData({ ['notice.' + e.currentTarget.dataset.field]: e.detail.value });
+    this.watchUnsaved();
   },
 
   onNoticeToggle() {
+    if (!this.data.noticeLoaded || this.data.busy) return;
     tick();
     this.setData({ 'notice.enabled': !this.data.notice.enabled });
+    this.watchUnsaved();
   },
 
   onNoticeSave() {
+    if (!this.data.noticeLoaded) { toast(copy.errors.load_first); return; }
     if (this.data.busy) return;
     this.setData({ busy: true });
-    admin.saveNotice(this.data.notice)
-      .then((n) => { this.setData({ notice: n }); toast(copy.notice.saved); })
+    return admin.saveNotice(this.data.notice)
+      .then((n) => { this.setData({ notice: n }); this.noticeSnapshot = JSON.stringify(n); this.watchUnsaved(); toast(copy.notice.saved); })
       .catch((e) => toast(admin.errorText(e)))
       .then(() => this.setData({ busy: false }));
   },
@@ -451,7 +532,7 @@ Page({
     const mine = this.findSeq = (this.findSeq || 0) + 1;
     this.finding = true;
     admin.findMember(this.data.query)
-      .then((m) => { if (mine === this.findSeq) this.setData({ member: memberCard(m), amount: '', reason: '' }); })
+      .then((m) => { if (mine === this.findSeq) { this.pointsOperation = null; this.setData({ member: memberCard(m), amount: '', reason: '' }); this.watchUnsaved(); } })
       .catch((err) => { if (mine === this.findSeq) { this.setData({ member: null }); toast(admin.errorText(err)); } })
       .then(() => { if (mine === this.findSeq) this.finding = false; });
   },
@@ -459,10 +540,13 @@ Page({
   onSign(e) {
     tick();
     this.setData({ sign: Number(e.currentTarget.dataset.sign) });
+    this.pointsOperation = null;
   },
 
   onPointsInput(e) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
+    this.pointsOperation = null;
+    this.watchUnsaved();
   },
 
   /* ---------- 电脑端 ---------- */
@@ -485,22 +569,35 @@ Page({
   onAdjust() {
     const m = this.data.member;
     if (!m || this.data.busy) return;
-    const amount = parseInt(this.data.amount, 10);
-    if (!(amount > 0)) { toast(copy.errors.bad_delta); return; }
+    const amount = Number(this.data.amount);
+    if (!Number.isInteger(amount) || amount <= 0) { toast(copy.errors.bad_delta); return; }
+    if (amount > 100000) { toast(copy.errors.delta_too_large); return; }
     const reason = String(this.data.reason || '').trim();
     if (!reason) { toast(copy.errors.missing_reason); return; }
     const adding = this.data.sign > 0;
+    const delta = adding ? amount : -amount;
+    const signature = JSON.stringify([m.memberNo, delta, reason]);
     wx.showModal({
       title: copy.points.confirmTitle,
       content: (adding ? copy.points.confirmAdd : copy.points.confirmSub).replace('[会员]', m.name + '（' + m.memberNo + '）').replace('[数量]', amount),
       success: (res) => {
         if (!res.confirm) return;
+        const mine = this.findSeq;
+        if (!this.pointsOperation || this.pointsOperation.signature !== signature) {
+          this.pointsOperation = { signature: signature, id: admin.newOperationId() };
+        }
+        const operation = this.pointsOperation;
         this.setData({ busy: true });
-        admin.adjustPoints(m.memberNo, adding ? amount : -amount, reason)
+        admin.adjustPoints(m.memberNo, delta, reason, operation.id)
           .then((after) => {
             // 结果回来时页面上还是这位会员才更新卡片；已经换成别人了就不动，只说一声调好了
             const now = this.data.member;
-            if (now && now.memberNo === after.memberNo) this.setData({ member: memberCard(after), amount: '', reason: '' });
+            if (now && now.memberNo === after.memberNo) {
+              this.setData(mine === this.findSeq && operation === this.pointsOperation ?
+                { member: memberCard(after), amount: '', reason: '' } : { member: memberCard(after) });
+            }
+            if (operation === this.pointsOperation) this.pointsOperation = null;
+            this.watchUnsaved();
             toast(copy.points.done);
           })
           .catch((e) => toast(admin.errorText(e)))

@@ -1,6 +1,7 @@
 const member = require('../../content/member.js');
 const store = require('../../utils/store.js');
 const format = require('../../utils/format.js');
+const clientCopy = require('../../content/client-state.js');
 const { baseData, go, navTone, headerTone, shareCard, TABS } = require('../../utils/page.js');
 
 const COPY = member.me.points;
@@ -23,6 +24,9 @@ function rows(logs) {
 Page({
   data: Object.assign(baseData(), {
     copy: COPY,
+    clientCopy: clientCopy,
+    loadError: false,
+    pointsLoaded: false,
     points: '0',
     logs: [],
     loading: true
@@ -37,10 +41,20 @@ Page({
     this.toneAt = headerTone(216);
     // 这一页是个人信息，不让转发
     try { wx.hideShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] }); } catch (e) { /* 旧基础库忽略 */ }
-    store.fetchPoints()
-      .then((d) => this.setData({ points: String(d.points), logs: rows(d.logs), loading: false }))
-      .catch(() => this.setData({ loading: false }));
+    this.onRetry();
   },
+
+  onRetry() {
+    if (this.fetching) return this.fetching;
+    this.setData({ loading: true, loadError: false });
+    this.fetching = store.fetchPoints()
+      .then((d) => { if (!this.disposed) this.setData({ points: String(d.points), logs: rows(d.logs), loading: false, pointsLoaded: true }); })
+      .catch(() => { if (!this.disposed) this.setData({ loading: false, loadError: true }); })
+      .then(() => { this.fetching = null; });
+    return this.fetching;
+  },
+
+  onUnload() { this.disposed = true; },
 
   onPageScroll(e) {
     navTone(this, e.scrollTop, this.toneAt);

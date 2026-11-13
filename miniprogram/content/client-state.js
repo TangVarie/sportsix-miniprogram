@@ -1,0 +1,28 @@
+// 由 tools/sync-content.js 从 reference/content/client-state.json 生成，不要手改。
+module.exports = {
+  "retry": "重新加载",
+  "loading": "正在加载",
+  "loadFailed": "暂时没能加载，请重试",
+  "stale": "刷新失败，当前显示上次加载的内容",
+  "backToEvents": "返回活动列表",
+  "eventUnavailable": "这场活动暂时无法查看",
+  "pastEmpty": "暂无往期赛事",
+  "historyEmpty": "还没有活动记录",
+  "historyUnavailable": "活动已不可查看",
+  "loadMore": "查看更多记录",
+  "loginContinue": "登录完成，请确认报名",
+  "back": "返回",
+  "events": {
+    "states": {
+      "open": "立即报名",
+      "not_open": "报名未开放",
+      "closed": "报名已截止",
+      "full": "名额已满",
+      "ended": "活动已结束",
+      "unavailable": "活动已下架",
+      "cancelled": "活动已取消"
+    },
+    "remindOpen": "报名已开放",
+    "remind": "提醒我"
+  }
+};

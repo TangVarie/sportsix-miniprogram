@@ -176,3 +176,6 @@
 .hm-film__frame { width: 673rpx; height: 379rpx; border-radius: 27rpx; overflow: hidden; background: #000000; }
 .hm-film__video { display: block; width: 673rpx; height: 379rpx; border-radius: 27rpx; }
 .hm-film__caption { margin-top: 15rpx; font-size: 25rpx; line-height: 40rpx; color: #C9CEE8; }
+
+.hm-races__status { margin: 23rpx 0; color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
+.hm-races__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }
