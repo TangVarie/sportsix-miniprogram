@@ -60,7 +60,7 @@ miniprogram/
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
   pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）、
-                                 admin 和 admin-event（运营后台，只有管理员能进）
+                                 admin、admin-event 和 admin-signups（运营后台，只有管理员能进）
   components/<组件>/index.*      member-cta、dual-carb 等
   utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、admin.js（运营后台的接口）、fuel-plan.js（原样复制，不改）
   content/*.js                   由 reference/content/*.json 生成，不要手改
@@ -104,7 +104,7 @@ tools/
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
 - 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」只开了首页和产品页（`onShareTimeline` 加页面 json 里的 `singlePage`），其他页面依赖跳转或云开发，单页模式下用不了。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('admin')`、`go('admin-event', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('admin')`、`go('admin-event', { id })`、`go('admin-signups', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 
@@ -120,6 +120,9 @@ tools/
 - 小程序端只调一个云函数 `api`（`utils/cloud.js` 的 `call(action, data)`），数据库集合不对小程序端开放。加接口时在 `cloudfunctions/api/index.js` 的 `actions` 里加，并在 `tools/test-cloud.js` 里补用例。
 - 会员、报名、提醒、新活动通知、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 往期的赞助赛事存在云端（`past_events` 集合），运营在后台增删改，页面经 `utils/events.js` 的 `listPast()` / `refreshPast()` 读。`reference/content/events.json` 的 `past` 是初始的那几场，和 `api/index.js` 的 `PAST_SEED` 是同一份，改一处要改另一处（`npm test` 会核对）。
+- 报名可以用积分（活动上的 `cost`）。会员不能自己取消，运营在名单页取消报名或取消整场活动，退积分并通知：一条站内消息（`inbox` 集合，进小程序时由 `app.js` 的 `showInbox` 弹出），报名时同意了订阅的再发一条订阅消息。订阅不能当成报名的条件。`cloudfunctions/api/template.js` 和 `remind/template.js` 是同一份，改一处要改另一处（`npm test` 会核对）。
+- 报名（占名额、扣积分、写记录）和取消报名（删记录、放名额、退积分、留消息）各是一个数据库事务（`db.runTransaction`）。事务里只能按 `_id` 操作单条记录，不能用 `where`。
+- 首页的赞助赛事只显示往期里 `home` 不是 `false` 的那些。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 - 购买渠道：小程序自己不卖东西，`components/shop-entry` 把人带到店铺小程序里对应的商品（首页产品卡片下面、产品详情页底部、「我的」菜单）。文案和两款产品的小程序链接在 `reference/content/shop.json`；某一款的链接留空，这款就不显示购买入口。
 - 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。

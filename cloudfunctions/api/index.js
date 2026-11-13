@@ -14,6 +14,7 @@
  *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
  *
  *   admin_web  电脑端后台的登录码、登录凭证；第一次用到时云函数自己建这个集合
+ *   inbox      给某位用户的站内消息（报名被取消、活动取消）；下次打开小程序时弹出来。第一次用到时云函数自己建这个集合
  *   past_events 往期的赞助赛事  活动页「往期」里的照片卡；第一次用到时云函数自己建这个集合，并放进 PAST_SEED 里的几场
  *   news_subs  新活动通知的订阅  _id 用 openid，每人一条；第一次用到时云函数自己建这个集合
  *
@@ -27,6 +28,8 @@
  */
 const crypto = require('crypto');
 const cloud = require('wx-server-sdk');
+// 订阅消息的内容。和 remind/template.js 是同一份（云函数之间不能共用文件，改一处要把另一处也改了，npm test 会核对）
+const template = require('./template.js');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -153,7 +156,7 @@ const WEB_CODE_DIGITS = 12;
 /** 登录一次管 12 小时 */
 const WEB_SESSION_TTL = 12 * 3600 * 1000;
 /** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
-const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice',
+const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice',
   'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
 
 /** admin_web 集合里的一条记录。集合还没建时当作没有 */
@@ -237,6 +240,8 @@ const EVENT_TYPES = ['赛事', '试用装', '抽奖'];
 function adminEventView(e) {
   return Object.assign(eventView(e), {
     status: e.status === 'published' ? 'published' : 'draft',
+    // 整场取消了的活动：后台列表上标出来
+    cancelled: e.cancelled === true,
     signupCount: e.signupCount || 0,
     notify: e.notifyStatus ? { status: e.notifyStatus === 'done' ? 'done' : 'pending', at: ms(e.notifyAt), sent: e.notifySent || 0, failed: e.notifyFailed || 0 } : null
   });
@@ -295,13 +300,14 @@ async function listPast() {
   }
   return all.filter((p) => p.deleted !== true)
     .sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))
-    .map((p) => ({ id: p._id, year: p.year || '', name: p.name || '', nameEn: p.nameEn || '', image: p.image || '' }));
+    // home：放不放在首页「众多专业机构选择 SPORTSIX 产品」那一排里。没设过的（包括初始的几场）按放算
+    .map((p) => ({ id: p._id, year: p.year || '', name: p.name || '', nameEn: p.nameEn || '', image: p.image || '', home: p.home !== false }));
 }
 
 /** 后台表单交上来的往期赛事 → 要存的数据 */
 function pastData(input) {
   const p = input || {};
-  const data = { year: cleanText(p.year, 4), name: cleanText(p.name, 30), nameEn: cleanText(p.nameEn, 60), image: cleanText(p.image, 500) };
+  const data = { year: cleanText(p.year, 4), name: cleanText(p.name, 30), nameEn: cleanText(p.nameEn, 60), image: cleanText(p.image, 500), home: p.home !== false };
   if (!/^(19|20)\d{2}$/.test(data.year)) throw fail('bad_year');
   if (!data.name) throw fail('missing_name');
   if (!data.image) throw fail('missing_image');
@@ -337,8 +343,12 @@ function eventData(input) {
     memberSignupStart: time(e.memberSignupStart),
     drawAt: time(e.drawAt),
     cover: cleanText(e.cover, 500),
-    intro: cleanText(e.intro, 1000, true)
+    intro: cleanText(e.intro, 1000, true),
+    // 报名要用多少积分（0 是不用积分），和报名的人有事找谁（显示在活动详情里）
+    cost: Number.isInteger(e.cost) && e.cost > 0 ? e.cost : 0,
+    contact: cleanText(e.contact, 100)
   };
+  if (data.cost > 1000000) throw fail('bad_cost');
   if (!data.type) throw fail('bad_type');
   if (!data.title) throw fail('missing_title');
   if (!data.date) throw fail('missing_date');
@@ -405,9 +415,103 @@ function eventView(e) {
     memberSignupStart: ms(e.memberSignupStart),
     drawAt: ms(e.drawAt),
     cover: e.cover || '',
-    intro: e.intro || ''
+    intro: e.intro || '',
+    cost: costOf(e),
+    contact: e.contact || ''
   };
 }
+
+/** 这场活动报名要用多少积分（没设就是 0） */
+function costOf(e) {
+  return Number.isInteger(e.cost) && e.cost > 0 ? e.cost : 0;
+}
+
+/* ---------- 站内消息 ---------- */
+
+/** 事务里要写的集合得先在：没有就建。每个云函数实例里每个集合只查一次 */
+const ensured = {};
+async function ensureCollection(name) {
+  if (ensured[name]) return;
+  try {
+    await db.collection(name).limit(1).get();
+  } catch (e) {
+    try { await db.createCollection(name); } catch (e2) { /* 别的请求刚建好 */ }
+  }
+  ensured[name] = true;
+}
+
+/**
+ * 撤掉一个人在一场活动里的报名：删掉报名记录，名额让出来，报名用的积分退回去，并给他留一条消息。
+ * 这几步放在一个事务里，要么都做成要么都没做：不会出现记录删了积分却没退的情况，中途出错可以再点一次。
+ * 两位管理员同时取消同一个人，只有一个事务删得到记录，积分不会退两次。
+ * @param why 'signup'（管理员取消了他的报名）或 'event'（整场活动取消了）
+ * @returns 这次有没有撤掉
+ */
+async function removeSignup(openid, e, why, by) {
+  const id = openid + '_' + e._id;
+  const s = await findById('signups', id);
+  if (!s) return false;
+  const cost = Number.isInteger(s.cost) && s.cost > 0 ? s.cost : 0;
+  const refund = cost ? '，' + cost + ' 积分已退回' : '';
+  const contact = e.contact ? '有疑问请联系 ' + e.contact + '。' : '';
+  const notice = why === 'event'
+    ? { title: '活动取消', content: '「' + e.title + '」取消了，你的报名已撤销' + refund + '。' + contact }
+    : { title: '报名已取消', content: '你在「' + e.title + '」的报名已被取消' + refund + '。' + contact };
+  await ensureCollection('inbox');
+  if (cost) await ensureCollection('point_logs');
+  let removed = false;
+  try {
+    await db.runTransaction(async (t) => {
+      removed = false;
+      // 在事务里再读一次这条报名：上面读到之后，它可能已经被另一个请求撤掉，他又重新报了一次（积分数可能不一样了）。
+      // 只撤上面读到的那一次报名（token 对得上），不碰他后来重新报的
+      let now = null;
+      try { now = (await t.collection('signups').doc(id).get()).data; } catch (err) { now = null; }
+      if (!now || now.token !== s.token) return;
+      const rm = await t.collection('signups').doc(id).remove();
+      if (!rm.stats.removed) return;
+      const ev = (await t.collection('events').doc(e._id).get()).data;
+      if (ev.signupCount >= 1) await t.collection('events').doc(e._id).update({ data: { signupCount: _.inc(-1) } });
+      if (cost) {
+        await t.collection('members').doc(openid).update({ data: { points: _.inc(cost) } });
+        const log = { openid: openid, delta: cost, reason: '退回「' + e.title + '」的报名积分', createdAt: db.serverDate() };
+        if (by) log.by = by;
+        await t.collection('point_logs').add({ data: log });
+      }
+      await t.collection('inbox').add({ data: { openid: openid, title: notice.title, content: notice.content, read: false, createdAt: db.serverDate() } });
+      removed = true;
+    });
+  } catch (err) {
+    // 那一次报名还在：这次没做成，什么都没变，把错误交出去，再点一次就行。
+    // 不在了（或者已经是他重新报的另一次）：别的请求刚撤掉，或者这次其实做成了只是结果没传回来。两种情况积分都已经退好，按「没什么可撤的」处理
+    const left = await findById('signups', id);
+    if (left && left.token === s.token) throw err;
+    return false;
+  }
+  if (!removed) return false;
+  // 报名时同意了订阅的：用那一条额度发一条微信的服务通知。发不出去（他后来关了订阅等）不影响别的，站内消息已经留好了
+  if (s.templateId) {
+    try {
+      await cloud.openapi.subscribeMessage.send({
+        touser: openid,
+        templateId: s.templateId,
+        page: template.page(e),
+        miniprogramState: template.miniprogramState,
+        lang: 'zh_CN',
+        data: template.data(e, ms(e.memberSignupStart) || ms(e.signupStart) || Date.now(), (why === 'event' ? '活动已取消' : '你的报名已取消') + (cost ? '，积分已退回' : ''))
+      });
+    } catch (err) {
+      console.error('cancel notice', id, err && (err.errCode || err.errMsg || err.message));
+    }
+  }
+  return true;
+}
+
+/** 报名名单一次最多读多少页（每页 100 人） */
+const ROSTER_PAGES = 50;
+
+/** 报名的事务和别人的撞上时，一共试几次 */
+const SIGNUP_TRIES = 4;
 
 /** 会员报名从 memberSignupStart 开始；没填就用 signupStart */
 const signupOpensAt = (e) => ms(e.memberSignupStart) || ms(e.signupStart);
@@ -422,7 +526,14 @@ const actions = {
     const reminders = await db.collection('reminders').where({ openid: openid, sent: false }).limit(100).get();
     const signups = await db.collection('signups').where({ openid: openid }).limit(100).get();
     const news = await newsDoc(openid);
+    // 还没看过的站内消息（报名被取消、活动取消），小程序拿到后逐条弹出来
+    let inbox = [];
+    try {
+      const res = await db.collection('inbox').where({ openid: openid, read: false }).orderBy('createdAt', 'asc').limit(10).get();
+      inbox = res.data.map((m) => ({ id: m._id, title: m.title || '', content: m.content || '' }));
+    } catch (e) { /* 集合还没建：没有消息 */ }
     return {
+      inbox: inbox,
       member: memberView(member),
       // 订阅了新活动通知、还没收到：活动页上的按钮显示「已订阅」。收到一条之后要再点一次才有下一条
       news: !!news && news.sent === false,
@@ -463,6 +574,15 @@ const actions = {
     }
     if (created) await logPoints(openid, WELCOME_POINTS, 'welcome');
     return { member: memberView(await ensureMember(await findById('members', openid))), isNew: created };
+  },
+
+  /** 站内消息看过了：标成已读，下次不再弹 */
+  async readInbox(event, openid) {
+    const ids = (Array.isArray(event.ids) ? event.ids : []).filter((x) => typeof x === 'string').slice(0, 20);
+    for (const id of ids) {
+      try { await db.collection('inbox').where({ _id: id, openid: openid }).update({ data: { read: true } }); } catch (e) { /* 集合还没建 */ }
+    }
+    return {};
   },
 
   /** 积分页：当前积分和最近 50 条积分记录（新的在前） */
@@ -520,6 +640,70 @@ const actions = {
   },
 
   /* ---------- 运营后台（只给管理员） ---------- */
+
+  /**
+   * 一场活动的报名名单：昵称、会员编号、手机号、用了多少积分、什么时候报的，早报的在前。
+   * 这里给的是完整手机号：运营要靠它联系报名的人（隐私政策里写了手机号会用于就活动事项联系）。
+   */
+  async adminSignups(event, openid) {
+    await requireAdmin(openid);
+    const e = await findById('events', String(event.id || ''));
+    if (!e) throw fail('not_found');
+    const all = [];
+    for (let page = 0; page < ROSTER_PAGES; page++) {
+      const res = await db.collection('signups').where({ eventId: e._id }).skip(page * 100).limit(100).get();
+      all.push(...res.data);
+      if (res.data.length < 100) break;
+    }
+    // 名单最多给 ROSTER_PAGES × 100 人。超出时 total 比 signups 多，页面上要说明没显示全
+    const total = all.length < ROSTER_PAGES * 100 ? all.length : (await db.collection('signups').where({ eventId: e._id }).count()).total;
+    all.sort((a, b) => (ms(a.createdAt) || 0) - (ms(b.createdAt) || 0));
+    const members = {};
+    for (let i = 0; i < all.length; i += 100) {
+      const res = await db.collection('members').where({ _id: _.in(all.slice(i, i + 100).map((s) => s.openid)) }).limit(100).get();
+      res.data.forEach((m) => { members[m._id] = m; });
+    }
+    return {
+      event: adminEventView(e),
+      total: total,
+      signups: all.map((s) => {
+        const m = members[s.openid] || {};
+        return { memberNo: m.memberNo || '', nickname: m.nickname || '', phone: m.phone || '', cost: Number.isInteger(s.cost) ? s.cost : 0, at: ms(s.createdAt) };
+      })
+    };
+  },
+
+  /** 取消某位会员在一场活动里的报名：名额让出来，积分退回去，给他留一条消息 */
+  async adminCancelSignup(event, openid) {
+    await requireAdmin(openid);
+    const e = await findById('events', String(event.id || ''));
+    if (!e) throw fail('not_found');
+    const res = await db.collection('members').where({ memberNo: String(event.memberNo || '') }).limit(1).get();
+    if (!event.memberNo || !res.data[0]) throw fail('not_found');
+    if (!(await removeSignup(res.data[0]._id, e, 'signup', openid))) throw fail('not_signed');
+    return { event: adminEventView(await findById('events', e._id)) };
+  },
+
+  /**
+   * 取消整场活动：先下架（小程序里不再显示，也报不了名），再把报名的人逐个撤掉、退积分、留消息。
+   * 人多时一次调用做不完：每次最多处理 40 人，返回还剩多少（remaining），页面接着调，直到 0。
+   * 报名的事务里会重新读活动的状态，所以下架之后不会再有新的报名写进来。
+   */
+  async adminCancelEvent(event, openid) {
+    await requireAdmin(openid);
+    const id = String(event.id || '');
+    const e = await findById('events', id);
+    if (!e) throw fail('not_found');
+    // 每次都下架：取消过的活动可能又被上架了，再取消时也得先下架，不然撤完了还能接着报
+    if (!e.cancelled || e.status !== 'draft') await db.collection('events').doc(id).update({ data: { status: 'draft', cancelled: true, cancelledAt: db.serverDate(), updatedAt: db.serverDate() } });
+    const batch = await db.collection('signups').where({ eventId: id }).limit(40).get();
+    for (const s of batch.data) {
+      // 某一个人没撤成（数据库一时出错）不拖累别人：他还留在名单里，算在 remaining 里，下一次调用再撤
+      try { await removeSignup(s.openid, e, 'event', openid); } catch (err) { console.error('cancel event', s._id, err && err.message); }
+    }
+    const remaining = (await db.collection('signups').where({ eventId: id }).count()).total;
+    return { event: adminEventView(await findById('events', id)), remaining: remaining };
+  },
 
   /** 往期的赞助赛事（后台列表） */
   async adminPastEvents(event, openid) {
@@ -619,6 +803,8 @@ const actions = {
     let id = event.id ? String(event.id) : '';
     if (id) {
       if (!(await findById('events', id))) throw fail('not_found');
+      // 取消过的活动在表单里重新上架：就不再是「已取消」了
+      if (data.status === 'published') data.cancelled = false;
       await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
       // 有名额限制时，已报名人数不能比报名记录少（以前不限名额时报的名可能没记数）
       if (data.quota) await raiseSignupCount(id);
@@ -635,7 +821,10 @@ const actions = {
     const id = String(event.id || '');
     if (!(await findById('events', id))) throw fail('not_found');
     const status = event.status === 'published' ? 'published' : 'draft';
-    await db.collection('events').doc(id).update({ data: { status: status, updatedAt: db.serverDate() } });
+    const data = { status: status, updatedAt: db.serverDate() };
+    // 取消过的活动重新上架：就不再是「已取消」了
+    if (status === 'published') data.cancelled = false;
+    await db.collection('events').doc(id).update({ data: data });
     return { event: adminEventView(await findById('events', id)) };
   },
 
@@ -785,11 +974,14 @@ const actions = {
   },
 
   /**
-   * 报名：要先是会员；在报名时间内；有名额限制时不超额。
-   * 先用条件更新占名额，再写报名记录。任何一步中断，signupCount 只会多不会少，所以不会超额（最坏是空出一个名额）。
+   * 报名：要先是会员；在报名时间内；有名额限制时不超额；这场要用积分的，积分得够（不够报不了）。
+   * 报名后会员自己不能取消，要联系运营（活动详情里有联系方式），由运营在后台取消并退积分。
+   * 占名额、扣积分、写报名记录在一个事务里，要么都做成要么都没做：不会扣了积分却没报上，也不会超额。
+   * 活动在这中间被下架或取消的，事务里会发现，报不上。
    */
   async signup(event, openid) {
-    if (!(await findById('members', openid))) throw fail('not_member');
+    const member = await findById('members', openid);
+    if (!member) throw fail('not_member');
     const e = await findById('events', event.eventId);
     if (!e || e.status !== 'published') throw fail('not_found');
     const now = Date.now();
@@ -800,29 +992,62 @@ const actions = {
     const id = openid + '_' + e._id;
     if (await findById('signups', id)) return { eventId: e._id, already: true };
 
-    // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
-    if (typeof e.signupCount !== 'number') await db.collection('events').where({ _id: e._id, signupCount: _.exists(false) }).update({ data: { signupCount: 0 } });
-    if (typeof e.quota === 'number') {
-      // 条件更新：只有还没满时才加一，避免并发超额
-      const res = await db.collection('events').where({ _id: e._id, signupCount: _.lt(e.quota) }).update({ data: { signupCount: _.inc(1) } });
-      if (!res.stats.updated) throw fail('full');
-    } else {
-      await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(1) } });
-    }
-    // 报名记录带上本次请求的标记，写入出错时靠它分清是哪种情况
+    // 这场要用积分的：先看够不够，不够就不用往下走了（事务里还会再看一次）
+    // expected：用户在页面上确认过的积分数（老版本的小程序不带这一项，不比）
+    const expected = Number.isInteger(event.cost) && event.cost >= 0 ? event.cost : null;
+    // 要用的积分和他确认时看到的不一样了：先说这个，让页面拿新的数重新确认，而不是照旧的数说「积分不够」
+    if (expected !== null && expected !== costOf(e)) throw fail('cost_changed');
+    if (costOf(e) && !((member.points || 0) >= costOf(e))) throw fail('insufficient_points');
+    await ensureCollection('point_logs');
+
+    // 报名记录带上本次请求的标记，事务出错时靠它分清是哪种情况；cost 是这次用了多少积分，取消时照这个数退
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    try {
-      await db.collection('signups').add({ data: { _id: id, openid: openid, eventId: e._id, token: token, createdAt: db.serverDate() } });
-    } catch (err) {
-      const existing = await findById('signups', id);
-      // 记录在，而且是这次请求写的：写入其实成功了，只是响应丢了。名额已经占上，不能退。
-      if (existing && existing.token === token) return { eventId: e._id, already: false };
-      // 记录在，但是别的请求写的（同一个人并发点了两次），或者确实没写进去：把这次多占的名额还回去
-      await db.collection('events').where({ _id: e._id }).update({ data: { signupCount: _.inc(-1) } });
-      if (existing) return { eventId: e._id, already: true };
-      throw err;
+    // 事务里发现报不了时把原因记在这里（事务不写任何东西，正常结束）
+    let refused = '';
+    const attempt = () => db.runTransaction(async (t) => {
+      refused = '';
+      // 活动和会员在事务里重新读：这时活动可能刚被下架或取消、刚改了要用的积分，名额可能刚被别人占掉，积分可能刚用在别处
+      const ev = (await t.collection('events').doc(e._id).get()).data;
+      if (ev.status !== 'published') { refused = 'not_found'; return; }
+      const cost = costOf(ev);
+      // 要用的积分和他确认时看到的不一样了：不扣，让页面拿新的数重新确认
+      if (expected !== null && expected !== cost) { refused = 'cost_changed'; return; }
+      const count = typeof ev.signupCount === 'number' ? ev.signupCount : 0;
+      if (typeof ev.quota === 'number' && count >= ev.quota) { refused = 'full'; return; }
+      if (cost) {
+        const me = (await t.collection('members').doc(openid).get()).data;
+        if (!((me.points || 0) >= cost)) { refused = 'insufficient_points'; return; }
+        await t.collection('members').doc(openid).update({ data: { points: _.inc(-cost) } });
+        await t.collection('point_logs').add({ data: { openid: openid, delta: -cost, reason: '报名「' + ev.title + '」', createdAt: db.serverDate() } });
+      }
+      // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
+      await t.collection('events').doc(e._id).update({ data: { signupCount: count + 1 } });
+      // templateId：报名时同意了订阅消息的，记下模板，报名被取消或活动取消时用它发一条通知。
+      // 同一个人的另一个请求已经写了这条记录时，这里会失败，整个事务作废
+      await t.collection('signups').add({
+        data: { _id: id, openid: openid, eventId: e._id, token: token, cost: cost, templateId: event.templateId ? String(event.templateId) : '', createdAt: db.serverDate() }
+      });
+    });
+    for (let left = SIGNUP_TRIES; ; left--) {
+      try {
+        await attempt();
+        break;
+      } catch (err) {
+        const existing = await findById('signups', id);
+        // 记录在，而且是这次请求写的：事务其实提交了，只是结果没传回来。照成功处理
+        if (existing && existing.token === token) break;
+        // 记录在，但是别的请求写的（同一个人连点了两次）：这次什么都没扣，按「已经报过」处理
+        if (existing) return { eventId: e._id, already: true };
+        // 没写进去（很多人同时抢名额时事务会互相冲突）：这次什么都没变，再试；试够了把错误交出去
+        if (left <= 1) throw err;
+      }
     }
-    return { eventId: e._id, already: false };
+    if (refused) {
+      // 同一个人连点了两次：另一个请求刚把积分扣走并报上了名，这次按「已经报过」处理，不提示积分不够或名额满了
+      if (await findById('signups', id)) return { eventId: e._id, already: true };
+      throw fail(refused);
+    }
+    return { eventId: e._id, already: false, member: memberView(await findById('members', openid)) };
   }
 };
 

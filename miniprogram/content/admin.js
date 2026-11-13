@@ -34,12 +34,22 @@ module.exports = {
     "status": {
       "published": "已上架",
       "draft": "未上架",
-      "ended": "已结束"
+      "ended": "已结束",
+      "cancelled": "已取消"
     },
     "signups": "已报名 [人数] 人",
     "published": "已上架，小程序里能看到了",
     "unpublished": "已下架",
     "subscribers": "[人数] 人订阅了新活动通知",
+    "signupList": "名单",
+    "toPast": "加到往期",
+    "toPastNoCover": "这场活动没有头图，请在下面选一张照片",
+    "announce": "发公告",
+    "announceConfirmTitle": "发成公告",
+    "announceConfirm": "用户下次打开小程序时会弹出这条公告。现在的公告会被它换掉。",
+    "announceTitle": "新活动",
+    "announceContent": "「[名称]」上线了，[时间][地点]。到活动页查看和报名。",
+    "announced": "公告已发出",
     "notify": "通知订阅的人",
     "notifyConfirmTitle": "通知订阅的人",
     "notifyConfirm": "现在有 [人数] 人订阅了新活动通知。确认后每人收到一条微信提醒，这场活动只能通知一次。",
@@ -47,6 +57,27 @@ module.exports = {
     "notifyPending": "通知发送中",
     "notifyDone": "已通知 [人数] 人",
     "notifyFailed": "[人数] 人没发到"
+  },
+  "signups": {
+    "title": "报名名单",
+    "count": "[人数] 人报名",
+    "countPartial": "[人数] 人报名，名单太长，这里只显示前 [显示] 人",
+    "empty": "还没有人报名",
+    "memberNo": "会员编号 [会员编号]",
+    "noName": "没填昵称",
+    "cost": "用了 [积分] 积分",
+    "call": "拨打",
+    "copy": "复制名单",
+    "copied": "名单已复制",
+    "cancel": "取消报名",
+    "cancelTitle": "取消报名",
+    "cancelConfirm": "取消「[会员]」的报名。名额让出来，积分退回，对方会收到通知。",
+    "cancelled": "已取消",
+    "cancelEvent": "取消整场活动",
+    "cancelEventTitle": "取消整场活动",
+    "cancelEventConfirm": "活动会下架，[人数] 位报名的人全部撤销，积分退回，每个人都会收到通知。这一步不能撤回。",
+    "cancelEventDone": "活动已取消",
+    "cancelling": "正在处理，还剩 [人数] 人"
   },
   "past": {
     "hint": "活动页「往期」里的赞助赛事。保存后小程序里马上能看到，不用重新发版。",
@@ -60,8 +91,11 @@ module.exports = {
       "year": "年份",
       "name": "名称",
       "nameEn": "英文名或副标题",
-      "image": "照片"
+      "image": "照片",
+      "home": "放在首页"
     },
+    "homeTag": "首页",
+    "homeHint": "打开后出现在首页「众多专业机构选择 SPORTSIX 产品」那一排里，关掉只在活动页的往期里显示。",
     "placeholders": {
       "year": "比如 2027",
       "name": "比如 首尔马拉松",
@@ -91,6 +125,8 @@ module.exports = {
       "date": "活动时间",
       "city": "城市",
       "venue": "场地",
+      "cost": "报名所需积分",
+      "contact": "联系方式",
       "quota": "名额",
       "quotaText": "名额写法",
       "memberSignupStart": "会员提前报名",
@@ -105,6 +141,8 @@ module.exports = {
       "title": "活动名称",
       "city": "比如 上海",
       "venue": "比如 徐汇滨江",
+      "cost": "不填就是不用积分",
+      "contact": "报名的人有事找谁，比如 客服电话",
       "quota": "不填就不限",
       "quotaText": "比如 限 200 份，不填就显示数字",
       "intro": "活动介绍，可以分段",
@@ -112,6 +150,8 @@ module.exports = {
       "time": "选时间"
     },
     "hints": {
+      "cost": "报名时扣掉，积分不够的人报不了。取消报名或取消活动时自动退回。",
+      "contact": "显示在活动详情里。报名后会员不能自己取消，要找这里联系你们。",
       "memberSignupStart": "填了，活动卡片上显示「会员优先报名」，提醒也按这个时间发。",
       "status": "打开后保存，小程序里就能看到。",
       "cover": "不选就用默认配图。"
@@ -165,6 +205,9 @@ module.exports = {
     "event_ended": "活动已经结束了",
     "notified": "这场活动已经通知过了",
     "no_subscribers": "还没有人订阅新活动通知",
+    "bad_cost": "积分数太大了",
+    "not_signed": "这个人已经不在名单里了",
+    "cancel_incomplete": "还有人没处理完，请再点一次「取消整场活动」",
     "bad_year": "年份填四位数字",
     "missing_name": "请填写名称",
     "missing_image": "请选择照片",

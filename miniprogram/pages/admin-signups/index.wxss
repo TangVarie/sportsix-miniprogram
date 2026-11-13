@@ -1,0 +1,35 @@
+/* 报名名单（设计稿里没有）：头部同活动表单页，卡片和按钮同运营后台首页 */
+.as-header { position: relative; height: calc(254rpx + var(--sx-safe-top)); color: #FFFFFF; }
+.as-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; height: 85rpx; padding: 0 15rpx;
+}
+.as-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.as-header__title { position: absolute; left: 38rpx; bottom: 46rpx; font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+
+.as-body { padding: 38rpx 38rpx calc(77rpx + env(safe-area-inset-bottom)); }
+.as-event { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #010439; }
+.as-count { margin-top: 8rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.as-empty { margin-top: 46rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.as-skel { height: 200rpx; margin-top: 23rpx; border-radius: 31rpx; }
+
+.as-btn {
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 96rpx; margin-top: 31rpx; border-radius: 48rpx;
+  font-size: 29rpx; font-weight: 900; color: #010439;
+}
+.as-btn--line { background: #FFFFFF; border: 2rpx solid #010439; }
+/* 取消整场活动：不常用、后果大，用灰底不用主色 */
+.as-btn--danger { margin-top: 54rpx; background: #F5F5F5; border: 1px solid #C9CEE8; color: #5E6170; }
+.as-btn--busy { opacity: .5; }
+
+.as-card { display: flex; align-items: flex-start; gap: 19rpx; margin-top: 23rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.as-card__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.as-card__name { font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.as-card__meta { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.as-card__phone { display: flex; align-items: baseline; gap: 15rpx; margin-top: 12rpx; }
+.as-card__phone-num { font-size: 38rpx; line-height: 46rpx; color: #061A70; }
+.as-card__phone-call { font-size: 23rpx; line-height: 35rpx; font-weight: 700; color: #061A70; }
+.as-mini {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 69rpx; padding: 0 31rpx; border-radius: 35rpx;
+  background: #FFFFFF; border: 1px solid #C9CEE8; font-size: 25rpx; font-weight: 700; color: #010439;
+}

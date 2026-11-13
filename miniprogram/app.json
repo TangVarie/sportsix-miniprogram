@@ -9,7 +9,8 @@
     "pages/doc/index",
     "pages/points/index",
     "pages/admin/index",
-    "pages/admin-event/index"
+    "pages/admin-event/index",
+    "pages/admin-signups/index"
   ],
   "window": {
     "navigationStyle": "custom",

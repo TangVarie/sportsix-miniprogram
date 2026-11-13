@@ -54,6 +54,9 @@ function fromCloud(e) {
     icon: t.icon,
     action: t.action,
     actionDone: t.actionDone,
+    // 报名要用多少积分（0 是不用），和报名的人有事找谁
+    cost: e.cost > 0 ? e.cost : 0,
+    contact: e.contact || '',
     raw: e
   };
   view.meta = t.style === 'lime' ? join([view.window, view.quota]) : join([view.date, view.city]);
@@ -172,6 +175,23 @@ function remind(eventId) {
   });
 }
 
+/**
+ * 报名前请用户订阅一次消息：同意了的，报名被取消或活动取消时能用微信的服务通知告诉他。
+ * 必须由点击直接触发。不同意也照样能报名（平台不允许「不订阅就不让用」），这时 resolve 空字符串。
+ * @returns {Promise<string>} 同意了是模板 ID，否则是 ''
+ */
+function askSubscribe() {
+  const tmpl = config.subscribeTemplateId;
+  if (!tmpl) return Promise.resolve('');
+  return new Promise((resolve) => {
+    wx.requestSubscribeMessage({
+      tmplIds: [tmpl],
+      success: (res) => resolve(res[tmpl] === 'accept' ? tmpl : ''),
+      fail: () => resolve('')
+    });
+  });
+}
+
 /** 活动页最下面「有新活动通知我」那一行的文字 */
 function getNews() {
   return content.news;
@@ -199,5 +219,5 @@ function subscribeNews() {
 
 module.exports = {
   listUpcoming, isFirstLoad, refresh, listPast, refreshPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
-  getNews, subscribeNews, hasNews: store.hasNews
+  getNews, subscribeNews, hasNews: store.hasNews, askSubscribe
 };

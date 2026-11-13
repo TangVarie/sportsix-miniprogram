@@ -5,6 +5,10 @@ module.exports = {
     "saved": "已保存到我的",
     "saveFailed": "保存失败，请稍后再试"
   },
+  "inbox": {
+    "_note": "站内消息（报名被取消、活动取消）弹出来时按钮上的字",
+    "confirm": "知道了"
+  },
   "fuel": {
     "_note": "补给计算里加减到头时的提示。到头了要说一句为什么，不能点了没反应。",
     "minMinutes": "最短算 30 分钟",
@@ -41,6 +45,8 @@ module.exports = {
     "not_open": "报名还没有开放",
     "closed": "报名已结束",
     "full": "名额已满",
+    "insufficient_points": "积分不够，这场需要 [积分] 积分",
+    "cost_changed": "报名所需积分有变化，请再确认一次",
     "not_found": "活动已下线",
     "network": "网络异常，请稍后再试"
   }

@@ -55,10 +55,11 @@ cloudfunctions/
 |---|---|---|
 | `members` 会员 | openid | `openid`、`phone`、`countryCode`、`nickname`、`admin`（管理员，手动加）、`memberNo`、`points`、`numbered`（已发编号）、`welcomeBonus`（已送过注册积分）、`createdAt` |
 | `events` 活动 | 自动 | 见下 |
-| `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
+| `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`cost`（报名时扣了多少积分）、`templateId`（报名时同意了订阅消息才有）、`createdAt`。取消报名是把这条记录删掉 |
+| `inbox` 站内消息 | 自动 | `openid`、`title`、`content`、`read`、`createdAt`。报名被取消、活动被取消时写一条，会员下次进小程序时弹出来。云函数自动建 |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动）和 `job`（划给了哪一次登记，对应活动上的 `notifyId`），空的是还没划、`claimedAt`、`sentAt`、`error`。云函数自动建 |
-| `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）、`deleted`（在后台删掉的赛事不抹记录，只标上这个）。云函数自动建，建的时候放进包里原有的几场 |
+| `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）、`home`（放不放在首页，没有这个字段算放）、`deleted`（在后台删掉的赛事不抹记录，只标上这个）。云函数自动建，建的时候放进包里原有的几场 |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 | `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
 | `admin_web` 电脑端登录 | 摘要 | 登录码（`c_` 开头）、登录凭证（`s_` 开头）。云函数自动建 |
@@ -67,7 +68,7 @@ cloudfunctions/
 
 会员编号按注册先后发，6 位数字，从 100001 起（`api` 里的 `nextMemberNo`）。没有编号的会员（规则定下来之前注册的，或注册时取号失败的）下次进入小程序时补发，页面上暂时显示「—」。
 
-注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。积分怎么兑换、参与活动怎么算还没定。要给某个会员加减积分，用运营后台的「积分」，它会同时改积分和记一条记录（记录里的 `by` 是操作的管理员）。不要直接在控制台改 `points`，那样积分页的记录里没有这一笔。
+注册送 500 积分（`api` 里的 `WELCOME_POINTS`；页面上的说法在 `reference/content/member.json` 和 `messages.json`，要改一起改）。没领过的老会员下次进入小程序时补送一次，用 `welcomeBonus` 标记防止重复送。报名用积分已定，见下面「用积分报名」；积分怎么兑换还没定。要给某个会员加减积分，用运营后台的「积分」，它会同时改积分和记一条记录（记录里的 `by` 是操作的管理员）。不要直接在控制台改 `points`，那样积分页的记录里没有这一笔。
 
 昵称由用户在会员页自己填（`setNickname` 接口），最多 20 个字。输入框用的是微信的昵称键盘，内容安全由微信的组件检测。
 
@@ -191,6 +192,21 @@ npm run test:web
 - 内容只能是活动信息。微信运营规范不允许用订阅消息发营销内容，也不允许发和用户订阅时理解的不一样的东西。
 
 这个功能要重新上传 `api` 和 `remind` 两个云函数。
+
+## 用积分报名
+
+每场活动可以设「报名所需积分」（活动上的 `cost`，不填或填 0 是不用积分）和「联系方式」（`contact`，显示在活动详情页的「报名须知」里）。
+
+- **报名**：积分不够报不了。占名额、扣积分、写报名记录在一个数据库事务里，要么都做成要么都没做，不会扣了积分却没报上。取消报名的删记录、放名额、退积分、留消息也是一个事务，中途出错再点一次就行。扣的这一笔会出现在会员的积分记录里。
+- **会员不能自己取消**。详情页上写着要调整请联系我们，所以联系方式最好填上。
+- **运营取消某个人的报名**：后台活动列表点「名单」，在名单里点「取消报名」。记录删掉、名额放回、积分退回，对方会收到通知。取消之后这个人可以重新报名。
+- **取消整场活动**：名单页最下面的「取消整场活动」。活动下架并标上「已取消」，所有报名的人退积分、收通知。一次处理 40 人，人多时页面会自动接着处理到完；提示「还有人没处理完」时再点一次。
+- **通知怎么到**：一定会有一条站内消息（`inbox`），对方下次打开小程序时弹出来。报名时同意了订阅消息的，另外收到一条微信的「活动动态通知」。微信不允许把订阅当成报名的条件，所以报名时只是问一次，拒绝了也照样能报。
+- **名单里有什么**：昵称、会员编号、完整手机号、报名时间、用了多少积分。小程序里可以拨打和复制，电脑端可以导出表格。
+- **加到往期**：活动列表上的「加到往期」把这场活动的名称、年份、头图抄进往期赞助赛事，之后在「往期」里可以再改。
+- **发公告**：活动列表上的「发公告」把这场活动的名称和时间地点填进公告并打开，会员进小程序时弹一次。
+
+`api` 这次多了一个云调用权限 `subscribeMessage.send`（写在 `api/config.json`），并带了一份 `template.js`，它和 `remind/template.js` 必须一模一样（`npm test` 会核对），改一处要把另一处也改了。要重新上传 `api`。
 
 ## 测试
 

@@ -20,7 +20,8 @@ function notifyText(n) {
 /** 活动 → 列表里一行的显示数据。已上架但日期已经过去的算「已结束」 */
 function eventRow(e) {
   const published = e.status === 'published';
-  const state = published ? (e.date && e.date < Date.now() - 24 * 3600 * 1000 ? 'ended' : 'published') : 'draft';
+  const ended = !!e.date && e.date < Date.now() - 24 * 3600 * 1000;
+  const state = e.cancelled ? 'cancelled' : (published ? (ended ? 'ended' : 'published') : 'draft');
   return {
     id: e.id,
     title: e.title,
@@ -30,6 +31,11 @@ function eventRow(e) {
     meta: [e.type, format.moment(e.date), e.city].filter(Boolean).join(' · '),
     signups: copy.events.signups.replace('[人数]', e.signupCount || 0) + (e.quota ? ' / ' + e.quota : ''),
     // 新活动通知：上架着、还没开始、没通知过的活动可以通知一次
+    // 上架着、还没结束的活动可以一键发成公告
+    canAnnounce: state === 'published',
+    // 办完的赛事可以加到往期（往期只放赛事）
+    canPast: e.type === '赛事' && ended && !e.cancelled,
+    raw: { title: e.title, date: e.date, city: e.city, venue: e.venue, cover: e.cover },
     canNotify: state === 'published' && !e.notify && e.date > Date.now(),
     notifyText: notifyText(e.notify)
   };
@@ -37,7 +43,7 @@ function eventRow(e) {
 
 /** 往期赛事 → 列表里一行的显示数据。照片是 assets/ 路径的换成地址，云存储的 fileID 直接能显示 */
 function pastRow(p) {
-  return { id: p.id, year: p.year, name: p.name, nameEn: p.nameEn, image: p.image, src: assetUrl(p.image) };
+  return { id: p.id, year: p.year, name: p.name, nameEn: p.nameEn, image: p.image, src: assetUrl(p.image), home: p.home !== false };
 }
 
 /** 查到的会员 → 卡片上的显示数据 */
@@ -157,6 +163,50 @@ Page({
       .then(() => this.setData({ busy: false }));
   },
 
+  /** 报名名单 */
+  onSignups(e) {
+    go('admin-signups', { id: e.currentTarget.dataset.id });
+  },
+
+  /** 办完的赛事加到往期：切到「往期」，把名称、年份、头图带进表单，改一改再保存 */
+  onToPast(e) {
+    const row = this.data.events.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!row) return;
+    const cover = row.raw.cover || '';
+    this.setData({
+      tab: 'past',
+      pastForm: { id: '', year: String(new Date(row.raw.date).getFullYear()), name: row.raw.title, nameEn: '', image: cover, src: assetUrl(cover), home: true }
+    });
+    if (!this.data.pastLoaded) this.loadPast();
+    if (!cover) toast(copy.events.toPastNoCover);
+    wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+  },
+
+  /** 把这场活动发成公告：用户下次打开小程序时弹出来。先确认一次，因为会换掉现在的公告 */
+  onAnnounce(e) {
+    if (this.data.busy) return;
+    const row = this.data.events.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!row) return;
+    const where = [row.raw.city, row.raw.venue].filter(Boolean).join(' ');
+    const notice = {
+      title: copy.events.announceTitle,
+      content: copy.events.announceContent.replace('[名称]', row.raw.title).replace('[时间]', format.moment(row.raw.date)).replace('[地点]', where ? '，' + where : ''),
+      enabled: true
+    };
+    wx.showModal({
+      title: copy.events.announceConfirmTitle,
+      content: notice.content + '\n\n' + copy.events.announceConfirm,
+      success: (res) => {
+        if (!res.confirm) return;
+        this.setData({ busy: true });
+        admin.saveNotice(notice)
+          .then((n) => { this.setData({ notice: n, noticeLoaded: true }); toast(copy.events.announced); })
+          .catch((err) => toast(admin.errorText(err)))
+          .then(() => this.setData({ busy: false }));
+      }
+    });
+  },
+
   /** 把这场活动通知给订阅了新活动通知的人：先弹一次确认，写清楚发给多少人 */
   onNotify(e) {
     if (this.data.busy) return;
@@ -194,7 +244,7 @@ Page({
   },
 
   onPastCreate() {
-    this.setData({ pastForm: { id: '', year: String(new Date().getFullYear()), name: '', nameEn: '', image: '', src: '' } });
+    this.setData({ pastForm: { id: '', year: String(new Date().getFullYear()), name: '', nameEn: '', image: '', src: '', home: true } });
   },
 
   onPastEdit(e) {
@@ -205,6 +255,12 @@ Page({
   onPastCancel() {
     if (this.data.busy || this.data.uploading) return;
     this.setData({ pastForm: null });
+  },
+
+  /** 放不放在首页那一排里 */
+  onPastHome() {
+    tick();
+    this.setData({ 'pastForm.home': !this.data.pastForm.home });
   },
 
   onPastInput(e) {
@@ -238,7 +294,7 @@ Page({
     if (!String(f.name || '').trim()) { toast(copy.errors.missing_name); return; }
     if (!f.image) { toast(copy.errors.missing_image); return; }
     this.setData({ busy: true });
-    admin.savePast(f.id, { year: String(f.year).trim(), name: f.name, nameEn: f.nameEn, image: f.image })
+    admin.savePast(f.id, { year: String(f.year).trim(), name: f.name, nameEn: f.nameEn, image: f.image, home: f.home !== false })
       .then((list) => { this.pastChanged(list); this.setData({ pastForm: null }); toast(copy.past.saved); })
       .catch((e) => toast(admin.errorText(e)))
       .then(() => this.setData({ busy: false }));
