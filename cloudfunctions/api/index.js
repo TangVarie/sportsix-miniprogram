@@ -14,6 +14,7 @@
  *   settings   设置      目前只有一条 _id 为 notice 的记录（公告）；第一次用到时云函数自己建这个集合
  *
  *   admin_web  电脑端后台的登录码、登录凭证；第一次用到时云函数自己建这个集合
+ *   past_events 往期的赞助赛事  活动页「往期」里的照片卡；第一次用到时云函数自己建这个集合，并放进 PAST_SEED 里的几场
  *   news_subs  新活动通知的订阅  _id 用 openid，每人一条；第一次用到时云函数自己建这个集合
  *
  * 运营后台的接口（admin 开头）只给管理员用：会员记录上有 admin: true，在云开发控制台里手动加。
@@ -152,7 +153,7 @@ const WEB_CODE_DIGITS = 12;
 /** 登录一次管 12 小时 */
 const WEB_SESSION_TTL = 12 * 3600 * 1000;
 /** 没有微信身份（网页）时能调的接口。登录码只在小程序里取，不在这里 */
-const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminNotice', 'adminSaveNotice',
+const WEB_ACTIONS = ['webMe', 'webLogout', 'adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice',
   'adminFindMember', 'adminAdjustPoints', 'adminUploadCover', 'adminFileUrls'];
 
 /** admin_web 集合里的一条记录。集合还没建时当作没有 */
@@ -239,6 +240,61 @@ function adminEventView(e) {
     signupCount: e.signupCount || 0,
     notify: e.notifyStatus ? { status: e.notifyStatus === 'done' ? 'done' : 'pending', at: ms(e.notifyAt), sent: e.notifySent || 0, failed: e.notifyFailed || 0 } : null
   });
+}
+
+/* ---------- 往期的赞助赛事 ---------- */
+
+/**
+ * 集合第一次建好时放进去的几场，和 reference/content/events.json 的 past 是同一份（tools/test-cloud.js 会核对）。
+ * image 是 assets/ 开头的资源路径，小程序和网页各自拼上资源前缀；后台新加的赛事存的是云存储的 fileID。
+ */
+const PAST_SEED = [
+  { year: '2026', name: '韩国汉江跑步节', nameEn: 'Hangang Running Festival', image: 'assets/photos/endorsement/2026-hangang-running-festival.jpg' },
+  { year: '2026', name: '乌兰巴托马拉松', nameEn: 'Ulaanbaatar Marathon', image: 'assets/photos/endorsement/2026-ulaanbaatar-marathon.jpg' },
+  { year: '2026', name: '蔚州九峰越野赛', nameEn: 'APTRC 亚太越野跑锦标赛', image: 'assets/photos/endorsement/2026-ulju-nine-peaks-trail.jpg' },
+  { year: '2025', name: '韩国自由跑', nameEn: 'Hangang StyleRun', image: 'assets/photos/endorsement/2025-hangang-stylerun.jpg' }
+];
+
+/**
+ * 全部往期赛事，年份新的在前，同一年里按 order 从小到大（新加的排在这一年的最前面）。
+ * 集合还没建：建好并放进 PAST_SEED。只有亲手把集合建出来的那个请求才放种子：
+ * 读取一时出错（集合其实在）时不放，不然运营删掉的那几场会被放回来。
+ */
+async function listPast() {
+  const read = async () => {
+    const all = [];
+    for (let page = 0; page < 10; page++) {
+      const res = await db.collection('past_events').skip(page * 100).limit(100).get();
+      all.push(...res.data);
+      if (res.data.length < 100) break;
+    }
+    return all;
+  };
+  let all;
+  try {
+    all = await read();
+  } catch (e) {
+    let created = false;
+    try { await db.createCollection('past_events'); created = true; } catch (e2) { /* 集合已经有了：刚才是读取出错，或者另一个请求刚建好 */ }
+    if (created) {
+      for (let i = 0; i < PAST_SEED.length; i++) {
+        await db.collection('past_events').add({ data: Object.assign({ _id: 'seed-' + (i + 1), order: i, createdAt: db.serverDate() }, PAST_SEED[i]) });
+      }
+    }
+    all = await read();
+  }
+  return all.sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))
+    .map((p) => ({ id: p._id, year: p.year || '', name: p.name || '', nameEn: p.nameEn || '', image: p.image || '' }));
+}
+
+/** 后台表单交上来的往期赛事 → 要存的数据 */
+function pastData(input) {
+  const p = input || {};
+  const data = { year: cleanText(p.year, 4), name: cleanText(p.name, 30), nameEn: cleanText(p.nameEn, 60), image: cleanText(p.image, 500) };
+  if (!/^(19|20)\d{2}$/.test(data.year)) throw fail('bad_year');
+  if (!data.name) throw fail('missing_name');
+  if (!data.image) throw fail('missing_image');
+  return data;
 }
 
 /* ---------- 新活动通知 ---------- */
@@ -447,7 +503,45 @@ const actions = {
     return { events: res.data.map(eventView) };
   },
 
+  /** 活动页「往期」里的赞助赛事 */
+  async pastEvents() {
+    return { past: await listPast() };
+  },
+
   /* ---------- 运营后台（只给管理员） ---------- */
+
+  /** 往期的赞助赛事（后台列表） */
+  async adminPastEvents(event, openid) {
+    await requireAdmin(openid);
+    return { past: await listPast() };
+  },
+
+  /** 新加或修改一场往期赛事。带 id 是修改，不带是新加（排在这一年的最前面） */
+  async adminSavePast(event, openid) {
+    await requireAdmin(openid);
+    const data = pastData(event.item);
+    const all = await listPast(); // 顺带保证集合已经建好
+    const id = event.id ? String(event.id) : '';
+    if (id) {
+      if (!all.some((p) => p.id === id)) throw fail('not_found');
+      await db.collection('past_events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+    } else {
+      // order 越小越靠前：新加的用负的当前时间，排在同一年已有的前面
+      await db.collection('past_events').add({ data: Object.assign(data, { order: -Date.now(), createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
+    }
+    return { past: await listPast() };
+  },
+
+  /** 删掉一场往期赛事 */
+  async adminDeletePast(event, openid) {
+    await requireAdmin(openid);
+    const id = String(event.id || '');
+    const all = await listPast();
+    if (!all.some((p) => p.id === id)) throw fail('not_found');
+    await db.collection('past_events').doc(id).remove();
+    return { past: await listPast() };
+  },
+
 
   /** 全部活动，含没上架的和已经过期的，新的在前 */
   async adminEvents(event, openid) {

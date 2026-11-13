@@ -49,6 +49,10 @@ Page({
       if (changed) this.render();
       if (this.data.loading) this.setData({ loading: false });
     });
+    // 往期的赞助赛事也从云端取一次，运营在后台加了新的不用等发版
+    events.refreshPast().then((changed) => {
+      if (changed) this.setData({ past: events.listPast() });
+    });
   },
 
   onUnload() {

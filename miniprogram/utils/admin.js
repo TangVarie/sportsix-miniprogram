@@ -25,6 +25,18 @@ function saveEvent(id, event) {
 function setEventStatus(id, status) {
   return cloud.call('adminSetEventStatus', { id: id, status: status }).then((d) => d.event);
 }
+/** 往期的赞助赛事（活动页「往期」里的照片卡），年份新的在前 */
+function listPast() {
+  return cloud.call('adminPastEvents').then((d) => d.past || []);
+}
+/** 新加（id 为空）或修改一场往期赛事，resolve 最新的整张列表 */
+function savePast(id, item) {
+  return cloud.call('adminSavePast', { id: id || '', item: item }).then((d) => d.past || []);
+}
+/** 删掉一场往期赛事，resolve 最新的整张列表 */
+function deletePast(id) {
+  return cloud.call('adminDeletePast', { id: id }).then((d) => d.past || []);
+}
 function getNotice() {
   return cloud.call('adminNotice').then((d) => d.notice);
 }
@@ -77,4 +89,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, webCode, uploadCover, errorText, toPicker, fromPicker };

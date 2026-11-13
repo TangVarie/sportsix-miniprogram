@@ -95,6 +95,8 @@ if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
   const env = require(path.join(root, 'config.js')).cloudEnv;
   if (html.indexOf("appid: '" + appid + "'") < 0) errors.push('web-admin/index.html 里的 appid 和 project.config.json 不一致');
   if (env && html.indexOf("env: '" + env + "'") < 0) errors.push('web-admin/index.html 里的 env 和 miniprogram/config.js 的 cloudEnv 不一致');
+  const assetBase = String(require(path.join(repo, 'miniprogram/config.js')).assetBase || '').replace(/\/$/, '');
+  if (/^https:/.test(assetBase) && html.indexOf("assets: '" + assetBase + "'") < 0) errors.push('web-admin/index.html 里的 assets 和 miniprogram/config.js 的 assetBase 不一致');
   if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 }
 

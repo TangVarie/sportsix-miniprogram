@@ -1,7 +1,8 @@
 /**
  * 活动数据、「提醒我」和「有新活动通知我」。
  *
- * - 往期（past）是打进包里的真实赛事。
+ * - 往期（past）是赞助过的赛事：存在云端，运营在后台增删改（经云函数 api 的 pastEvents 接口），本机缓存一份。
+ *   没配云环境、或者还没取到过时，用打进包里的那几场。
  * - 即将开始：config.sampleEvents 为 true 时用 content 里三种卡片样式的占位示例；
  *   否则用云数据库 events 集合里的活动（经云函数 api 的 events 接口），本机缓存一份，refresh() 更新。
  * 页面拿到的都是整理好的显示用数据，形状和占位示例一致。
@@ -100,8 +101,22 @@ function getEmpty() {
   return withAssets({ title: content.empty.title, image: content.empty.image, graphic: content.empty.graphic });
 }
 
+const PAST_KEY = 'sx_past';
+
+/** 往期的赞助赛事（同步，读缓存）。还没从云端取到过时用包里的那几场 */
 function listPast() {
-  return withAssets(content.past);
+  let list = null;
+  try { const v = wx.getStorageSync(PAST_KEY); if (Array.isArray(v)) list = v; } catch (e) { /* 读不到就用包里的 */ }
+  return withAssets(list || content.past);
+}
+
+/** 从云端取最新的往期赛事，更新缓存。没配云环境时不请求。resolve 是否有更新。 */
+function refreshPast() {
+  if (!cloud.enabled()) return Promise.resolve(false);
+  return cloud.call('pastEvents').then((d) => {
+    try { wx.setStorageSync(PAST_KEY, d.past || []); } catch (e) { /* 缓存失败不影响下次再取 */ }
+    return true;
+  }).catch(() => false);
 }
 
 function getEvent(id) {
@@ -183,6 +198,6 @@ function subscribeNews() {
 }
 
 module.exports = {
-  listUpcoming, isFirstLoad, refresh, listPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
+  listUpcoming, isFirstLoad, refresh, listPast, refreshPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
   getNews, subscribeNews, hasNews: store.hasNews
 };

@@ -58,6 +58,7 @@ cloudfunctions/
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动）和 `job`（划给了哪一次登记，对应活动上的 `notifyId`），空的是还没划、`claimedAt`、`sentAt`、`error`。云函数自动建 |
+| `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）。云函数自动建，建的时候放进包里原有的几场 |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 | `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
 | `admin_web` 电脑端登录 | 摘要 | 登录码（`c_` 开头）、登录凭证（`s_` 开头）。云函数自动建 |
@@ -74,9 +75,10 @@ cloudfunctions/
 
 ## 运营后台
 
-小程序里有一个只有管理员能看到的「运营后台」（「我的」页最下面一行），能做三件事：
+小程序里有一个只有管理员能看到的「运营后台」（「我的」页最下面一行），能做这几件事：
 
 - **活动**：新建、编辑、上架、下架。表单里的字段就是下面「活动怎么填」那张表。头图在表单里选图片，会传到云存储的 `events/` 目录。上架着、还没开始的活动可以点「通知订阅的人」，见下面的「新活动通知」。
+- **往期**：活动页「往期」里的赞助赛事。填年份、名称、英文名或副标题，选一张照片。保存后小程序里马上能看到，不用重新发版。年份新的排在前面，同一年里新加的排在前面。照片传到云存储的 `events/` 目录。
 - **公告**：填标题和内容，打开开关后保存。每位用户下次打开小程序时弹一次；改了再保存算新的一条，会再弹一次；关掉开关保存就不再弹。
 - **积分**：按手机号或会员编号找到会员，加或减积分，写上原因。会员在自己的积分页能看到这一笔。减的时候积分不够会失败，不会减成负数。
 
