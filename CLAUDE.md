@@ -121,6 +121,7 @@ tools/
 - 会员、报名、提醒、新活动通知、补给计划统一走 `utils/store.js`：读是同步的（读本机缓存），写返回 Promise；进入小程序时 `store.sync()` 用云端数据覆盖缓存，页面用 `store.onChange()` 订阅后重读。活动数据走 `utils/events.js`。页面不要直接读写存储或调云函数。
 - 往期的赞助赛事存在云端（`past_events` 集合），运营在后台增删改，页面经 `utils/events.js` 的 `listPast()` / `refreshPast()` 读。`reference/content/events.json` 的 `past` 是初始的那几场，和 `api/index.js` 的 `PAST_SEED` 是同一份，改一处要改另一处（`npm test` 会核对）。
 - 报名可以用积分（活动上的 `cost`）。会员不能自己取消，运营在名单页取消报名或取消整场活动，退积分并通知：一条站内消息（`inbox` 集合，进小程序时由 `app.js` 的 `showInbox` 弹出），报名时同意了订阅的再发一条订阅消息。订阅不能当成报名的条件。`cloudfunctions/api/template.js` 和 `remind/template.js` 是同一份，改一处要改另一处（`npm test` 会核对）。
+- 报名（占名额、扣积分、写记录）和取消报名（删记录、放名额、退积分、留消息）各是一个数据库事务（`db.runTransaction`）。事务里只能按 `_id` 操作单条记录，不能用 `where`。
 - 首页的赞助赛事只显示往期里 `home` 不是 `false` 的那些。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 - 购买渠道：小程序自己不卖东西，`components/shop-entry` 把人带到店铺小程序里对应的商品（首页产品卡片下面、产品详情页底部、「我的」菜单）。文案和两款产品的小程序链接在 `reference/content/shop.json`；某一款的链接留空，这款就不显示购买入口。
