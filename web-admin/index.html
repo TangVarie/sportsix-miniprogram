@@ -924,14 +924,13 @@
       del.addEventListener('click', function () {
         if (!window.confirm('把「' + p.name + '」从往期里删掉？')) return;
         del.disabled = true;
-        // 删除的结果是一张新列表：之后再发出的读取比它新，所以也占一个号
-        var mine = ++pastSeq;
-        call('adminDeletePast', { id: p.id }).then(function (d) {
+        call('adminDeletePast', { id: p.id }).then(function () {
           toast('已删除');
           // 正在编辑的就是这一场：表单关掉
           if (pastForm.id === p.id && !$('past-form').hidden) closePast();
-          if (mine === pastSeq) return showPast(d.past);
-          return null;
+          // 删完以后重新读一次。不能直接用这次返回的列表去和别的读取比先后：
+          // 删除还没做完时发出的读取可能先回来，那份是旧的；删完之后再发的这次读取一定是新的
+          return loadPast();
         }).catch(function (err) {
           del.disabled = false;
           if (err.code !== 'web_expired') { toast(errorText(err), true); loadPast(); }
@@ -1010,12 +1009,11 @@
     var mine = pastEditor;
     pastSaving = mine;
     syncPastSave();
-    var seq = ++pastSeq;
-    call('adminSavePast', { id: pastForm.id, item: item }).then(function (d) {
+    call('adminSavePast', { id: pastForm.id, item: item }).then(function () {
       toast('已保存');
       if (mine === pastEditor) closePast();
-      if (seq === pastSeq) return showPast(d.past);
-      return null;
+      // 存完以后重新读一次（原因同删除）
+      return loadPast();
     }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
       .then(function () { if (pastSaving === mine) pastSaving = 0; syncPastSave(); });
   });

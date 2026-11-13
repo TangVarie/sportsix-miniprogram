@@ -275,6 +275,17 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForFunction(() => document.getElementById('past-rows').textContent.includes('Seoul Marathon'));
     eq(cloud.col('past_events').filter((x) => x.name).length, 5, '编辑不多出一条');
     await shot('past');
+    // 保存还没回来时切走又切回来：中间那次读取先回来（读到的是旧的），保存完以后列表要是新的
+    slow.adminSavePast = 600;
+    await page.locator('#past-rows tr', { hasText: '首尔马拉松' }).getByText('编辑').click();
+    await page.fill('#p-nameEn', 'Seoul Marathon 2027');
+    await page.click('#past-save');
+    await page.click('[data-tab="events"]');
+    await page.click('[data-tab="past"]');
+    await expectToast('已保存', '慢的那次保存完成');
+    await page.waitForFunction(() => document.getElementById('past-rows').textContent.includes('Seoul Marathon 2027'));
+    ok(true, '保存期间切走又切回来，保存完以后列表是新的');
+    slow.adminSavePast = 0;
     page.once('dialog', (d) => d.accept());
     await page.locator('#past-rows tr', { hasText: '韩国自由跑' }).getByText('删除').click();
     await expectToast('已删除', '删掉一场');
