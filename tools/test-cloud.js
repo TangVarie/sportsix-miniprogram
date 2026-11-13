@@ -639,6 +639,45 @@ async function signupRecoveryTests() {
   r = await call('adminCancelEvent', { id: race3 });
   eq([r.data.remaining, member('user-b').points, member('user-c').points], [0, 500, 500], '再调一次撤完，每人只退一次');
 
+  // 取消走到一半时，这个人已经被另一个请求撤掉、又按新的积分数重新报了：不动他新报的这一次，也不照旧的数退
+  const race4 = await make('湖边');
+  await as('user-b', 'signup', { eventId: race4 });
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    const doc = cloud.col('signups').find((x) => x._id === 'user-b_' + race4);
+    Object.assign(doc, { token: 'another', cost: 200 });
+    member('user-b').points = 300;
+  };
+  r = await call('adminCancelSignup', { id: race4, memberNo: '100002' });
+  eq([r.code, member('user-b').points, cloud.col('signups').filter((x) => x.eventId === race4).length], ['not_signed', 300, 1], '读到之后报名换成了另一次：不撤、不退');
+  ok((await call('adminCancelSignup', { id: race4, memberNo: '100002' })).ok && member('user-b').points === 500, '再点一次：撤的是新的这一次，照新的数退');
+
+  // 取消过的活动被重新上架，再取消一次：还是要下架，不然撤完了还能接着报
+  const race5 = await make('城墙');
+  await call('adminCancelEvent', { id: race5 });
+  r = await call('adminSetEventStatus', { id: race5, status: 'published' });
+  eq([r.data.event.status, r.data.event.cancelled], ['published', false], '重新上架后不再是已取消');
+  await as('user-b', 'signup', { eventId: race5 });
+  r = await call('adminCancelEvent', { id: race5 });
+  eq([r.data.remaining, r.data.event.status, r.data.event.cancelled, member('user-b').points], [0, 'draft', true, 500], '再取消：下架、标成取消、积分退回');
+  eq((await as('user-b', 'signup', { eventId: race5 })).code, 'not_found', '取消以后报不了');
+  event(race5).status = 'published';
+  r = await call('adminCancelEvent', { id: race5 });
+  eq(r.data.event.status, 'draft', '标着已取消但还上架着的活动：取消时照样下架');
+  r = await call('adminSaveEvent', { id: race5, event: { type: '赛事', title: '城墙', status: 'published', date: cloud.state.now + 9 * DAY, cost: 100 } });
+  eq(r.data.event.cancelled, false, '在表单里重新上架也清掉已取消');
+
+  // 会员确认的是 100 积分，点下去之前运营把这场改成了 400：不扣，告诉页面数变了
+  const race6 = await make('海堤');
+  await call('adminSaveEvent', { id: race6, event: { type: '赛事', title: '海堤', status: 'published', date: cloud.state.now + 9 * DAY, cost: 400 } });
+  r = await as('user-b', 'signup', { eventId: race6, cost: 100 });
+  eq([r.code, member('user-b').points, cloud.col('signups').filter((x) => x.eventId === race6).length], ['cost_changed', 500, 0], '积分数和确认时不一样：不扣、不报');
+  r = await as('user-b', 'signup', { eventId: race6, cost: 0 });
+  eq(r.code, 'cost_changed', '原来不用积分、现在要用了：也不会不问就扣');
+  r = await as('user-b', 'signup', { eventId: race6, cost: 400 });
+  eq([r.ok, member('user-b').points], [true, 100], '按新的数确认过：扣新的数');
+  ok((await as('user-c', 'signup', { eventId: race6 })).ok, '老版本小程序不带确认的数：照常能报');
+
   // 页面上的「接着调」：只要人数在减少就一直做；一直不减少就按没做完报错，不当成做完
   const path = require('path');
   const adminJs = path.join(__dirname, '..', 'miniprogram', 'utils', 'admin.js');

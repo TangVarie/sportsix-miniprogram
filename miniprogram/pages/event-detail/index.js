@@ -136,7 +136,7 @@ Page({
   /** 报名的后半段：等订阅的结果（templateId，没同意是空的）→ 要用积分的确认一次 → 报名 */
   finishSignup(event, cost, asked) {
     asked
-      .then((templateId) => this.confirmCost(cost).then((go_) => (go_ ? store.signup(event.id, templateId).then(() => true) : false)))
+      .then((templateId) => this.confirmCost(cost).then((go_) => (go_ ? store.signup(event.id, templateId, cost).then(() => true) : false)))
       .then((done) => {
         if (!done) return;
         this.setData({ signed: true });
@@ -146,6 +146,8 @@ Page({
         // 云端说还不是会员（比如换了设备、本机缓存是旧的）：去注册
         if (e.code === 'not_member') { go('join'); return; }
         if (e.code === 'insufficient_points') { this.sayShort(cost); return; }
+        // 这场要用的积分刚改过：没扣。取一次最新的活动，页面上的数跟着变，再点报名时按新的数确认
+        if (e.code === 'cost_changed') events.refresh().then(() => this.render());
         wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
       })
       .then(() => { this.signing = false; });

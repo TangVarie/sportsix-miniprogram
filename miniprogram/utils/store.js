@@ -173,10 +173,11 @@ function hasSignup(eventId) { return getSignups().indexOf(eventId) >= 0; }
  * 报名。失败时 reject 的 Error 带 code：not_member、not_open、closed、full、insufficient_points、not_found、network。
  * 没配云环境时没有地方登记报名，直接按 'no_backend' 失败。
  */
-function signup(eventId, templateId) {
+function signup(eventId, templateId, cost) {
   if (!cloud.enabled()) return Promise.reject(Object.assign(new Error('no_backend'), { code: 'no_backend' }));
   // templateId：报名时同意了订阅消息的带上，报名被取消或活动取消时云端用它发通知
-  return tracked(cloud.call('signup', { eventId: eventId, templateId: templateId || '' }).then((d) => {
+  // cost：用户在页面上确认过的积分数。云端发现这场要用的积分已经变了就不扣，返回 cost_changed
+  return tracked(cloud.call('signup', { eventId: eventId, templateId: templateId || '', cost: cost > 0 ? cost : 0 }).then((d) => {
     addTo(KEY.signups, eventId);
     // 这场用了积分的话，云端返回扣完以后的会员信息
     if (d && d.member) write(KEY.member, d.member);

@@ -46,6 +46,7 @@ module.exports = {
     "closed": "报名已结束",
     "full": "名额已满",
     "insufficient_points": "积分不够，这场需要 [积分] 积分",
+    "cost_changed": "报名所需积分有变化，请再确认一次",
     "not_found": "活动已下线",
     "network": "网络异常，请稍后再试"
   }

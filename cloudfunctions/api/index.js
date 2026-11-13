@@ -463,6 +463,11 @@ async function removeSignup(openid, e, why, by) {
   try {
     await db.runTransaction(async (t) => {
       removed = false;
+      // 在事务里再读一次这条报名：上面读到之后，它可能已经被另一个请求撤掉，他又重新报了一次（积分数可能不一样了）。
+      // 只撤上面读到的那一次报名（token 对得上），不碰他后来重新报的
+      let now = null;
+      try { now = (await t.collection('signups').doc(id).get()).data; } catch (err) { now = null; }
+      if (!now || now.token !== s.token) return;
       const rm = await t.collection('signups').doc(id).remove();
       if (!rm.stats.removed) return;
       const ev = (await t.collection('events').doc(e._id).get()).data;
@@ -477,9 +482,10 @@ async function removeSignup(openid, e, why, by) {
       removed = true;
     });
   } catch (err) {
-    // 记录还在：这次没做成，什么都没变，把错误交出去，再点一次就行。
-    // 记录不在了：别的请求刚撤掉，或者这次其实做成了只是结果没传回来。两种情况积分都已经退好，按「没什么可撤的」处理
-    if (await findById('signups', id)) throw err;
+    // 那一次报名还在：这次没做成，什么都没变，把错误交出去，再点一次就行。
+    // 不在了（或者已经是他重新报的另一次）：别的请求刚撤掉，或者这次其实做成了只是结果没传回来。两种情况积分都已经退好，按「没什么可撤的」处理
+    const left = await findById('signups', id);
+    if (left && left.token === s.token) throw err;
     return false;
   }
   if (!removed) return false;
@@ -682,7 +688,8 @@ const actions = {
     const id = String(event.id || '');
     const e = await findById('events', id);
     if (!e) throw fail('not_found');
-    if (!e.cancelled) await db.collection('events').doc(id).update({ data: { status: 'draft', cancelled: true, cancelledAt: db.serverDate(), updatedAt: db.serverDate() } });
+    // 每次都下架：取消过的活动可能又被上架了，再取消时也得先下架，不然撤完了还能接着报
+    if (!e.cancelled || e.status !== 'draft') await db.collection('events').doc(id).update({ data: { status: 'draft', cancelled: true, cancelledAt: db.serverDate(), updatedAt: db.serverDate() } });
     const batch = await db.collection('signups').where({ eventId: id }).limit(40).get();
     for (const s of batch.data) {
       // 某一个人没撤成（数据库一时出错）不拖累别人：他还留在名单里，算在 remaining 里，下一次调用再撤
@@ -790,6 +797,8 @@ const actions = {
     let id = event.id ? String(event.id) : '';
     if (id) {
       if (!(await findById('events', id))) throw fail('not_found');
+      // 取消过的活动在表单里重新上架：就不再是「已取消」了
+      if (data.status === 'published') data.cancelled = false;
       await db.collection('events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
       // 有名额限制时，已报名人数不能比报名记录少（以前不限名额时报的名可能没记数）
       if (data.quota) await raiseSignupCount(id);
@@ -806,7 +815,10 @@ const actions = {
     const id = String(event.id || '');
     if (!(await findById('events', id))) throw fail('not_found');
     const status = event.status === 'published' ? 'published' : 'draft';
-    await db.collection('events').doc(id).update({ data: { status: status, updatedAt: db.serverDate() } });
+    const data = { status: status, updatedAt: db.serverDate() };
+    // 取消过的活动重新上架：就不再是「已取消」了
+    if (status === 'published') data.cancelled = false;
+    await db.collection('events').doc(id).update({ data: data });
     return { event: adminEventView(await findById('events', id)) };
   },
 
@@ -975,9 +987,10 @@ const actions = {
     if (await findById('signups', id)) return { eventId: e._id, already: true };
 
     // 这场要用积分的：先看够不够，不够就不用往下走了（事务里还会再看一次）
-    const cost = costOf(e);
-    if (cost && !((member.points || 0) >= cost)) throw fail('insufficient_points');
-    if (cost) await ensureCollection('point_logs');
+    if (costOf(e) && !((member.points || 0) >= costOf(e))) throw fail('insufficient_points');
+    await ensureCollection('point_logs');
+    // expected：用户在页面上确认过的积分数（老版本的小程序不带这一项，不比）
+    const expected = Number.isInteger(event.cost) && event.cost >= 0 ? event.cost : null;
 
     // 报名记录带上本次请求的标记，事务出错时靠它分清是哪种情况；cost 是这次用了多少积分，取消时照这个数退
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -985,16 +998,19 @@ const actions = {
     let refused = '';
     const attempt = () => db.runTransaction(async (t) => {
       refused = '';
-      // 活动和会员在事务里重新读：这时活动可能刚被下架或取消，名额可能刚被别人占掉，积分可能刚用在别处
+      // 活动和会员在事务里重新读：这时活动可能刚被下架或取消、刚改了要用的积分，名额可能刚被别人占掉，积分可能刚用在别处
       const ev = (await t.collection('events').doc(e._id).get()).data;
       if (ev.status !== 'published') { refused = 'not_found'; return; }
+      const cost = costOf(ev);
+      // 要用的积分和他确认时看到的不一样了：不扣，让页面拿新的数重新确认
+      if (expected !== null && expected !== cost) { refused = 'cost_changed'; return; }
       const count = typeof ev.signupCount === 'number' ? ev.signupCount : 0;
       if (typeof ev.quota === 'number' && count >= ev.quota) { refused = 'full'; return; }
       if (cost) {
         const me = (await t.collection('members').doc(openid).get()).data;
         if (!((me.points || 0) >= cost)) { refused = 'insufficient_points'; return; }
         await t.collection('members').doc(openid).update({ data: { points: _.inc(-cost) } });
-        await t.collection('point_logs').add({ data: { openid: openid, delta: -cost, reason: '报名「' + e.title + '」', createdAt: db.serverDate() } });
+        await t.collection('point_logs').add({ data: { openid: openid, delta: -cost, reason: '报名「' + ev.title + '」', createdAt: db.serverDate() } });
       }
       // 不管限不限名额，已报名人数都记：后台要显示，以后给活动加名额限制时这个数也得是对的
       await t.collection('events').doc(e._id).update({ data: { signupCount: count + 1 } });
