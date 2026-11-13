@@ -58,7 +58,7 @@ cloudfunctions/
 | `signups` 报名 | `openid_活动id` | `openid`、`eventId`、`token`（写入时的请求标记）、`createdAt` |
 | `reminders` 提醒 | `openid_活动id` | `openid`、`eventId`、`templateId`、`sent`、`status`（`sending` / `sent` / `failed`）、`claimedAt`、`sentAt`、`error`、`createdAt` |
 | `news_subs` 新活动通知的订阅 | openid | `openid`、`templateId`、`sent`（`false` 表示订阅着、还没收到）、`status`（`waiting` / `sending` / `sent` / `failed`）、`subscribedAt`、`eventId`（划给了哪场活动）和 `job`（划给了哪一次登记，对应活动上的 `notifyId`），空的是还没划、`claimedAt`、`sentAt`、`error`。云函数自动建 |
-| `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）。云函数自动建，建的时候放进包里原有的几场 |
+| `past_events` 往期的赞助赛事 | 自动 | `year`、`name`、`nameEn`、`image`（云存储的 fileID；包里原有的几场是 `assets/` 开头的路径）、`order`（同一年里的先后，小的在前）、`deleted`（在后台删掉的赛事不抹记录，只标上这个）。云函数自动建，建的时候放进包里原有的几场 |
 | `plans` 补给计划 | openid | `openid`、`input`（公式的八项输入）、`result`（支数摘要）、`savedAt` |
 | `point_logs` 积分记录 | 自动 | `openid`、`delta`（加减多少）、`reason`（原因：`welcome` 是注册赠送，其他的直接写给用户看的文字）、`createdAt`。云函数自动建 |
 | `admin_web` 电脑端登录 | 摘要 | 登录码（`c_` 开头）、登录凭证（`s_` 开头）。云函数自动建 |

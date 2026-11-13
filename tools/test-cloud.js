@@ -452,7 +452,8 @@ async function pastTests() {
   r = await call('pastEvents');
   eq([r.ok, r.data.past.length], [true, 4], '下一次读接着补齐');
 
-  // 四场都在、只差「放完了」那条记录没记上（上次记的时候出错）：这时删除要先失败，不能删了又被补回来
+  // 两个请求重叠：慢的那个读到的还是「集合是空的」，这期间另一个请求放好了初始的几场、管理员删掉了其中一场。
+  // 慢的那个接着往下补的时候，不能把删掉的那场放回来
   {
     const c2 = createCloud();
     seed(c2);
@@ -460,14 +461,17 @@ async function pastTests() {
     const call2 = (action, data) => c2.run(() => api2.main(Object.assign({ action: action }, data)));
     await call2('register', { code: 'code-a' });
     c2.col('members').find((d) => d._id === 'user-a').admin = true;
-    await call2('pastEvents');
-    const list = c2.col('past_events');
-    list.splice(list.findIndex((d) => d._id === '_seeded'), 1);
-    c2.state.addFails = 'before';
-    eq((await call2('adminDeletePast', { id: 'seed-1' })).code, 'server_error', '「放完了」没记上：删除报错');
-    ok(list.some((d) => d._id === 'seed-1'), '没有删掉又补回来这种假成功');
-    ok((await call2('adminDeletePast', { id: 'seed-1' })).ok && !list.some((d) => d._id === 'seed-1'), '记上以后删除正常');
-    eq((await call2('pastEvents')).data.past.length, 3, '删掉的不会回来');
+    c2.state.afterGet = async (name) => {
+      if (name !== 'past_events') return;
+      c2.state.afterGet = null;
+      await call2('pastEvents');
+      ok((await call2('adminDeletePast', { id: 'seed-1' })).ok, '另一个请求放好初始的几场，管理员删掉一场');
+    };
+    const slowRead = await call2('pastEvents');
+    c2.state.afterGet = null;
+    eq([slowRead.ok, slowRead.data.past.map((x) => x.id)], [true, ['seed-2', 'seed-3', 'seed-4']], '慢的那个请求没有把删掉的那场放回来');
+    eq((await call2('pastEvents')).data.past.length, 3, '之后再读也没有回来');
+    eq((await call2('adminSavePast', { id: 'seed-1', item: { year: '2026', name: '改名', image: 'cloud://x/a.jpg' } })).code, 'not_found', '删掉的不能再改');
   }
 
   // 之后再读：就是包里原有的那几场
@@ -502,7 +506,6 @@ async function pastTests() {
   r = await call('pastEvents');
   cloud.state.getError = null;
   ok(r.ok && r.data.past.length === 5 && !r.data.past.some((p) => p.id === 'seed-1'), '读取出错后重读，删掉的没有回来');
-  ok(!r.data.past.some((p) => p.id === '_seeded') && (await call('adminDeletePast', { id: '_seeded' })).code === 'not_found', '记「放完了」的那条记录不算赛事，也删不掉');
   cloud.state.openid = 'user-b';
   eq((await call('pastEvents')).data.past.length, 5, '没注册的用户也能看往期');
 }

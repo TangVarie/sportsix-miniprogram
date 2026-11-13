@@ -255,15 +255,13 @@ const PAST_SEED = [
   { year: '2025', name: '韩国自由跑', nameEn: 'Hangang StyleRun', image: 'assets/photos/endorsement/2025-hangang-stylerun.jpg' }
 ];
 
-/** past_events 里记「初始的几场已经放完了」的那条记录，不是赛事 */
-const PAST_MARK = '_seeded';
-
 /**
  * 全部往期赛事，年份新的在前，同一年里按 order 从小到大（新加的排在这一年的最前面）。
  *
- * 第一次用到时建集合、放进 PAST_SEED，放完记一条 PAST_MARK。只要这条记录还没有，就说明初始的几场没放完
- * （集合刚建，或者上次放到一半出错了），每次读都接着补缺的那几条；补不齐就报错，不把残缺的列表交出去。
- * 有了这条记录之后不再补：运营删掉的那几场不会被放回来。
+ * 第一次用到时建集合、放进 PAST_SEED。初始的几场用固定的 _id（seed-1、seed-2……），而且赛事从不真的删掉记录，
+ * 删除只是打上 deleted: true。所以「把缺的初始赛事补上」这件事什么时候做、做几遍都一样：
+ * 记录在（哪怕已经标成删除）就加不进去，运营删掉的不会被放回来；上次放到一半出错的，这次接着补齐。
+ * 补完重读一遍，还不齐就报错，不把残缺的列表交出去。
  */
 async function listPast() {
   const col = () => db.collection('past_events');
@@ -276,6 +274,7 @@ async function listPast() {
     }
     return all;
   };
+  const seedId = (i) => 'seed-' + (i + 1);
   let all;
   try {
     all = await read();
@@ -284,25 +283,17 @@ async function listPast() {
     try { await db.createCollection('past_events'); } catch (e2) { /* 集合已经有了 */ }
     all = await read();
   }
-  if (!all.some((p) => p._id === PAST_MARK)) {
+  if (!PAST_SEED.every((s, i) => all.some((p) => p._id === seedId(i)))) {
     for (let i = 0; i < PAST_SEED.length; i++) {
-      const id = 'seed-' + (i + 1);
-      if (all.some((p) => p._id === id)) continue;
+      if (all.some((p) => p._id === seedId(i))) continue;
       try {
-        await col().add({ data: Object.assign({ _id: id, order: i, createdAt: db.serverDate() }, PAST_SEED[i]) });
-      } catch (e) { /* 另一个请求刚放进去，或者这次没写成：下面重读一遍再看齐不齐 */ }
+        await col().add({ data: Object.assign({ _id: seedId(i), order: i, createdAt: db.serverDate() }, PAST_SEED[i]) });
+      } catch (e) { /* 记录已经在了（另一个请求刚放进去），或者这次没写成：下面重读一遍再看齐不齐 */ }
     }
     all = await read();
-    if (!PAST_SEED.every((s, i) => all.some((p) => p._id === 'seed-' + (i + 1)))) throw fail('server_error');
-    try {
-      await col().add({ data: { _id: PAST_MARK, createdAt: db.serverDate() } });
-    } catch (e) {
-      // 另一个请求刚记上的话没事；确实没记上就报错。没记上还接着往下做的话，
-      // 这次删掉的初始赛事，下一次读又会被当成「还没放齐」补回来
-      if (!(await findById('past_events', PAST_MARK))) throw fail('server_error');
-    }
+    if (!PAST_SEED.every((s, i) => all.some((p) => p._id === seedId(i)))) throw fail('server_error');
   }
-  return all.filter((p) => p._id !== PAST_MARK)
+  return all.filter((p) => p.deleted !== true)
     .sort((a, b) => (String(b.year).localeCompare(String(a.year))) || ((a.order || 0) - (b.order || 0)))
     .map((p) => ({ id: p._id, year: p.year || '', name: p.name || '', nameEn: p.nameEn || '', image: p.image || '' }));
 }
@@ -544,7 +535,9 @@ const actions = {
     const id = event.id ? String(event.id) : '';
     if (id) {
       if (!all.some((p) => p.id === id)) throw fail('not_found');
-      await db.collection('past_events').doc(id).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+      // 条件里带上「没删」：刚好被另一位管理员删掉的，不会被这次修改写回一半内容
+      const done = await db.collection('past_events').where({ _id: id, deleted: _.exists(false) }).update({ data: Object.assign(data, { updatedAt: db.serverDate() }) });
+      if (!done.stats.updated) throw fail('not_found');
     } else {
       // order 越小越靠前：新加的用负的当前时间，排在同一年已有的前面
       await db.collection('past_events').add({ data: Object.assign(data, { order: -Date.now(), createdAt: db.serverDate(), updatedAt: db.serverDate() }) });
@@ -558,7 +551,8 @@ const actions = {
     const id = String(event.id || '');
     const all = await listPast();
     if (!all.some((p) => p.id === id)) throw fail('not_found');
-    await db.collection('past_events').doc(id).remove();
+    // 不真的删记录，只标成删除（原因见 listPast 的说明）
+    await db.collection('past_events').doc(id).update({ data: { deleted: true, deletedAt: db.serverDate() } });
     return { past: await listPast() };
   },
 

@@ -290,7 +290,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.locator('#past-rows tr', { hasText: '韩国自由跑' }).getByText('删除').click();
     await expectToast('已删除', '删掉一场');
     await page.waitForFunction(() => document.querySelectorAll('#past-rows tr').length === 4);
-    ok(!cloud.col('past_events').some((x) => x.name === '韩国自由跑'), '云端也删掉了');
+    ok(cloud.col('past_events').find((x) => x.name === '韩国自由跑').deleted === true, '云端也标成删除了');
     await page.click('[data-tab="events"]');
 
     // ----- 公告：现在的公告没读到之前不能改也不能存，不然会拿空表单把线上的公告清掉 -----
