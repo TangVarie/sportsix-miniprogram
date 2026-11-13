@@ -118,6 +118,54 @@
     <view class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onNoticeSave">{{copy.notice.save}}</view>
   </view>
 
+  <!-- 会员看板：几个数字、近 30 天每天新加入多少、会员名单 -->
+  <view wx:if="{{tab === 'members'}}" class="ad-body">
+    <view wx:if="{{!board}}">
+      <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
+    </view>
+    <block wx:else>
+      <view class="ad-stats">
+        <view wx:for="{{board.stats}}" wx:key="key" class="ad-stat">
+          <text class="ad-stat__label">{{item.label}}</text>
+          <text class="ad-stat__num sx-num">{{item.num}}</text>
+        </view>
+      </view>
+      <view wx:if="{{board.partial}}" class="ad-hint">{{copy.members.partial}}</view>
+      <view class="ad-card ad-chart">
+        <view class="ad-chart__head">
+          <text class="ad-chart__title">{{copy.members.chartTitle}}</text>
+          <text class="ad-chart__max">{{board.maxText}}</text>
+        </view>
+        <view class="ad-chart__bars">
+          <view wx:for="{{board.bars}}" wx:key="day" class="ad-chart__col">
+            <view class="ad-chart__bar {{item.zero ? 'ad-chart__bar--zero' : ''}}" style="height: {{item.height}}%"></view>
+          </view>
+        </view>
+        <view class="ad-chart__axis"><text>{{board.from}}</text><text>{{board.to}}</text></view>
+      </view>
+      <view class="ad-mlist__head">
+        <text class="ad-mlist__title">{{copy.members.listTitle}}</text>
+        <view class="ad-mini sx-pressable" hover-class="sx-press" bindtap="onMembersRefresh">{{copy.members.refresh}}</view>
+      </view>
+      <view wx:if="{{!members.length}}" class="ad-empty">{{copy.members.empty}}</view>
+      <view wx:for="{{members}}" wx:key="memberNo" class="ad-mrow">
+        <view class="ad-mrow__text">
+          <view class="ad-mrow__top">
+            <text class="ad-mrow__name {{item.noName ? 'ad-mrow__name--none' : ''}}">{{item.name}}</text>
+            <text wx:if="{{item.admin}}" class="ad-chip ad-chip--draft">{{copy.members.adminTag}}</text>
+          </view>
+          <text class="ad-mrow__meta">{{item.meta}}</text>
+          <text wx:if="{{item.sub}}" class="ad-mrow__meta">{{item.sub}}</text>
+        </view>
+        <view class="ad-mrow__side">
+          <view class="ad-mrow__points"><text class="ad-mrow__num sx-num">{{item.points}}</text><text class="ad-mrow__unit">{{copy.members.pointsUnit}}</text></view>
+          <view wx:if="{{item.memberNo}}" class="ad-mini sx-pressable" hover-class="sx-press" data-no="{{item.memberNo}}" bindtap="onMemberAdjust">{{copy.members.adjust}}</view>
+        </view>
+      </view>
+      <view wx:if="{{membersMore}}" class="ad-btn ad-btn--line ad-btn--more sx-pressable {{membersLoading ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onMembersMore">{{copy.members.more}}</view>
+    </block>
+  </view>
+
   <!-- 积分：找到会员，加减积分并记一笔 -->
   <view wx:if="{{tab === 'points'}}" class="ad-body">
     <view class="ad-search">

@@ -155,3 +155,9 @@
 .fuel-actions__save { flex: 1.4; background: #C2E541; font-size: 31rpx; font-weight: 900; }
 .fuel-actions__more { flex: 1; box-sizing: border-box; border: 3rpx solid #010439; font-size: 29rpx; font-weight: 700; }
 .fuel-foot { margin: 27rpx 38rpx 38rpx; font-size: 21rpx; line-height: 33rpx; color: #5E6170; }
+
+/* 没加入会员时，时间表的位置上是这块提示 */
+.fuel-lock { display: flex; flex-direction: column; margin-top: 38rpx; padding: 38rpx 35rpx; border-radius: 31rpx; border: 1px solid rgba(255, 255, 255, .28); }
+.fuel-lock__title { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #FFFFFF; }
+.fuel-lock__body { margin-top: 12rpx; font-size: 25rpx; line-height: 40rpx; color: rgba(255, 255, 255, .72); }
+.fuel-lock__btn { display: flex; align-items: center; justify-content: center; height: 96rpx; margin-top: 31rpx; border-radius: 48rpx; background: #C2E541; color: #010439; font-size: 29rpx; font-weight: 900; }

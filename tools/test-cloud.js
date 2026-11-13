@@ -183,7 +183,7 @@ async function adminTests() {
   const DAY = 24 * 3600 * 1000;
 
   // 不是会员、是会员但不是管理员：都不能用
-  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints']) {
+  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints', 'adminMemberStats', 'adminMembers']) {
     eq((await call(action, {})).code, 'forbidden', '没注册不能用 ' + action);
   }
   await call('register', { code: 'code-a' });
@@ -709,6 +709,72 @@ async function signupRecoveryTests() {
   delete require.cache[adminJs];
 }
 
+/** 会员看板：数字和名单 */
+async function memberBoardTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  cloud.state.phones = { 'code-a': '13800001234', 'code-b': '13900005678' };
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const as = async (openid, action, data) => {
+    const who = cloud.state.openid;
+    cloud.state.openid = openid;
+    try { return await call(action, data); } finally { cloud.state.openid = who; }
+  };
+  const now = cloud.state.now;
+  await call('register', { code: 'code-a' });
+  await as('user-b', 'register', { code: 'code-b' });
+  await as('user-b', 'setNickname', { nickname: '老李' });
+  eq((await as('user-b', 'adminMemberStats')).code, 'forbidden', '普通会员看不了看板');
+  eq((await as('user-b', 'adminMembers')).code, 'forbidden', '普通会员看不了会员名单');
+  cloud.col('members').find((m) => m._id === 'user-a').admin = true;
+
+  // 以前加入的人：3 天前 2 个，10 天前 1 个，40 天前 35 个
+  const old = (id, daysAgo, points) => cloud.col('members').push({ _id: id, openid: id, phone: '1350000' + String(1000 + cloud.col('members').length), memberNo: String(200000 + cloud.col('members').length), points: points, createdAt: new Date(now - daysAgo * DAY) });
+  old('d3-1', 3, 100); old('d3-2', 3, 0); old('d10', 10, 50);
+  for (let i = 0; i < 35; i++) old('d40-' + i, 40 + i, 10);
+  await as('user-b', 'signup', { eventId: 'trial' });
+
+  let r = (await call('adminMemberStats')).data;
+  eq([r.total, r.today, r.week, r.month], [40, 2, 4, 5], '总数、今天、近 7 天、近 30 天');
+  eq(r.daily.length, 30, '每天一格，一共 30 天');
+  eq([r.daily[29].count, r.daily[26].count, r.daily[19].count], [2, 2, 1], '人数落在加入的那一天');
+  eq(r.daily.reduce((a, d) => a + d.count, 0), 5, '30 天以前加入的不在图上');
+  eq(r.points, 500 + 500 + 100 + 50 + 350, '所有人的积分加起来');
+  eq([r.named, r.signups, r.plans, r.newsWaiting, r.partial], [1, 1, 0, 0, false], '填了昵称的、报名人次等');
+
+  // 北京时间零点前后算两天：零点前一分钟加入的是昨天
+  const midnight = Math.floor((now + 8 * HOUR) / DAY) * DAY - 8 * HOUR;
+  old('edge', 0, 0);
+  cloud.col('members').find((m) => m._id === 'edge').createdAt = new Date(midnight - 60 * 1000);
+  r = (await call('adminMemberStats')).data;
+  eq([r.today, r.daily[28].count], [2, 1], '按北京时间分天');
+
+  // 会员特别多（超过一遍能读的两万人）：总数和新加入的人数照样是对的，积分合计和柱状图标成没算全
+  const keep = cloud.col('members').slice();
+  for (let i = 0; i < 20001; i++) cloud.col('members').push({ _id: 'bulk' + i, openid: 'bulk' + i, points: 1, createdAt: new Date(now) });
+  r = (await call('adminMemberStats')).data;
+  eq([r.total, r.today, r.week, r.month, r.partial], [keep.length + 20001, 20003, 20006, 20007, true], '两万多人今天加入：新加入的人数没有被截断，并标出没算全');
+  cloud.state.data.members = keep;
+
+  r = (await call('adminMembers')).data;
+  eq([r.members.length, r.more, r.next], [30, true, 30], '名单一次 30 个');
+  const li = r.members.find((m) => m.nickname === '老李');
+  eq([li.phoneMasked, li.signups, li.points, li.admin], ['139****5678', 1, 500, false], '名单里手机号打码，带报名场数');
+  ok(!('phone' in li) && !('openid' in li) && !('_id' in li), '名单里没有完整手机号和 openid');
+  ok(r.members.find((m) => m.memberNo === '100001').admin, '管理员有标记');
+  ok(r.members[0].joinedAt >= r.members[29].joinedAt, '新加入的在前');
+  // 报名很多的人不会把同一页别人的场数挤掉
+  for (let i = 0; i < 1100; i++) cloud.col('signups').push({ _id: 'user-a_many' + i, openid: 'user-a', eventId: 'many' + i });
+  r = (await call('adminMembers')).data;
+  eq([r.members.find((m) => m.memberNo === '100001').signups, r.members.find((m) => m.nickname === '老李').signups], [1100, 1], '一个人报了一千多场：他和别人的场数都对');
+  const second = (await call('adminMembers', { skip: r.next })).data;
+  eq([second.members.length, second.more, second.next], [11, false, 41], '第二页是剩下的');
+  eq(r.members.concat(second.members).map((m) => m.memberNo).filter((x, i, a) => a.indexOf(x) !== i), [], '两页不重复');
+  eq((await call('adminMembers', { skip: 'x' })).data.members.length, 30, '乱填的 skip 从头读');
+
+}
+
 async function pastTests() {
   const cloud = createCloud();
   seed(cloud);
@@ -1118,6 +1184,12 @@ async function clientTests() {
   // 未注册：计算页点保存 → 记下输入 → 去注册
   let p = env.openPage('pages/fuel/index', {});
   p.onPick({ currentTarget: { dataset: { field: 'sport', index: 1 } } });
+  // 没加入的人：能改输入、看到带几支，时间表和排法说明的位置是加入提示
+  let fuelHtml = env.renderHtml();
+  ok(!p.data.member && p.data.plan.total > 0 && fuelHtml.includes('这场带'), '没加入也能算出带几支');
+  ok(fuelHtml.includes('加入会员，看每一支什么时候吃') && !fuelHtml.includes('class="fuel-cells') && !fuelHtml.includes('为什么这样排'), '没加入时不显示时间表和排法说明，显示加入提示');
+  p.onJoin();
+  eq(lastCall('switchTab').args.url, '/pages/me/index', '提示上的按钮去加入页');
   p.onSave();
   await tick();
   eq(lastCall('switchTab').args.url, '/pages/me/index', '未注册保存跳到注册');
@@ -1171,6 +1243,8 @@ async function clientTests() {
   // 补给计算：加减到头时说一句为什么，不能点了没反应；点时间可以直接选几小时几分
   {
     const f = env.openPage('pages/fuel/index', {});
+    fuelHtml = env.renderHtml();
+    ok(f.data.member && fuelHtml.includes('class="fuel-cells') && fuelHtml.includes('为什么这样排') && !fuelHtml.includes('加入会员，看每一支什么时候吃'), '加入以后时间表和排法说明都有，没有加入提示');
     const toast = () => (lastCall('showToast') || { args: {} }).args.title;
     const step = (field, delta) => f.onStep({ currentTarget: { dataset: { field: field, delta: delta } } });
     f.onTimePick({ detail: { value: [47, 2] } });
@@ -1871,6 +1945,7 @@ async function fontTests() {
   await newsTests();
   await pastTests();
   await signupRecoveryTests();
+  await memberBoardTests();
   await paidSignupTests();
   await clientTests();
   console.log('云开发测试通过：' + n + ' 项');

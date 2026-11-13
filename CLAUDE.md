@@ -123,6 +123,7 @@ tools/
 - 报名可以用积分（活动上的 `cost`）。会员不能自己取消，运营在名单页取消报名或取消整场活动，退积分并通知：一条站内消息（`inbox` 集合，进小程序时由 `app.js` 的 `showInbox` 弹出），报名时同意了订阅的再发一条订阅消息。订阅不能当成报名的条件。`cloudfunctions/api/template.js` 和 `remind/template.js` 是同一份，改一处要改另一处（`npm test` 会核对）。
 - 报名（占名额、扣积分、写记录）和取消报名（删记录、放名额、退积分、留消息）各是一个数据库事务（`db.runTransaction`）。事务里只能按 `_id` 操作单条记录，不能用 `where`。
 - 首页的赞助赛事只显示往期里 `home` 不是 `false` 的那些。
+- 补给计算对没加入会员的人只显示带几支，时间表和排法说明加入后才有。不要把整个功能锁在注册后面，微信不允许要求手机号才能用和手机号无关的功能。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 - 购买渠道：小程序自己不卖东西，`components/shop-entry` 把人带到店铺小程序里对应的商品（首页产品卡片下面、产品详情页底部、「我的」菜单）。文案和两款产品的小程序链接在 `reference/content/shop.json`；某一款的链接留空，这款就不显示购买入口。
 - 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。

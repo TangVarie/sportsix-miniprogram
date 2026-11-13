@@ -160,6 +160,22 @@
     .main { padding: 20px 16px 48px; }
     .cols { grid-template-columns: minmax(0, 1fr); }
   }
+  /* 会员看板 */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .stat { padding: 20px; border-radius: 18px; background: var(--white); }
+  .stat__label { font-size: 13px; line-height: 20px; color: var(--sub); }
+  .stat__num { margin-top: 6px; font-size: 32px; line-height: 38px; font-weight: 900; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .stat__hint { margin-top: 4px; font-size: 12px; line-height: 18px; color: var(--sub); }
+  .chart__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+  .chart__title { font-weight: 900; color: var(--navy); }
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; }
+  .chart__col { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+  .chart__bar { width: 100%; border-radius: 3px 3px 0 0; background: var(--navy); }
+  .chart__bar--zero { background: var(--line); }
+  .chart__axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--sub); }
+  #tab-members .panel { margin-bottom: 16px; }
+  td .chip { margin-left: 8px; }
+  @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>
@@ -187,6 +203,7 @@
       <button class="nav__item" data-tab="events" type="button">活动</button>
       <button class="nav__item" data-tab="past" type="button">往期赛事</button>
       <button class="nav__item" data-tab="notice" type="button">公告</button>
+      <button class="nav__item" data-tab="members" type="button">会员</button>
       <button class="nav__item" data-tab="points" type="button">积分</button>
     </nav>
     <div class="side__foot">
@@ -285,6 +302,31 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- 会员看板 -->
+    <section id="tab-members" hidden>
+      <div class="head">
+        <div>
+          <h1 class="head__title">会员</h1>
+          <p id="mb-note" class="hint" style="margin-top: 4px" hidden>会员太多，积分合计、填了昵称的人数和每天的柱状图只算了最近加入的两万人</p>
+        </div>
+        <div class="head__tools"><button id="mb-refresh" class="btn btn--navy" type="button">刷新</button></div>
+      </div>
+      <div id="mb-stats" class="stats"></div>
+      <div class="panel">
+        <div class="chart__head"><span class="chart__title">近 30 天每天新加入</span><span id="mb-chart-sum" class="muted"></span></div>
+        <div id="mb-chart" class="chart" role="img" aria-label="近 30 天每天新加入的会员数"></div>
+        <div class="chart__axis"><span id="mb-chart-from"></span><span id="mb-chart-to"></span></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>会员</th><th>会员编号</th><th>手机号</th><th>积分</th><th>报名</th><th>加入时间</th><th>操作</th></tr></thead>
+          <tbody id="mb-rows"></tbody>
+        </table>
+        <div id="mb-empty" class="empty" hidden>还没有会员</div>
+      </div>
+      <div style="margin-top: 16px; text-align: center"><button id="mb-more" class="btn btn--navy" type="button" hidden>再看 30 位</button></div>
     </section>
 
     <!-- 积分 -->
@@ -566,6 +608,7 @@
     previewNotice();
     syncNotice();
     finding = false;
+    findSeq += 1; // 上一次登录期间发出的查找，结果回来也不用
     adjusting = false;
     $('find-submit').disabled = false;
     $('adj-submit').disabled = false;
@@ -617,7 +660,7 @@
   });
 
   /* ---------- 切换分区 ---------- */
-  var TABS = ['events', 'past', 'notice', 'points'];
+  var TABS = ['events', 'past', 'notice', 'members', 'points'];
   function switchTab(tab) {
     TABS.forEach(function (t) { $('tab-' + t).hidden = t !== tab; });
     Array.prototype.forEach.call($('nav').children, function (b) {
@@ -626,6 +669,7 @@
     if (tab === 'events') loadEvents();
     if (tab === 'notice' && !notice.ready) loadNotice();
     if (tab === 'past') loadPast();
+    if (tab === 'members') loadMembers();
   }
   $('nav').addEventListener('click', function (e) {
     var tab = e.target.getAttribute && e.target.getAttribute('data-tab');
@@ -1259,6 +1303,132 @@
   previewNotice();
   syncNotice();
 
+  /* ---------- 会员看板 ---------- */
+  var members = [];
+  var memberNext = 0;
+  var memberSeq = 0;
+  var memberLoading = false;
+  /** 时间戳 → 「2026-11-13」 */
+  function dayText(ms) {
+    if (!ms) return '—';
+    var d = new Date(ms);
+    return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate());
+  }
+  /** 图上的一天是按北京时间分的：不管这台电脑在哪个时区，都写北京时间的几月几日 */
+  function bjDay(ms) {
+    var d = new Date(ms + 8 * 3600 * 1000);
+    return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+  }
+  function renderStats(d) {
+    var box = $('mb-stats');
+    box.textContent = '';
+    [
+      ['会员总数', d.total, '其中 ' + d.named + ' 人填了昵称'],
+      ['今天新加入', d.today, ''],
+      ['近 7 天新加入', d.week, ''],
+      ['近 30 天新加入', d.month, ''],
+      ['会员手里的积分', d.points, '所有人现有积分加起来'],
+      ['报名人次', d.signups, '现在还在名单里的'],
+      ['存了补给计划', d.plans, ''],
+      ['订阅着新活动通知', d.newsWaiting, '']
+    ].forEach(function (x) {
+      var card = el('div', 'stat');
+      card.appendChild(el('div', 'stat__label', x[0]));
+      card.appendChild(el('div', 'stat__num', String(x[1] || 0)));
+      if (x[2]) card.appendChild(el('div', 'stat__hint', x[2]));
+      box.appendChild(card);
+    });
+    $('mb-note').hidden = !d.partial;
+    var chart = $('mb-chart');
+    chart.textContent = '';
+    var days = d.daily || [];
+    var max = days.reduce(function (m, x) { return Math.max(m, x.count); }, 0);
+    days.forEach(function (x) {
+      var col = el('div', 'chart__col');
+      col.title = bjDay(x.day) + ' ' + x.count + ' 人';
+      var bar = el('div', 'chart__bar' + (x.count ? '' : ' chart__bar--zero'));
+      bar.style.height = (max ? Math.max(2, Math.round(x.count / max * 100)) : 2) + '%';
+      col.appendChild(bar);
+      chart.appendChild(col);
+    });
+    $('mb-chart-sum').textContent = '最多的一天 ' + max + ' 人';
+    if (days.length) {
+      $('mb-chart-from').textContent = bjDay(days[0].day);
+      $('mb-chart-to').textContent = bjDay(days[days.length - 1].day);
+    }
+  }
+  function renderMembers(more) {
+    var body = $('mb-rows');
+    body.textContent = '';
+    members.forEach(function (m) {
+      var tr = el('tr');
+      var name = el('td');
+      name.appendChild(el('span', m.nickname ? '' : 'muted', m.nickname || '没填昵称'));
+      if (m.admin) name.appendChild(el('span', 'chip chip--draft', '管理员'));
+      tr.appendChild(name);
+      tr.appendChild(el('td', '', m.memberNo || '—'));
+      tr.appendChild(el('td', '', m.phoneMasked || '—'));
+      tr.appendChild(el('td', '', String(m.points || 0)));
+      tr.appendChild(el('td', '', m.signups ? m.signups + ' 场' : '—'));
+      tr.appendChild(el('td', '', dayText(m.joinedAt)));
+      var ops = el('td');
+      if (m.memberNo) {
+        var btn = el('button', 'link', '调积分');
+        btn.type = 'button';
+        btn.setAttribute('data-no', m.memberNo);
+        ops.appendChild(btn);
+      }
+      tr.appendChild(ops);
+      body.appendChild(tr);
+    });
+    $('mb-empty').hidden = members.length > 0;
+    $('mb-more').hidden = !more;
+  }
+  /** 读看板上的数字和名单的第一页 */
+  function loadMembers() {
+    var mine = ++memberSeq;
+    // 刷新期间不让点「再看 30 位」：那时手里的页码还是旧名单的，接上去会漏掉一页
+    memberLoading = true;
+    $('mb-more').disabled = true;
+    return Promise.all([call('adminMemberStats'), call('adminMembers', { skip: 0 })]).then(function (r) {
+      if (mine !== memberSeq) return;
+      renderStats(r[0]);
+      members = r[1].members || [];
+      memberNext = r[1].next || members.length;
+      renderMembers(r[1].more);
+    }).catch(function (e) { if (e.code !== 'web_expired') toast(errorText(e), true); })
+      .then(function () { if (mine === memberSeq) { memberLoading = false; $('mb-more').disabled = false; } });
+  }
+  $('mb-refresh').addEventListener('click', loadMembers);
+  $('mb-more').addEventListener('click', function () {
+    if (memberLoading) return;
+    memberLoading = true;
+    var mine = memberSeq;
+    call('adminMembers', { skip: memberNext }).then(function (d) {
+      // 中间点过刷新的话，名单已经从头读了，这一页不要了
+      if (mine !== memberSeq) return;
+      memberLoading = false;
+      // 读这一页的时候有新人加入，名单会整体往后挪：已经在页面上的不再加一遍
+      var have = {};
+      members.forEach(function (m) { have[m.memberNo] = true; });
+      members = members.concat((d.members || []).filter(function (m) { return !m.memberNo || !have[m.memberNo]; }));
+      memberNext = d.next;
+      renderMembers(d.more);
+    }).catch(function (e) {
+      if (mine === memberSeq) memberLoading = false;
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    });
+  });
+  // 「调积分」：带着会员编号去积分那一栏查出来
+  $('mb-rows').addEventListener('click', function (e) {
+    var no = e.target.getAttribute && e.target.getAttribute('data-no');
+    if (!no) return;
+    switchTab('points');
+    $('find-query').value = no;
+    showMember(null);
+    findMember(true);
+  });
+
   /* ---------- 积分 ---------- */
   var member = null;
   var sign = 1;
@@ -1283,16 +1453,28 @@
     $('adj-amount').value = '';
     $('adj-reason').value = '';
   }
-  $('find-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (finding) return;
+  var findSeq = 0;
+  /**
+   * 按输入框里的手机号或会员编号找会员。正在找的时候不重复找；
+   * force 为真（从会员名单点「调积分」过来）时不管：以最后要找的这一位为准，先前那次的结果回来了也不用。
+   */
+  function findMember(force) {
+    if (finding && !force) return;
+    var mine = ++findSeq;
     finding = true;
     var btn = $('find-submit');
     btn.disabled = true;
     call('adminFindMember', { query: $('find-query').value }).then(function (d) {
-      showMember(d.member);
-    }).catch(function (err) { showMember(null); if (err.code !== 'web_expired') toast(errorText(err), true); })
-      .then(function () { finding = false; btn.disabled = false; });
+      if (mine === findSeq) showMember(d.member);
+    }).catch(function (err) {
+      if (mine !== findSeq) return;
+      showMember(null);
+      if (err.code !== 'web_expired') toast(errorText(err), true);
+    }).then(function () { if (mine === findSeq) { finding = false; btn.disabled = false; } });
+  }
+  $('find-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    findMember(false);
   });
   $('sign-seg').addEventListener('click', function (e) {
     var s = e.target.getAttribute && e.target.getAttribute('data-sign');

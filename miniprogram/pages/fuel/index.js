@@ -126,7 +126,10 @@ Page({
     caffeines: OPTIONS.caffeineSensitive,
     experiences: OPTIONS.firstTime,
     weathers: OPTIONS.weather,
-    timeRange: TIME_RANGE
+    timeRange: TIME_RANGE,
+    // 是不是会员：不是的只显示带几支，时间表和排法说明加入后才有
+    member: store.isMember(),
+    lock: messages.fuel.lock
   }, view(normalize(DEFAULT_INPUT))),
 
   /** 图片加载完（或加载失败）：让它淡入 */
@@ -145,10 +148,22 @@ Page({
     // 上次点了「保存到我的」但还没存上（没注册完，或注册后保存失败）就关掉了小程序：把那份输入摆回来
     const pending = store.getPendingPlan();
     if (pending) this.setData(view(normalize(pending)));
+    this.offStore = store.onChange(() => { if (this.data.member !== store.isMember()) this.setData({ member: store.isMember() }); });
+  },
+
+  onUnload() {
+    if (this.offStore) this.offStore();
+  },
+
+  /** 时间表上的「手机号快捷登录」：去加入页。这一页留在原地，加入完回来输入都还在 */
+  onJoin() {
+    go('join');
   },
 
   onShow() {
     selectTab(this, 1);
+    // 刚加入完回来，或者进入小程序时的同步刚做完：会员状态可能变了
+    if (this.data.member !== store.isMember()) this.setData({ member: store.isMember() });
     // 从「我的」点补给计划、或注册完成后回来：按已保存的输入还原
     const app = getApp();
     if (app.globalData.fuelRestore) {

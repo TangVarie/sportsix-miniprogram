@@ -6,11 +6,11 @@
 }
 .ad-back__icon { display: block; width: 38rpx; height: 38rpx; }
 .ad-header__title { position: absolute; left: 38rpx; top: calc(115rpx + var(--sx-safe-top)); font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
-/* 五个分区要在一行里放下，所以内边距比活动页的标签窄一点 */
+/* 六个分区要在一行里放下，所以内边距比活动页的标签窄 */
 .ad-tabs { position: absolute; left: 38rpx; bottom: 31rpx; display: flex; gap: 12rpx; }
 .ad-tab {
   display: flex; align-items: center; box-sizing: border-box;
-  height: 85rpx; padding: 0 29rpx; border-radius: 42rpx; border: 1px solid #FFFFFF;
+  height: 85rpx; padding: 0 20rpx; border-radius: 42rpx; border: 1px solid #FFFFFF;
   font-size: 27rpx; font-weight: 700; color: #FFFFFF;
 }
 .ad-tab--on { background: #FFFFFF; color: #010439; }
@@ -97,3 +97,31 @@
 .ad-web__code-card { display: flex; flex-direction: column; align-items: center; gap: 12rpx; margin-top: 23rpx; padding: 46rpx 31rpx; border-radius: 31rpx; color: #FFFFFF; }
 .ad-web__code { font-size: 77rpx; line-height: 92rpx; letter-spacing: 4rpx; color: #C2E541; white-space: nowrap; }
 .ad-web__code-hint { font-size: 23rpx; line-height: 35rpx; color: #C9CEE8; text-align: center; }
+
+/* 会员看板 */
+.ad-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15rpx; }
+.ad-stat { display: flex; flex-direction: column; padding: 27rpx; border-radius: 27rpx; background: #F5F5F5; }
+.ad-stat__label { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ad-stat__num { margin-top: 4rpx; font-size: 62rpx; line-height: 69rpx; color: #010439; }
+.ad-chart { margin-top: 23rpx; }
+.ad-chart__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 23rpx; }
+.ad-chart__title { font-size: 27rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.ad-chart__max { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ad-chart__bars { display: flex; align-items: flex-end; gap: 4rpx; height: 192rpx; }
+.ad-chart__col { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+.ad-chart__bar { width: 100%; border-radius: 4rpx 4rpx 0 0; background: #010439; }
+.ad-chart__bar--zero { background: #D9DAE0; }
+.ad-chart__axis { display: flex; justify-content: space-between; margin-top: 12rpx; font-size: 21rpx; line-height: 31rpx; color: #5E6170; }
+.ad-mlist__head { display: flex; align-items: center; justify-content: space-between; margin-top: 46rpx; }
+.ad-mlist__title { font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.ad-mrow { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; padding: 27rpx 0; border-bottom: 1px solid #E6E6E7; }
+.ad-mrow__text { min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.ad-mrow__top { display: flex; align-items: center; gap: 12rpx; }
+.ad-mrow__name { font-size: 29rpx; line-height: 44rpx; font-weight: 700; color: #010439; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-mrow__name--none { font-weight: 400; color: #5E6170; }
+.ad-mrow__meta { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ad-mrow__side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 12rpx; }
+.ad-mrow__points { display: flex; align-items: baseline; gap: 6rpx; }
+.ad-mrow__num { font-size: 42rpx; line-height: 46rpx; color: #061A70; }
+.ad-mrow__unit { font-size: 21rpx; line-height: 31rpx; color: #5E6170; }
+.ad-btn--more { margin-top: 31rpx; }
