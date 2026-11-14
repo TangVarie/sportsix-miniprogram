@@ -50,3 +50,7 @@
   background: #C2E541; color: #010439; font-size: 31rpx; font-weight: 900;
 }
 .ae-btn--busy { opacity: .5; }
+
+/* 恢复了上次没填完的内容时，表单最上面的一行提示 */
+.ae-draft { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; margin-top: 23rpx; }
+.ae-draft__text { margin-top: 0; }

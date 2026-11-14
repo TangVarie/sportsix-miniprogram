@@ -139,6 +139,7 @@ tools/
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
 - 购买渠道：小程序自己不卖东西，`components/shop-entry` 把人带到店铺小程序里对应的商品（首页产品卡片下面、产品详情页底部、「我的」菜单）。文案和两款产品的小程序链接在 `reference/content/shop.json`；某一款的链接留空，这款就不显示购买入口。
 - 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。
+- 新建活动填到一半的内容会留成草稿（小程序经 `utils/admin.js` 的 `getEventDraft` 等存在本机，电脑端存在浏览器里），下次点「新建活动」摆回来，存成功或点「清空重填」后清掉。新建的表单退出时不拦；编辑已有活动时没保存的修改会丢，退出前要问。电脑端点表单外面的空白处不关表单。
 - 电脑端后台（`web-admin/index.html`）没有微信身份，调的也是 `api`。新加的后台接口要让网页能用，把名字加进 `api/index.js` 的 `WEB_ACTIONS`；不在这个名单里的接口，没有微信身份一律调不通，不要为了省事放宽。改了网页跑 `npm run test:web`。
 
 ### 只有真机和审核才会暴露的事

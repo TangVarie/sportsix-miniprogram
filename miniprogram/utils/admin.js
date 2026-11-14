@@ -101,6 +101,23 @@ function watchUnsaved(dirty) {
   } catch (e) { /* 不影响表单 */ }
 }
 
+/* 新建活动填到一半的内容留在本机：误退出了，下次点「新建活动」接着填。存成功或点「清空重填」后清掉 */
+const EVENT_DRAFT_KEY = 'sx_admin_event_draft';
+function getEventDraft() {
+  try { const d = wx.getStorageSync(EVENT_DRAFT_KEY); return d && d.form && d.times ? d : null; } catch (e) { return null; }
+}
+function setEventDraft(draft) {
+  try { wx.setStorageSync(EVENT_DRAFT_KEY, draft); } catch (e) { /* 存不上：这次就不留草稿 */ }
+}
+function clearEventDraft() {
+  try { wx.removeStorageSync(EVENT_DRAFT_KEY); } catch (e) { /* 同上 */ }
+}
+/** 存成功后用：只有草稿还是交上去的那一份（snapshot 是 JSON.stringify({ form, times })）才清。这期间又开始填的另一份不动 */
+function clearEventDraftIf(snapshot) {
+  const d = getEventDraft();
+  if (d && JSON.stringify({ form: d.form, times: d.times }) === snapshot) clearEventDraft();
+}
+
 function confirmDiscard(dirty, next) {
   if (!dirty) { next(); return; }
   wx.showModal({ title: content.editor.discardTitle, content: content.editor.unsaved,
@@ -154,4 +171,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, getEventDraft, setEventDraft, clearEventDraft, clearEventDraftIf, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };

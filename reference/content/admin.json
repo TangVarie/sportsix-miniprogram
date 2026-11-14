@@ -170,7 +170,9 @@
     "loading": "正在读取，请稍等",
     "loadFailed": "没有读到当前内容，请重试",
     "retry": "重新读取",
-    "conflict": "活动已被其他管理员修改。你的填写已保留，重新读取后再编辑。"
+    "conflict": "活动已被其他管理员修改。你的填写已保留，重新读取后再编辑。",
+    "draftRestored": "已恢复上次没填完的内容",
+    "draftClear": "清空重填"
   },
   "notice": {
     "labels": {

@@ -37,7 +37,9 @@ Page({
     loadFailed: false,
     conflict: false,
     busy: false,
-    uploading: false
+    uploading: false,
+    // 表单里的内容是从上次没存的草稿里恢复的
+    restored: false
   }),
 
   onLoad(query) {
@@ -48,7 +50,16 @@ Page({
     const m = store.getMember();
     if (!m || !m.admin) { toast(copy.errors.forbidden); go('me'); return; }
     if (query.id) this.load(query.id);
-    else { this.setData({ loaded: true }); this.savedSnapshot = this.snapshot(); }
+    else {
+      this.savedSnapshot = this.snapshot();
+      // 上次新建到一半没存的内容：摆回来接着填
+      const draft = admin.getEventDraft();
+      if (draft) {
+        this.setData({ form: Object.assign(emptyForm(), draft.form), times: Object.assign(emptyTimes(), draft.times) });
+        this.setData({ restored: this.snapshot() !== this.savedSnapshot });
+      }
+      this.setData({ loaded: true });
+    }
   },
 
   /** 编辑：把这场活动现在的内容填进表单 */
@@ -89,7 +100,24 @@ Page({
   },
 
   changed() {
+    // 新建的表单每改一下就存成草稿，退出不用拦；编辑已有活动时没保存的修改会丢，退出前要问
+    if (!this.data.id) { this.keepDraft(); return; }
     admin.watchUnsaved(this.dirty());
+  },
+
+  keepDraft() {
+    // 页面已经退出了（比如头图传到一半就走了，传完才回到这里）：不能拿这一页的旧内容去盖后来填的草稿
+    if (this.unloaded) return;
+    if (this.snapshot() === this.savedSnapshot) admin.clearEventDraft();
+    else admin.setEventDraft({ form: this.data.form, times: this.data.times });
+  },
+
+  /** 「清空重填」：丢掉草稿，回到空表单 */
+  onDraftClear() {
+    if (this.data.id || this.data.busy || this.data.uploading) return;
+    tick();
+    admin.clearEventDraft();
+    this.setData({ form: emptyForm(), times: emptyTimes(), restored: false });
   },
 
   onRetry() {
@@ -98,6 +126,7 @@ Page({
   },
 
   onUnload() {
+    this.unloaded = true;
     this.loadSeq = (this.loadSeq || 0) + 1;
     admin.watchUnsaved(false);
   },
@@ -112,7 +141,7 @@ Page({
   },
 
   onBack() {
-    admin.confirmDiscard(this.dirty(), () => {
+    admin.confirmDiscard(!!this.data.id && this.dirty(), () => {
       admin.watchUnsaved(false);
       if (getCurrentPages().length > 1) wx.navigateBack();
       else go('admin');
@@ -207,11 +236,14 @@ Page({
     // 先在本机拦一下必填项，省一次来回；云函数里还会再检查
     const invalid = admin.eventError(event);
     if (invalid) { toast(copy.errors[invalid]); return; }
+    // 新建的：记下交上去的是哪一份，存成功时只清这一份草稿
+    const submitted = this.snapshot();
     this.setData({ busy: true });
     return admin.saveEvent(this.data.id, event, this.version)
       .then(() => {
         // 小程序里的活动列表跟着更新
         events.refresh(true);
+        if (!this.data.id) admin.clearEventDraftIf(submitted);
         this.savedSnapshot = this.snapshot();
         admin.watchUnsaved(false);
         toast(copy.form.saved);
