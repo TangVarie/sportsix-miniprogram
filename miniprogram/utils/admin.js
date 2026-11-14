@@ -112,6 +112,11 @@ function setEventDraft(draft) {
 function clearEventDraft() {
   try { wx.removeStorageSync(EVENT_DRAFT_KEY); } catch (e) { /* 同上 */ }
 }
+/** 存成功后用：只有草稿还是交上去的那一份（snapshot 是 JSON.stringify({ form, times })）才清。这期间又开始填的另一份不动 */
+function clearEventDraftIf(snapshot) {
+  const d = getEventDraft();
+  if (d && JSON.stringify({ form: d.form, times: d.times }) === snapshot) clearEventDraft();
+}
 
 function confirmDiscard(dirty, next) {
   if (!dirty) { next(); return; }
@@ -166,4 +171,4 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, getEventDraft, setEventDraft, clearEventDraft, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, getEventDraft, setEventDraft, clearEventDraft, clearEventDraftIf, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };

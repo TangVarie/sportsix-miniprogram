@@ -118,6 +118,7 @@ async function editorTests() {
   let draft = null; let created = 0;
   const drafts = {
     getEventDraft: () => draft, setEventDraft: (d) => { draft = JSON.parse(JSON.stringify(d)); }, clearEventDraft: () => { draft = null; },
+    clearEventDraftIf: (snap) => { if (draft && JSON.stringify({ form: draft.form, times: draft.times }) === snap) draft = null; },
     saveEvent: async () => { created++; }
   };
   let n = pageFor('admin-event', drafts);
@@ -135,6 +136,18 @@ async function editorTests() {
   check(draft && draft.form.title === '新活动', '每改一下都存进草稿');
   await n.page.onSave();
   same([created, draft], [1, null], '存成功后草稿清掉');
+  // 退出以后才回来的结果（头图传完、保存成功）不能动后来填的草稿
+  const gate = deferred();
+  const late = pageFor('admin-event', Object.assign({}, drafts, { saveEvent: () => gate.promise }));
+  late.page.onLoad({});
+  late.page.onInput(input('title', '第一份')); late.page.onTime({ currentTarget: { dataset: { field: 'date', part: 'date' } }, detail: { value: '2027-05-20' } });
+  const pending = late.page.onSave();
+  late.page.onUnload();
+  draft = { form: Object.assign({}, late.page.data.form, { title: '第二份' }), times: late.page.data.times };
+  gate.resolve(); await pending;
+  same(draft.form.title, '第二份', '上一份存成功时不清后来填的草稿');
+  late.page.setData({ 'form.cover': 'cloud://late' }); late.page.changed();
+  same(draft.form.title, '第二份', '已经退出的页面不再往草稿里写');
   const edit = pageFor('admin-event', Object.assign({ listEvents: async () => [event] }, drafts));
   draft = { form: { title: '别的草稿' }, times: {} };
   edit.page.onLoad({ id: 'race' }); await flush();

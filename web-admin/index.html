@@ -1119,10 +1119,14 @@
     var mine = editor; // 这次保存属于现在打开的这个表单
     saving = mine;
     syncSave();
-    var wasNew = !form.id;
+    // 新建的：记下交上去的是哪一份。存成功时只清这一份草稿；这期间又开始填的另一份新草稿不能跟着清掉
+    var submitted = form.id ? null : drawerSnapshot();
     call('adminSaveEvent', { id: form.id, event: event, version: form.version }).then(function () {
       toast('已保存');
-      if (wasNew) clearDraft();
+      if (submitted !== null) {
+        try { if (localStorage.getItem(DRAFT_KEY) === submitted) localStorage.removeItem(DRAFT_KEY); } catch (e) { /* 浏览器不让存 */ }
+        if (mine === editor) $('drawer-draft').hidden = true;
+      }
       // 存完时这个表单已经关了、又开了别的活动：不能把正在填的那个表单关掉
       if (mine === editor) closeDrawer(true);
       return loadEvents();
