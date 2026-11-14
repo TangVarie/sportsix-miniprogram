@@ -11,6 +11,7 @@ SPORTSIX 是韩国大象集团旗下的运动营养品牌，主推两款能量�
 3. `docs/02-design-spec.md`：颜色、字体、字号、组件、动效、小程序里的实现注意点。
 4. `docs/03-fuel-formula.md`：分段补给计算的公式说明。
 5. `docs/04-open-items.md`：还没定的事。遇到这里列出的问题，不要自己决定。
+6. `docs/06-audit-fixes.md`：整体复查修了什么、发布顺序和回滚办法。
 
 ## 东西在哪
 
@@ -62,7 +63,8 @@ miniprogram/
   pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）、
                                  admin、admin-event 和 admin-signups（运营后台，只有管理员能进）
   components/<组件>/index.*      member-cta、dual-carb 等
-  utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、admin.js（运营后台的接口）、fuel-plan.js（原样复制，不改）
+  utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、admin.js（运营后台的接口）、fuel-plan.js（原样复制，不改）、
+                                 event-state.js（一场活动现在能不能报、按钮上写什么）、pending-action.js（去登录之前想做的事）
   content/*.js                   由 reference/content/*.json 生成，不要手改
   assets/icons/                  图标随包；另补了 chevron-*、back-* 两组箭头
 cloudfunctions/
@@ -76,6 +78,9 @@ tools/
   pack-assets.js                 npm run cdn：把用到的资源挑到 out/cdn/assets/，用来上传到云存储
   preview/                       本地预览和设计稿对照，见 tools/preview/README.md
   cloud-mock.js  test-cloud.js   wx-server-sdk 的内存替身和云开发测试
+  test-cloud-integrity.js  test-client-state.js  test-client-flows.js  test-fuel-ui.js  test-admin-safety.js
+                                 整体复查时加的测试（npm run test:audit，npm test 里会一起跑）：出错、重试、并发、弱网时数据和页面对不对
+  check-cloud-sdk.js             npm run check:sdk：拿锁定的真实 wx-server-sdk 核对事务的用法（要先在两个云函数目录里装依赖）
   test-web-admin.js              npm run test:web：用浏览器打开电脑端后台，接到替身上走一遍（需要 Playwright）
 ```
 
@@ -122,6 +127,13 @@ tools/
 - 往期的赞助赛事存在云端（`past_events` 集合），运营在后台增删改，页面经 `utils/events.js` 的 `listPast()` / `refreshPast()` 读。`reference/content/events.json` 的 `past` 是初始的那几场，和 `api/index.js` 的 `PAST_SEED` 是同一份，改一处要改另一处（`npm test` 会核对）。
 - 报名可以用积分（活动上的 `cost`）。会员不能自己取消，运营在名单页取消报名或取消整场活动，退积分并通知：一条站内消息（`inbox` 集合，进小程序时由 `app.js` 的 `showInbox` 弹出），报名时同意了订阅的再发一条订阅消息。订阅不能当成报名的条件。`cloudfunctions/api/template.js` 和 `remind/template.js` 是同一份，改一处要改另一处（`npm test` 会核对）。
 - 报名（占名额、扣积分、写记录）和取消报名（删记录、放名额、退积分、留消息）各是一个数据库事务（`db.runTransaction`）。事务里只能按 `_id` 操作单条记录，不能用 `where`。
+- 事务里读一条可能不存在的记录，用 `api/index.js` 的 `transactionDoc(t, 集合, id)`（不存在返回 `null`，别的错误照抛），不要直接 `doc().get()`，也不要把所有错误都当成不存在。事务里要写的集合先 `ensureCollection`。
+- 积分的每一次增减都和它的积分记录在同一个事务里写。后台调积分带操作编号（`operationId`），同一个编号重试只算一次；页面上重试时要用同一个编号。
+- 活动的保存、上下架、取消带 `version`：页面把读到时的 `version` 交回去，云端对不上返回 `conflict`，页面保留填好的内容并提示重新读取。新加会改活动的接口照做。
+- 报名时间的规则写在两处，改一处要改另一处：云端 `api/index.js` 的 `eventData`（保存时检查）和 `signupClosesAt`（没填结束时间的到活动时间截止），页面 `utils/event-state.js` 的 `eventState`（按钮上显示什么）。`remind/index.js` 里也用同样的截止时间。
+- 活动详情按 ID 读（`events.fetchEvent`），我的活动走 `events.fetchMyEvents`，不要从「即将开始」的列表里找。列表、详情、积分记录都要分清「正在读、没有、读失败、显示的是旧内容」四种情况，文字在 `reference/content/client-state.json`。
+- 没登录时点报名：`pendingAction.setSignup(活动id)` 记下来再去加入页，加入完回到这场活动，由用户再点一次确认，不自动报名扣积分。
+- 补给计划保存的是完整结果加公式版本（`fuel-plan.js` 的 `snapshot` 和 `VERSION`）。改了公式要改 `VERSION`；已保存的计划照原样显示，用户改了输入才按新公式重算。
 - 首页的赞助赛事只显示往期里 `home` 不是 `false` 的那些。
 - 补给计算对没加入会员的人只显示带几支，时间表和排法说明加入后才有。不要把整个功能锁在注册后面，微信不允许要求手机号才能用和手机号无关的功能。
 - 时间在云端存时间戳，显示格式统一用 `utils/format.js`。
@@ -142,6 +154,7 @@ tools/
 
 ### 检查
 
-- `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）、云开发测试（`tools/test-cloud.js`）。
+- `npm test`：补给公式测试、content 同步检查、工程自检（`tools/check-project.js`）、云开发测试（`tools/test-cloud.js`）、整体复查时加的测试（`npm run test:audit`）。
+- `npm run verify`：`npm test` 加电脑端后台的浏览器测试和包体检查。推到 GitHub 的 PR 会自动跑这一条（`.github/workflows/check.yml`）。本机的 Chromium 不在默认位置时，用环境变量 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指给它。
 - `node tools/preview/shot.js --route pages/<页面>/index --compare design/screens/<截图>.png --out out/<名字>.png`：渲染并和设计稿并排对照，逐张看 `out/*-cmp-N.png`。`--do` 可以先调页面方法走到某个状态。
 - 预览只是近似，最终以微信开发者工具和真机为准。
