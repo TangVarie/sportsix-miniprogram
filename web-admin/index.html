@@ -1016,7 +1016,8 @@
   function closeDrawer(force) {
     // 新建的表单有草稿兜着，关掉不用问；编辑已有活动时没保存的修改会丢，要问一句
     if (force !== true && drawerDirty() && (form.id || uploading) && !window.confirm(UNSAVED)) return;
-    saveDraft();
+    // 存成功后关表单（force）时不再存草稿：草稿刚清掉，再存就把刚建好的活动又留成草稿了
+    if (force !== true) saveDraft();
     editor += 1;
     drawerLoading = false;
     $('drawer-mask').hidden = true;
@@ -1031,7 +1032,7 @@
   });
   $('type-seg').addEventListener('click', function (e) {
     var type = e.target.getAttribute && e.target.getAttribute('data-type');
-    if (type) setType(type);
+    if (type) { setType(type); saveDraft(); }
   });
 
   /**
@@ -1071,7 +1072,7 @@
     if (on) $('f-cover-pick').textContent = '正在上传';
   }
   $('f-cover-pick').addEventListener('click', function () { $('f-cover-file').click(); });
-  $('f-cover-clear').addEventListener('click', function () { setCover(''); });
+  $('f-cover-clear').addEventListener('click', function () { setCover(''); saveDraft(); });
   $('f-cover-file').addEventListener('change', function () {
     var file = this.files && this.files[0];
     this.value = '';
@@ -1086,6 +1087,7 @@
       if (mine !== editor) return;
       setUploading(false);
       setCover(r.fileID, r.url);
+      saveDraft(); // 选文件那一下图还没传完，传完了再存一次草稿
     }).catch(function (e) {
       if (mine !== editor) return;
       setUploading(false);

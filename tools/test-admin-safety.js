@@ -271,6 +271,18 @@ async function browserTests() {
     await page.click('#drawer-close'); await page.click('#ev-new');
     same(await page.inputValue('#f-title'), '', '网页清空后再打开不恢复');
     await page.click('#drawer-close');
+    // 换类型这种点按钮的改动也进草稿；新建存成功后草稿清掉，再点新建是空表单
+    await page.click('#ev-new');
+    await page.fill('#f-title', '存成功的新活动'); await page.fill('#f-date', '2027-06-01T08:00');
+    await page.click('#type-seg [data-type="抽奖"]');
+    await page.reload(); await page.waitForSelector('#ev-rows tr');
+    await page.click('#ev-new');
+    check(await page.isVisible('#f-drawAt-field') && await page.inputValue('#f-title') === '存成功的新活动', '网页点按钮改的类型也留在草稿里');
+    await page.click('#drawer-save');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    await page.click('#ev-new');
+    same([await page.inputValue('#f-title'), await page.isHidden('#drawer-draft')], ['', true], '网页新建存成功后再点新建是空表单');
+    await page.click('#drawer-close');
 
     noticeError = true; await page.click('[data-tab="notice"]');
     await page.waitForSelector('#notice-retry:not([hidden])');
