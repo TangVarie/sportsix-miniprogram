@@ -113,6 +113,33 @@ async function editorTests() {
   same(saves, 1, '负积分不能被转换成免费');
   same(helpers.eventError({ title: '活动', date: 1000, cost: 0, memberSignupStart: 800, signupStart: 700 }), 'bad_signup_time', '会员提前时间不能晚于公开开始');
   same(helpers.eventError({ title: '活动', date: 1000, cost: 0, signupEnd: 1001 }), 'bad_signup_time', '报名结束不晚于活动时间');
+
+  // 新建活动填到一半退出：不拦，内容留成草稿，下次新建时摆回来；清空或存成功后不再恢复
+  let draft = null; let created = 0;
+  const drafts = {
+    getEventDraft: () => draft, setEventDraft: (d) => { draft = JSON.parse(JSON.stringify(d)); }, clearEventDraft: () => { draft = null; },
+    saveEvent: async () => { created++; }
+  };
+  let n = pageFor('admin-event', drafts);
+  n.page.onLoad({});
+  check(n.page.data.loaded && !n.page.data.restored, '第一次新建是空表单');
+  n.page.onInput(input('title', '填到一半')); n.page.onInput(input('cost', '500'));
+  n.state.confirm = false; n.page.onBack();
+  same([n.state.navigated, n.state.modals.length, n.state.alert], [1, 0, false], '新建到一半退出不用确认');
+  n = pageFor('admin-event', drafts);
+  n.page.onLoad({});
+  same([n.page.data.form.title, n.page.data.form.cost, n.page.data.restored], ['填到一半', '500', true], '再点新建，上次填的还在，并有提示');
+  n.page.onDraftClear();
+  same([n.page.data.form.title, n.page.data.restored, draft], ['', false, null], '清空重填后回到空表单，草稿清掉');
+  n.page.onInput(input('title', '新活动')); n.page.onTime({ currentTarget: { dataset: { field: 'date', part: 'date' } }, detail: { value: '2027-05-20' } });
+  check(draft && draft.form.title === '新活动', '每改一下都存进草稿');
+  await n.page.onSave();
+  same([created, draft], [1, null], '存成功后草稿清掉');
+  const edit = pageFor('admin-event', Object.assign({ listEvents: async () => [event] }, drafts));
+  draft = { form: { title: '别的草稿' }, times: {} };
+  edit.page.onLoad({ id: 'race' }); await flush();
+  same(edit.page.data.form.title, '原活动', '编辑已有活动时不套用新建的草稿');
+  edit.page.onInput(input('title', '改了')); same(draft.form.title, '别的草稿', '编辑已有活动不动新建的草稿');
 }
 
 async function adjustmentTests() {
@@ -219,8 +246,8 @@ async function browserTests() {
     check(await page.isDisabled('#drawer-save'), '网页冲突后暂停保存');
     page.once('dialog', (d) => d.dismiss()); await page.keyboard.press('Escape');
     check(await page.isVisible('#drawer'), '网页Esc取消丢弃后保留表单');
-    page.once('dialog', (d) => d.dismiss()); await page.click('#drawer-mask', { position: { x: 10, y: 100 } });
-    check(await page.isVisible('#drawer'), '网页遮罩取消丢弃后保留表单');
+    await page.click('#drawer-mask', { position: { x: 10, y: 100 } });
+    check(await page.isVisible('#drawer') && await page.inputValue('#f-title') === '保留我的修改', '网页点表单外面的空白处不关表单');
     event = Object.assign({}, event, { title: '别人改过', version: 8 }); conflict = false;
     page.once('dialog', (d) => d.accept()); await page.click('#drawer-retry');
     await page.waitForFunction(() => !document.getElementById('drawer-save').disabled);
@@ -228,6 +255,22 @@ async function browserTests() {
     await page.fill('#f-title', '最终标题'); await page.click('#drawer-save');
     await page.waitForSelector('#drawer', { state: 'hidden' });
     same(calls.filter((d) => d.action === 'adminSaveEvent').at(-1).version, 8, '网页重读后使用新版本保存');
+
+    // 新建活动填到一半关掉（或刷新页面）：下次点「新建活动」内容还在；清空或存成功后不再恢复
+    await page.click('#ev-new');
+    check(await page.isHidden('#drawer-draft'), '网页第一次新建没有草稿提示');
+    await page.fill('#f-title', '填到一半的活动'); await page.fill('#f-cost', '500'); await page.fill('#f-intro', '第一段\n第二段');
+    await page.click('#drawer-close');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    await page.reload(); await page.waitForSelector('#ev-rows tr');
+    await page.click('#ev-new');
+    same([await page.inputValue('#f-title'), await page.inputValue('#f-cost'), await page.inputValue('#f-intro')], ['填到一半的活动', '500', '第一段\n第二段'], '网页新建的草稿关掉、刷新后还在');
+    check(await page.isVisible('#drawer-draft'), '网页恢复草稿时有提示');
+    await page.click('#drawer-draft-clear');
+    same([await page.inputValue('#f-title'), await page.isHidden('#drawer-draft')], ['', true], '网页清空重填后回到空表单');
+    await page.click('#drawer-close'); await page.click('#ev-new');
+    same(await page.inputValue('#f-title'), '', '网页清空后再打开不恢复');
+    await page.click('#drawer-close');
 
     noticeError = true; await page.click('[data-tab="notice"]');
     await page.waitForSelector('#notice-retry:not([hidden])');

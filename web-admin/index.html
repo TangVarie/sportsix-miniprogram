@@ -400,6 +400,7 @@
   <div class="drawer__body">
     <div id="drawer-hint" class="hint" role="status" hidden></div>
     <button id="drawer-retry" class="btn btn--line btn--small" type="button" hidden>重新读取</button>
+    <div id="drawer-draft" class="hint" role="status" hidden>已恢复上次没填完的内容。<button id="drawer-draft-clear" class="link" type="button">清空重填</button></div>
     <fieldset id="drawer-fields" class="editor-fields">
     <div class="group">基本信息</div>
     <div class="field"><span class="field__label">类型</span>
@@ -956,7 +957,8 @@
     }).then(function () { if (mine === editor) { drawerLoading = false; syncSave(); } });
   }
   function openDrawer(e) {
-    if (drawerDirty() && !window.confirm(UNSAVED)) return;
+    if (drawerDirty() && (form.id || uploading) && !window.confirm(UNSAVED)) return;
+    saveDraft();
     editor += 1;
     drawerLoading = false; drawerFailed = false; drawerConflict = false;
     drawerReady = !e;
@@ -964,19 +966,64 @@
     fillDrawer(e);
     $('drawer-mask').hidden = false;
     $('drawer').hidden = false;
+    $('drawer-draft').hidden = true;
+    if (!e) {
+      emptySnapshot = drawerSnapshot();
+      var draft = readDraft();
+      if (draft) { applyDraft(draft); $('drawer-draft').hidden = drawerSnapshot() === emptySnapshot; }
+    }
     $('f-title').focus();
     if (e) readDrawer();
     else syncSave();
   }
+  /* 新建活动填到一半的内容留在这台电脑的浏览器里：误关了、刷新了，下次点「新建活动」接着填。存成功或点「清空重填」后清掉 */
+  var DRAFT_KEY = 'sx_admin_event_draft';
+  var emptySnapshot = '';
+  function readDraft() {
+    try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return d && typeof d === 'object' ? d : null; } catch (e) { return null; }
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* 浏览器不让存 */ }
+    $('drawer-draft').hidden = true;
+  }
+  /** 新建的表单每改一下就存一次；和空表单一样时不留草稿 */
+  function saveDraft() {
+    if ($('drawer').hidden || form.id) return;
+    var now = drawerSnapshot();
+    try {
+      if (now === emptySnapshot) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, now);
+    } catch (e) { /* 浏览器不让存：这次就不留草稿 */ }
+  }
+  function applyDraft(d) {
+    setType(['赛事', '试用装', '抽奖'].indexOf(d.type) >= 0 ? d.type : '赛事');
+    TEXT_FIELDS.concat(TIME_FIELDS).forEach(function (k) { $('f-' + k).value = typeof d[k] === 'string' ? d[k] : ''; });
+    $('f-quota').value = typeof d.quota === 'string' ? d.quota : '';
+    $('f-cost').value = typeof d.cost === 'string' ? d.cost : '';
+    $('f-contact').value = typeof d.contact === 'string' ? d.contact : '';
+    $('f-published').checked = d.published === true;
+    setCover(typeof d.cover === 'string' ? d.cover : '');
+  }
+  $('drawer').addEventListener('input', saveDraft);
+  $('drawer').addEventListener('change', saveDraft);
+  $('drawer-draft-clear').addEventListener('click', function () {
+    if (form.id) return;
+    clearDraft();
+    fillDrawer(null);
+    $('f-title').focus();
+  });
+
   function closeDrawer(force) {
-    if (force !== true && drawerDirty() && !window.confirm(UNSAVED)) return;
+    // 新建的表单有草稿兜着，关掉不用问；编辑已有活动时没保存的修改会丢，要问一句
+    if (force !== true && drawerDirty() && (form.id || uploading) && !window.confirm(UNSAVED)) return;
+    saveDraft();
     editor += 1;
     drawerLoading = false;
     $('drawer-mask').hidden = true;
     $('drawer').hidden = true;
   }
   $('drawer-close').addEventListener('click', closeDrawer);
-  $('drawer-mask').addEventListener('click', closeDrawer);
+  // 点表单外面的空白处不关表单：很容易误点。要关就点右上角的 × 或按 Esc
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('drawer').hidden) closeDrawer(); });
   $('drawer-retry').addEventListener('click', function () {
     if (drawerDirty() && !window.confirm(UNSAVED)) return;
@@ -1070,8 +1117,10 @@
     var mine = editor; // 这次保存属于现在打开的这个表单
     saving = mine;
     syncSave();
+    var wasNew = !form.id;
     call('adminSaveEvent', { id: form.id, event: event, version: form.version }).then(function () {
       toast('已保存');
+      if (wasNew) clearDraft();
       // 存完时这个表单已经关了、又开了别的活动：不能把正在填的那个表单关掉
       if (mine === editor) closeDrawer(true);
       return loadEvents();

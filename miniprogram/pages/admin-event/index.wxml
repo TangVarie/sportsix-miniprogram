@@ -24,6 +24,10 @@
     <view wx:if="{{loadFailed}}" class="ae-btn" bindtap="onRetry">{{copy.retry}}</view>
   </view>
   <view wx:else class="ae-body">
+    <view wx:if="{{restored}}" class="ae-draft">
+      <text class="ae-hint ae-draft__text">{{copy.draftRestored}}</text>
+      <view class="ae-mini sx-pressable" hover-class="sx-press" bindtap="onDraftClear">{{copy.draftClear}}</view>
+    </view>
     <view wx:if="{{conflict}}" class="ae-card">
       <view class="ae-hint">{{copy.conflict}}</view>
       <view class="ae-btn" bindtap="onRetry">{{copy.retry}}</view>
