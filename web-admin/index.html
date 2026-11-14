@@ -1007,7 +1007,9 @@
   $('drawer').addEventListener('input', saveDraft);
   $('drawer').addEventListener('change', saveDraft);
   $('drawer-draft-clear').addEventListener('click', function () {
-    if (form.id) return;
+    if (form.id || saving === editor) return;
+    // 头图还在传的时候不让清：传完的结果会落回这张表单，把刚清掉的草稿又带回来
+    if (uploading) { toast('头图还在上传，等一下再清空', true); return; }
     clearDraft();
     fillDrawer(null);
     $('f-title').focus();
