@@ -2,7 +2,8 @@
   "permissions": {
     "openapi": [
       "phonenumber.getPhoneNumber",
-      "subscribeMessage.send"
+      "subscribeMessage.send",
+      "wxacode.getUnlimited"
     ]
   }
 }
