@@ -1317,6 +1317,11 @@ const actions = {
         if (event.version != null && event.version !== (cur.version || 0)) throw fail('conflict');
         const won = Object.create(null);
         (cur.prizes || []).forEach((p) => { won[p.id] = p.won || 0; });
+        // 已经有人抽中的奖品不能删（也不能把有人中过奖的大转盘改成别的类型）：页面上读到的抽中数可能是旧的，
+        // 在事务里按现在的数核对，删了的话中奖记录和奖品就对不上了
+        const kept = Object.create(null);
+        data.prizes.forEach((p) => { kept[p.id] = true; });
+        if ((cur.prizes || []).some((p) => (p.won || 0) > 0 && !kept[p.id])) throw fail('prize_has_winners');
         data.prizes = data.prizes.map((p) => {
           const n = won[p.id] || 0;
           if (p.total < n) throw fail('prize_below_won');

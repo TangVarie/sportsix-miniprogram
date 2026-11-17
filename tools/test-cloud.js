@@ -530,6 +530,13 @@ async function interactTests() {
   r = await call('adminSaveInteraction', { id: id, version: ver, interaction: Object.assign({}, wheel, { tries: 3, prizes: [{ id: 'p1', name: '速干毛巾', total: 5, chance: 30 }, { id: 'p3', name: '帽子', total: 2, chance: 10 }] }) });
   eq(r.data.interaction.prizes.map((p) => [p.name, p.won]), [['速干毛巾', 1], ['帽子', 0]], '按 id 留着已经抽中的数');
   eq(r.data.interaction.status, 'on', '改内容不改开关');
+  // 编辑页打开时奖品还没人中，保存前有人抽中了：删掉它的保存不能通过（按事务里的数核对）
+  const before = (await call('adminInteractions')).data.interactions.find((x) => x.id === id);
+  cloud.col('interactions').find((x) => x._id === id).prizes.find((p) => p.id === 'p3').won = 1;
+  eq((await call('adminSaveInteraction', { id: id, version: before.version, interaction: Object.assign({}, wheel, { tries: 3, prizes: [{ id: 'p1', name: '速干毛巾', total: 5, chance: 30 }] }) })).code, 'prize_has_winners', '已经有人抽中的奖品不能删');
+  eq((await call('adminSaveInteraction', { id: id, version: before.version, interaction: { kind: 'web', title: '改成网页', url: 'https://a.com/x' } })).code, 'prize_has_winners', '有人中过奖的大转盘不能改成别的类型');
+  eq(cloud.col('interactions').find((x) => x._id === id).prizes.length, 2, '奖品还在');
+  cloud.col('interactions').find((x) => x._id === id).prizes.find((p) => p.id === 'p3').won = 0;
   eq((await as('user-b', 'draw', { id: id })).data.mine.left, 0, '加到每人三次，抽过两次的人还能抽一次');
 
   // 只给会员、只给报名了的会员
