@@ -1,0 +1,107 @@
+<view class="page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="ai-header sx-grid-bg">
+    <view class="ai-back" bindtap="onBack">
+      <image class="ai-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="ai-header__title">{{id ? copy.form.titleEdit : copy.form.titleNew}}</view>
+  </view>
+
+  <view wx:if="{{!loaded}}" class="ai-body">
+    <view class="ai-hint">{{loading ? common.loading : common.loadFailed}}</view>
+    <view wx:if="{{loadFailed}}" class="ai-btn" bindtap="onRetry">{{common.retry}}</view>
+  </view>
+  <view wx:else class="ai-body">
+    <view wx:if="{{conflict}}" class="ai-card">
+      <view class="ai-hint ai-hint--top">{{copy.form.conflict}}</view>
+      <view class="ai-btn" bindtap="onRetry">{{common.retry}}</view>
+    </view>
+
+    <view class="ai-card">
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.kind}}</text>
+        <view class="ai-seg">
+          <view wx:for="{{kinds}}" wx:key="key" class="ai-seg__btn sx-pressable {{form.kind === item.key ? 'ai-seg__btn--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onKind">{{item.text}}</view>
+        </view>
+      </view>
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.title}}</text>
+        <input class="ai-input" value="{{form.title}}" maxlength="20" placeholder="{{copy.form.placeholders.title}}" placeholder-class="ai-ph" data-field="title" bindinput="onInput" />
+      </view>
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.note}}</text>
+        <textarea class="ai-textarea" value="{{form.note}}" maxlength="300" placeholder="{{copy.form.placeholders.note}}" placeholder-class="ai-ph" data-field="note" bindinput="onInput" />
+      </view>
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.event}}</text>
+        <picker mode="selector" range="{{eventNames}}" value="{{eventIndex}}" bindchange="onEvent">
+          <view class="ai-input ai-pick {{eventIndex ? '' : 'ai-pick--empty'}}">{{eventNames[eventIndex]}}</view>
+        </picker>
+        <view class="ai-hint">{{copy.form.hints.event}}</view>
+      </view>
+      <view class="ai-field ai-field--last">
+        <text class="ai-label">{{copy.form.labels.audience}}</text>
+        <view class="ai-pills">
+          <view wx:for="{{audiences}}" wx:key="key" class="ai-pill sx-pressable {{form.audience === item.key ? 'ai-pill--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onAudience">{{item.text}}</view>
+        </view>
+        <view class="ai-hint">{{copy.form.hints.audience}}</view>
+      </view>
+    </view>
+
+    <!-- 大转盘：奖品、每人几次 -->
+    <view wx:if="{{form.kind === 'wheel'}}" class="ai-card">
+      <view class="ai-card__title">{{copy.form.labels.prizes}}</view>
+      <view class="ai-hint ai-hint--top">{{copy.form.hints.prizes}}</view>
+      <view wx:for="{{form.prizes}}" wx:key="id" class="ai-prize">
+        <view class="ai-prize__row">
+          <input class="ai-input ai-prize__name" value="{{item.name}}" maxlength="12" placeholder="{{copy.form.placeholders.prizeName}}" placeholder-class="ai-ph" data-index="{{index}}" data-field="name" bindinput="onPrizeInput" />
+          <view class="ai-prize__remove" data-index="{{index}}" bindtap="onPrizeRemove">{{copy.form.removePrize}}</view>
+        </view>
+        <view class="ai-prize__row">
+          <view class="ai-prize__col">
+            <text class="ai-label ai-label--small">{{copy.form.labels.prizeTotal}}</text>
+            <input class="ai-input" value="{{item.total}}" type="number" maxlength="6" placeholder="{{copy.form.placeholders.prizeTotal}}" placeholder-class="ai-ph" data-index="{{index}}" data-field="total" bindinput="onPrizeInput" />
+          </view>
+          <view class="ai-prize__col">
+            <text class="ai-label ai-label--small">{{copy.form.labels.prizeChance}}</text>
+            <input class="ai-input" value="{{item.chance}}" type="digit" maxlength="6" placeholder="{{copy.form.placeholders.prizeChance}}" placeholder-class="ai-ph" data-index="{{index}}" data-field="chance" bindinput="onPrizeInput" />
+          </view>
+        </view>
+        <view wx:if="{{item.wonText}}" class="ai-hint">{{item.wonText}}</view>
+      </view>
+      <view class="ai-hint ai-sum">{{chanceText}}</view>
+      <view class="ai-mini ai-gap sx-pressable" hover-class="sx-press" bindtap="onPrizeAdd">{{copy.form.addPrize}}</view>
+      <view class="ai-field ai-field--last ai-gap">
+        <text class="ai-label">{{copy.form.labels.tries}}</text>
+        <input class="ai-input" value="{{form.tries}}" type="number" maxlength="2" data-field="tries" bindinput="onInput" />
+      </view>
+    </view>
+
+    <!-- 网页 -->
+    <view wx:if="{{form.kind === 'web'}}" class="ai-card">
+      <view class="ai-field ai-field--last">
+        <text class="ai-label">{{copy.form.labels.url}}</text>
+        <input class="ai-input" value="{{form.url}}" maxlength="500" placeholder="{{copy.form.placeholders.url}}" placeholder-class="ai-ph" data-field="url" bindinput="onInput" />
+        <view class="ai-hint">{{copy.form.hints.url}}</view>
+      </view>
+    </view>
+
+    <!-- 其他小程序 -->
+    <view wx:if="{{form.kind === 'mini'}}" class="ai-card">
+      <view class="ai-hint ai-hint--top">{{copy.form.hints.mini}}</view>
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.shortLink}}</text>
+        <input class="ai-input" value="{{form.shortLink}}" maxlength="200" placeholder="{{copy.form.placeholders.shortLink}}" placeholder-class="ai-ph" data-field="shortLink" bindinput="onInput" />
+      </view>
+      <view class="ai-field">
+        <text class="ai-label">{{copy.form.labels.appId}}</text>
+        <input class="ai-input" value="{{form.appId}}" maxlength="32" placeholder="{{copy.form.placeholders.appId}}" placeholder-class="ai-ph" data-field="appId" bindinput="onInput" />
+      </view>
+      <view class="ai-field ai-field--last">
+        <text class="ai-label">{{copy.form.labels.path}}</text>
+        <input class="ai-input" value="{{form.path}}" maxlength="200" placeholder="{{copy.form.placeholders.path}}" placeholder-class="ai-ph" data-field="path" bindinput="onInput" />
+      </view>
+    </view>
+
+    <view class="ai-btn sx-pressable {{busy ? 'ai-btn--busy' : ''}}" hover-class="sx-press" bindtap="onSave">{{copy.form.save}}</view>
+  </view>
+</view>

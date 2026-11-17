@@ -96,3 +96,11 @@
 .ev-status--block { flex-direction: column; align-items: flex-start; margin: 0; }
 .ev-status--wide { grid-column: 1 / -1; margin: 0; }
 .ev-status__retry { flex-shrink: 0; min-height: 77rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }
+
+/* 现场互动的入口（设计稿里没有）：深蓝圆角条，黄绿斜切标签同活动卡片上的标签 */
+.ev-live-list { display: flex; flex-direction: column; gap: 19rpx; padding: 31rpx 38rpx 0; }
+.ev-live { display: flex; align-items: center; gap: 23rpx; padding: 27rpx 31rpx; border-radius: 27rpx; background: #010439; color: #FFFFFF; animation: sxPop .35s ease-out both; }
+.ev-live__text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12rpx; }
+.ev-live__tag { display: inline-block; padding: 4rpx 23rpx; background: #C2E541; color: #010439; font-size: 21rpx; line-height: 31rpx; font-weight: 700; }
+.ev-live__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; }
+.ev-live__btn { flex-shrink: 0; display: flex; align-items: center; height: 77rpx; padding: 0 31rpx; border-radius: 38rpx; background: #C2E541; color: #010439; font-size: 25rpx; font-weight: 900; }

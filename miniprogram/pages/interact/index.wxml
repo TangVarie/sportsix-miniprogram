@@ -1,0 +1,85 @@
+<view class="page it-page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="it-stage sx-grid-bg">
+    <view class="it-back" bindtap="onBack" aria-role="button" aria-label="{{clientCopy.back}}">
+      <image class="it-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+
+    <view wx:if="{{loading}}" class="it-head">
+      <view class="it-skel it-skel--title sx-skeleton"></view>
+      <view class="it-skel it-skel--wheel sx-skeleton"></view>
+    </view>
+
+    <view wx:elif="{{!item}}" class="it-head">
+      <text class="it-tag sx-slant">{{copy.entry.tag}}</text>
+      <view class="it-h1">{{error === 'not_found' ? copy.missing : error === 'none' ? copy.noneLive : clientCopy.loadFailed}}</view>
+      <view class="it-links">
+        <view wx:if="{{error === 'network'}}" class="it-link" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+        <view class="it-link" bindtap="onEvents" aria-role="button">{{copy.backToEvents}}</view>
+      </view>
+    </view>
+
+    <view wx:else class="it-head sx-in">
+      <text class="it-tag sx-slant sx-rise">{{copy.entry.tag}}</text>
+      <view class="it-h1 sx-rise" style="animation-delay: .05s">{{item.title}}</view>
+      <view wx:if="{{item.note}}" class="it-note sx-rise" style="animation-delay: .1s">{{item.note}}</view>
+      <view wx:if="{{!item.open}}" class="it-closed sx-rise" style="animation-delay: .15s">{{copy.closed}}</view>
+
+      <!-- 大转盘：指针在正上方，转盘转到云端给的结果 -->
+      <block wx:if="{{item.kind === 'wheel' && wheel}}">
+        <view class="it-wheel-box sx-pop" style="animation-delay: .15s">
+          <view class="it-wheel {{spinning ? 'it-wheel--spin' : ''}}" style="background: {{wheel.background}}; transform: rotate({{rotation}}deg)">
+            <view wx:for="{{wheel.labels}}" wx:for-item="seg" wx:key="key" class="it-label" style="transform: rotate({{seg.deg}}deg)">
+              <text class="it-label__text {{seg.thanks ? 'it-label__text--thanks' : ''}}">{{seg.text}}</text>
+            </view>
+          </view>
+          <view class="it-hub"></view>
+          <view class="it-pointer"></view>
+        </view>
+        <view class="it-actions">
+          <view class="it-btn sx-pressable {{spinning || !item.open || blocked || (mine && mine.left <= 0) ? 'it-btn--off' : ''}}" hover-class="sx-press" bindtap="onDraw" aria-role="button"
+            aria-disabled="{{spinning || !item.open || !!blocked || (mine && mine.left <= 0)}}">{{copy.wheel.start}}</view>
+          <text wx:if="{{mine && item.open && !blocked}}" class="it-left">{{mine.leftText}}</text>
+        </view>
+      </block>
+
+      <!-- 网页 -->
+      <view wx:elif="{{item.kind === 'web'}}" class="it-actions">
+        <view class="it-btn sx-pressable {{!item.open || blocked ? 'it-btn--off' : ''}}" hover-class="sx-press" bindtap="onWeb" aria-role="button">{{copy.web.open}}</view>
+      </view>
+
+      <!-- 其他小程序 -->
+      <view wx:elif="{{item.kind === 'mini'}}" class="it-actions">
+        <view class="it-btn sx-pressable {{!item.open || blocked ? 'it-btn--off' : ''}}" hover-class="sx-press" bindtap="onMini" aria-role="button">{{copy.mini.open}}</view>
+        <text class="it-left">{{copy.mini.hint}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{item}}" class="it-body">
+    <!-- 只对会员、只对报名的人开放 -->
+    <view wx:if="{{blockedCopy && item.open}}" class="it-card it-card--row">
+      <view class="it-card__text">
+        <text class="it-card__title">{{blockedCopy.title}}</text>
+        <text class="it-card__body">{{blockedCopy.body}}</text>
+      </view>
+      <view class="it-card__btn sx-pressable" hover-class="sx-press" bindtap="onBlocked" aria-role="button">{{blockedCopy.button}}</view>
+    </view>
+
+    <!-- 我的抽奖记录：新的在前 -->
+    <view wx:if="{{mine && mine.results.length}}" class="it-mine">
+      <view class="it-mine__title">{{copy.wheel.mine}}</view>
+      <view class="it-mine__hint">{{copy.wheel.redeemHint}}</view>
+      <view wx:for="{{mine.results}}" wx:for-item="r" wx:key="n" class="it-result {{r.win ? 'it-result--win' : ''}}">
+        <view class="it-result__main">
+          <text class="it-result__round">{{r.round}}</text>
+          <text class="it-result__text">{{r.text}}</text>
+        </view>
+        <view wx:if="{{r.win}}" class="it-result__code">
+          <text class="it-result__k">{{copy.wheel.code}}</text>
+          <text class="it-result__v sx-num-700" user-select="{{true}}">{{r.code}}</text>
+          <text class="it-result__status {{r.redeemed ? 'it-result__status--done' : ''}}">{{r.status}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

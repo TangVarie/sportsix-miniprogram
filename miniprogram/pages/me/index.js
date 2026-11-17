@@ -11,6 +11,7 @@ const events = require('../../utils/events.js');
 const fuel = require('../../utils/fuel-plan.js');
 const clientCopy = require('../../content/client-state.js');
 const pendingAction = require('../../utils/pending-action.js');
+const interactCopy = require('../../content/interact.js');
 const { eventState } = require('../../utils/event-state.js');
 const { baseData, selectTab, go, navTone, imgLoaded, tick, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
@@ -277,6 +278,12 @@ Page({
     if (action && action.type === 'signup') {
       go('event-detail', { id: action.eventId });
       wx.showToast({ title: clientCopy.loginContinue, icon: 'none' });
+      return;
+    }
+    // 只对会员开放的现场互动：回到那个互动
+    if (action && action.type === 'interact') {
+      go('interact', { id: action.id });
+      wx.showToast({ title: interactCopy.loginContinue, icon: 'none' });
       return;
     }
 

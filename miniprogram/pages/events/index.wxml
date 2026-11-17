@@ -11,6 +11,17 @@
     </view>
   </view>
 
+  <!-- 现场互动（设计稿里没有）：运营在后台打开后才出现，两个分页上都显示 -->
+  <view wx:if="{{live.length}}" class="ev-live-list">
+    <view wx:for="{{live}}" wx:key="id" class="ev-live sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onLive" aria-role="button">
+      <view class="ev-live__text">
+        <text class="ev-live__tag sx-slant">{{interactCopy.entry.tag}}</text>
+        <text class="ev-live__title">{{item.title}}</text>
+      </view>
+      <view class="ev-live__btn">{{interactCopy.entry.action}}</view>
+    </view>
+  </view>
+
   <view wx:if="{{tab === 'upcoming' && stale && hasUpcoming}}" class="ev-status">
     <text>{{clientCopy.stale}}</text>
     <view class="ev-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>

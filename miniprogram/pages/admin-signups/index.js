@@ -8,15 +8,33 @@ const { baseData, go, navTone, headerTone, shareCard, TABS } = require('../../ut
 const toast = (title) => wx.showToast({ title: title, icon: 'none' });
 const c = copy.signups;
 
+/** 一项回答 → 显示的字：多选用顿号连起来，没填是「—」 */
+const answerText = (v) => (Array.isArray(v) ? v.join('、') : v) || c.formEmptyValue;
+
+/**
+ * 报名表的回答按现在的报名表排：现在有的项按顺序列，没填的写「—」；
+ * 运营后来删掉的项，之前填的内容也还列出来（标题是当时的，后面注明已删掉）。
+ */
+function answerRows(form, answers) {
+  const byId = {};
+  (answers || []).forEach((a) => { byId[a.id] = a; });
+  const rows = form.map((f) => ({ label: f.label, value: answerText(byId[f.id] && byId[f.id].value) }));
+  (answers || []).filter((a) => !form.some((f) => f.id === a.id)).forEach((a) => rows.push({ label: a.label + c.formRemoved, value: answerText(a.value) }));
+  return rows;
+}
+
 /** 名单里的一个人 → 一行的显示数据 */
-function row(s) {
+function row(s, form) {
   return {
     memberNo: s.memberNo,
     name: s.nickname || c.noName,
     noText: c.memberNo.replace(/\[[^\]]+\]/, s.memberNo || '—'),
     phone: s.phone,
     costText: s.cost > 0 ? c.cost.replace('[积分]', s.cost) : '',
-    at: format.moment(s.at)
+    at: format.moment(s.at),
+    answers: answerRows(form, s.answers),
+    // 报名表的必填项没填齐（旧版本报的名，或者运营后来加了必填项）
+    missing: form.length > 0 && s.complete === false
   };
 }
 
@@ -39,7 +57,10 @@ Page({
     loadFailed: false,
     busy: false,
     progress: '',
-    list: []
+    list: [],
+    // 这场活动的报名表（现在的样子）和展开了报名表的人
+    form: [],
+    open: {}
   }),
 
   onLoad(query) {
@@ -62,7 +83,8 @@ Page({
         this.setData({
           title: d.event.title,
           cancelled: !!d.event.cancelled,
-          list: d.signups.map(row),
+          form: d.form || [],
+          list: d.signups.map((x) => row(x, d.form || [])),
           total: d.total > d.signups.length ? d.total : d.signups.length,
           countText: d.total > d.signups.length ? c.countPartial.replace('[人数]', d.total).replace('[显示]', d.signups.length) : c.count.replace('[人数]', d.signups.length),
           loading: false, loaded: true
@@ -99,11 +121,22 @@ Page({
     if (phone) wx.makePhoneCall({ phoneNumber: phone, fail: () => {} });
   },
 
-  /** 把名单复制出来，贴到表格或聊天里：每人一行，昵称、会员编号、手机号 */
+  /** 展开或收起某个人填的报名表 */
+  onToggle(e) {
+    const no = e.currentTarget.dataset.no;
+    this.setData({ ['open.' + no]: !this.data.open[no] });
+  },
+
+  /**
+   * 把名单复制出来，贴到表格或聊天里：第一行是表头，之后每人一行，昵称、会员编号、手机号，
+   * 有报名表的再接上每一项的回答（按现在的报名表的顺序）。各项之间用制表符隔开，贴进表格正好一格一项。
+   */
   onCopy() {
     if (!this.data.list.length) { toast(c.empty); return; }
-    const text = this.data.list.map((s) => [s.name, s.memberNo, s.phone].join('\t')).join('\n');
-    wx.setClipboardData({ data: text, success: () => toast(c.copied) });
+    const clean = (v) => String(v == null ? '' : v).replace(/[\t\n\r]+/g, ' ');
+    const head = c.copyHeader.concat(this.data.form.map((f) => f.label));
+    const lines = this.data.list.map((s) => [s.name, s.memberNo, s.phone].concat(s.answers.slice(0, this.data.form.length).map((a) => a.value)).map(clean).join('\t'));
+    wx.setClipboardData({ data: [head.map(clean).join('\t')].concat(lines).join('\n'), success: () => toast(c.copied) });
   },
 
   /** 取消某个人的报名：先确认，写清楚是谁、会发生什么 */

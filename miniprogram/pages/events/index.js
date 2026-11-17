@@ -4,6 +4,7 @@ const clientCopy = require('../../content/client-state.js');
 const { eventState } = require('../../utils/event-state.js');
 const { baseData, selectTab, go, navTone, headerTone, imgLoaded, shareCard, TABS } = require('../../utils/page.js');
 const { assetUrl } = require('../../utils/assets.js');
+const interactCopy = require('../../content/interact.js');
 
 Page({
   data: Object.assign(baseData(), {
@@ -23,7 +24,10 @@ Page({
     news: events.getNews(),
     newsOn: false,
     upcoming: [],
-    past: []
+    past: [],
+    // 正在进行的现场互动（运营在后台打开后才有），显示在列表最上面
+    live: [],
+    interactCopy: interactCopy
   }),
 
   /** 图片加载完（或加载失败）：让它淡入 */
@@ -70,7 +74,7 @@ Page({
     const load = events.getLoadState('upcoming');
     const past = events.getLoadState('past');
     this.setData({
-      upcoming: upcoming, hasUpcoming: upcoming.length > 0, newsOn: events.hasNews(),
+      upcoming: upcoming, hasUpcoming: upcoming.length > 0, newsOn: events.hasNews(), live: events.getLive(),
       loading: load.loading && !load.hasData, loadError: !!load.error, stale: !!load.error && load.hasData,
       past: events.listPast(), pastLoading: past.loading && !past.hasData, pastError: !!past.error, pastStale: past.stale
     });
@@ -95,6 +99,11 @@ Page({
 
   onOpen(e) {
     go('event-detail', { id: e.currentTarget.dataset.id });
+  },
+
+  /** 现场互动的入口 */
+  onLive(e) {
+    go('interact', { id: e.currentTarget.dataset.id });
   },
 
   onRemind(e) {

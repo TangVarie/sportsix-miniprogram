@@ -5,6 +5,9 @@ const messages = require('../../content/messages.js');
 const config = require('../../config.js');
 const clientCopy = require('../../content/client-state.js');
 const pendingAction = require('../../utils/pending-action.js');
+const signupForm = require('../../utils/signup-form.js');
+const formCopy = require('../../content/signup-form.js');
+const interactCopy = require('../../content/interact.js');
 const { eventState } = require('../../utils/event-state.js');
 const { baseData, go, navTone, headerTone, imgLoaded, shareCard } = require('../../utils/page.js');
 
@@ -15,6 +18,22 @@ const SIGNED_TEXT = member.me.events.states[0];
 
 // 报名结果的提示（content/messages）。没配云环境时没有地方登记报名，按网络异常提示
 const SIGNUP_TOAST = Object.assign({ no_backend: messages.signup.network }, messages.signup);
+
+/**
+ * 报名表那张卡片：报了名、这场有报名表时才显示。
+ * 填齐了的可以查看和修改，没填齐（旧版本报的名、运营后来加了必填项）的提示补填，活动开始以后只能查看。
+ */
+function formCard(event, signed) {
+  if (!signed || !signupForm.hasForm(event)) return null;
+  const e = event.raw || event;
+  const mine = events.getSignupForm(event.id);
+  const started = (e.date && Date.now() >= e.date) || e.cancelled;
+  const complete = !mine || mine.complete !== false;
+  const c = formCopy.card;
+  if (started) return { title: c.title, body: c.closed, button: c.view, todo: false };
+  // 还没取到本人填的内容时按填齐了算，不先闪一下「去补填」
+  return complete ? { title: c.title, body: c.done, button: c.edit, todo: false } : { title: c.title, body: c.todo, button: c.fill, todo: true };
+}
 
 /** 报名须知要显示的几行。活动不用积分、也没填联系方式时不显示（返回 null） */
 function signupNote(event, detail) {
@@ -45,7 +64,11 @@ Page({
     remindedText: REMINDED_TEXT,
     signed: false,
     signedText: SIGNED_TEXT,
-    groupReady: config.groupReady
+    groupReady: config.groupReady,
+    // 报名表的卡片、这场活动正在进行的现场互动（都是设计稿里没有、后加的）
+    form: null,
+    live: [],
+    interactCopy: interactCopy
   }),
 
   /** 图片加载完（或加载失败）：让它淡入 */
@@ -114,7 +137,9 @@ Page({
       remindedText: event.actionDone || REMINDED_TEXT,
       signed: signed,
       state: eventState(event, { signed: signed, reminded: reminded }),
-      note: signupNote(event, detail)
+      note: signupNote(event, detail),
+      form: formCard(event, signed),
+      live: events.getLiveFor(event.id)
     }));
   },
 
@@ -146,6 +171,8 @@ Page({
     const event = this.data.event;
     const cost = event.cost > 0 ? event.cost : 0;
     const short = () => { const p = (store.getMember() || {}).points; return cost > 0 && typeof p === 'number' && p < cost; };
+    // 有报名表的活动：先去填表，提交时再请求订阅、确认积分、报名
+    const withForm = signupForm.hasForm(event);
     // 本机记着的积分不够：这个数可能是旧的（运营刚给加了积分），先和云端对一下再说够不够
     if (short()) {
       this.signing = true;
@@ -153,11 +180,13 @@ Page({
       store.sync().catch(() => false).then(() => {
         wx.hideLoading();
         if (short()) { this.signing = false; this.sayShort(cost); return; }
+        if (withForm) { this.signing = false; go('signup-form', { id: this.eventId }); return; }
         // 对完发现够了：接着报。这时已经不是点击的那一下，订阅请求弹不出来，这一次就不问了
         this.finishSignup(event, cost, Promise.resolve(''));
       });
       return;
     }
+    if (withForm) { go('signup-form', { id: this.eventId }); return; }
     this.signing = true;
     // 先请用户订阅一次消息（必须由这次点击直接触发）：同意了的，报名被取消或活动取消时能收到微信通知；不同意也照样报
     this.finishSignup(event, cost, events.askSubscribe());
@@ -180,6 +209,8 @@ Page({
         if (e.code === 'insufficient_points') { this.onRetry(); this.sayShort(cost); return; }
         // 这场要用的积分刚改过：没扣。取一次最新的活动，页面上的数跟着变，再点报名时按新的数确认
         if (e.code === 'cost_changed') this.onRetry();
+        // 运营刚给这场加了报名表：取一次最新的活动，再点报名时先填表
+        if (e.code === 'form_incomplete' || e.code === 'form_changed') { this.onRetry(); wx.showToast({ title: formCopy.errors[e.code], icon: 'none' }); return; }
         wx.showToast({ title: SIGNUP_TOAST[e.code] || SIGNUP_TOAST.network, icon: 'none' });
       })
       .then(() => { this.signing = false; });
@@ -204,7 +235,17 @@ Page({
     });
   },
 
-onGroup() {
+  /** 报名表：查看、修改或补填 */
+  onForm() {
+    go('signup-form', { id: this.eventId });
+  },
+
+  /** 这场活动的现场互动 */
+  onLive(e) {
+    go('interact', { id: e.currentTarget.dataset.id });
+  },
+
+  onGroup() {
     // 群的形式（企业微信群、客服二维码）定了以后在这里接；现在这个入口不显示（config.groupReady）
   }
 });

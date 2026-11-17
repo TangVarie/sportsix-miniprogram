@@ -111,6 +111,10 @@ function go(to, params) {
   if (to === 'admin-event') { wx.navigateTo({ url: '/pages/admin-event/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
   if (to === 'doc') { wx.navigateTo({ url: '/pages/doc/index?type=' + ((params && params.type) || 'agreement') }); return; }
   if (to === 'event-detail') { wx.navigateTo({ url: '/pages/event-detail/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
+  if (to === 'signup-form') { wx.navigateTo({ url: '/pages/signup-form/index?id=' + ((params && params.id) || '') }); return; }
+  if (to === 'interact') { wx.navigateTo({ url: '/pages/interact/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
+  if (to === 'admin-interact') { wx.navigateTo({ url: '/pages/admin-interact/index' + (params && params.id ? '?id=' + params.id : '') }); return; }
+  if (to === 'admin-draws') { wx.navigateTo({ url: '/pages/admin-draws/index?id=' + ((params && params.id) || '') }); return; }
 }
 
 /**

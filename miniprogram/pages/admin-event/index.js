@@ -12,7 +12,22 @@ const TIME_FIELDS = ['date', 'signupStart', 'signupEnd', 'memberSignupStart', 'd
 const DEFAULT_TIME = { signupEnd: '23:59' };
 
 function emptyForm() {
-  return { type: TYPES[0], title: '', city: '', venue: '', quota: '', quotaText: '', cost: '', contact: '', cover: '', intro: '', published: false };
+  return { type: TYPES[0], title: '', city: '', venue: '', quota: '', quotaText: '', cost: '', contact: '', cover: '', intro: '', published: false, fields: [] };
+}
+
+/** 存着的报名表 → 表单里编辑用的样子（选项写成一行一个） */
+function editableFields(form) {
+  return (Array.isArray(form) ? form : []).map((f) => ({
+    id: f.id, kind: f.kind, label: f.label, required: !!f.required, optionsText: (f.options || []).join('\n')
+  }));
+}
+/** 表单里的报名表 → 交给云函数的样子 */
+function fieldsPayload(fields) {
+  return (fields || []).map((f) => {
+    const out = { id: f.id, kind: f.kind, label: String(f.label || '').trim(), required: !!f.required };
+    if (f.kind === 'single' || f.kind === 'multi') out.options = String(f.optionsText || '').split('\n').map((o) => o.trim()).filter(Boolean);
+    return out;
+  });
 }
 function emptyTimes() {
   const t = {};
@@ -39,7 +54,13 @@ Page({
     busy: false,
     uploading: false,
     // 表单里的内容是从上次没存的草稿里恢复的
-    restored: false
+    restored: false,
+    // 报名表：可以加的模块、每种类型的叫法、可以沿用的别的活动的报名表
+    presets: copy.form.formPresets,
+    kindNames: copy.form.formKinds,
+    copySources: [],
+    copyNames: [],
+    hasIdno: false
   }),
 
   onLoad(query) {
@@ -49,6 +70,7 @@ Page({
     try { wx.hideShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] }); } catch (e) { /* 旧基础库忽略 */ }
     const m = store.getMember();
     if (!m || !m.admin) { toast(copy.errors.forbidden); go('me'); return; }
+    this.loadCopySources(query.id || '');
     if (query.id) this.load(query.id);
     else {
       this.savedSnapshot = this.snapshot();
@@ -57,6 +79,7 @@ Page({
       if (draft) {
         this.setData({ form: Object.assign(emptyForm(), draft.form), times: Object.assign(emptyTimes(), draft.times) });
         this.setData({ restored: this.snapshot() !== this.savedSnapshot });
+        this.markIdno();
       }
       this.setData({ loaded: true });
     }
@@ -77,12 +100,14 @@ Page({
         form: {
           type: e.type, title: e.title, city: e.city, venue: e.venue, quota: e.quota ? String(e.quota) : '', quotaText: e.quotaText,
           cost: e.cost ? String(e.cost) : '', contact: e.contact || '',
-          cover: e.cover, intro: e.intro, published: e.status === 'published'
+          cover: e.cover, intro: e.intro, published: e.status === 'published',
+          fields: editableFields(e.form)
         },
         times: times,
         loaded: true, loading: false, conflict: false
       });
       this.savedSnapshot = this.snapshot();
+      this.markIdno();
       admin.watchUnsaved(false);
     }).catch((e) => {
       if (mine !== this.loadSeq) return;
@@ -95,11 +120,26 @@ Page({
     return JSON.stringify({ form: this.data.form, times: this.data.times });
   },
 
+  /** 别的活动里有报名表的，列出来可以沿用 */
+  loadCopySources(selfId) {
+    return admin.listEvents().then((list) => {
+      if (this.unloaded) return;
+      const sources = list.filter((e) => e.id !== selfId && Array.isArray(e.form) && e.form.length);
+      this.setData({ copySources: sources.map((e) => ({ id: e.id, title: e.title, form: e.form })), copyNames: sources.map((e) => e.title) });
+    }).catch(() => { /* 读不到就不能沿用，不影响编辑 */ });
+  },
+
   dirty() {
     return this.data.uploading || (this.data.loaded && this.snapshot() !== this.savedSnapshot);
   },
 
+  /** 报名表里有证件号码时，提醒一句这是敏感个人信息 */
+  markIdno() {
+    this.setData({ hasIdno: (this.data.form.fields || []).some((f) => f.kind === 'idno') });
+  },
+
   changed() {
+    this.markIdno();
     // 新建的表单每改一下就存成草稿，退出不用拦；编辑已有活动时没保存的修改会丢，退出前要问
     if (!this.data.id) { this.keepDraft(); return; }
     admin.watchUnsaved(this.dirty());
@@ -182,6 +222,67 @@ Page({
     this.changed();
   },
 
+  /* ---------- 报名表 ---------- */
+
+  /** 加一项：按模块预先填好标题和选项（单选题、填空这些标题空着，自己写） */
+  onFieldAdd(e) {
+    if (!this.data.loaded || this.data.busy) return;
+    const fields = (this.data.form.fields || []).slice();
+    if (fields.length >= 20) { toast(copy.errors.form_too_long); return; }
+    const p = copy.form.formPresets.find((x) => x.key === e.currentTarget.dataset.key);
+    if (!p) return;
+    tick();
+    fields.push({ id: admin.newFieldId('f'), kind: p.kind, label: p.label || '', required: true, optionsText: (p.options || []).join('\n') });
+    this.setData({ 'form.fields': fields });
+    this.changed();
+  },
+
+  onFieldInput(e) {
+    if (!this.data.loaded || this.data.busy) return;
+    const { index, field } = e.currentTarget.dataset;
+    this.setData({ ['form.fields[' + index + '].' + field]: e.detail.value });
+    this.changed();
+  },
+
+  onFieldRequired(e) {
+    if (!this.data.loaded || this.data.busy) return;
+    const i = e.currentTarget.dataset.index;
+    tick();
+    this.setData({ ['form.fields[' + i + '].required']: !this.data.form.fields[i].required });
+    this.changed();
+  },
+
+  /** 上移、下移、删除 */
+  onFieldMove(e) {
+    if (!this.data.loaded || this.data.busy) return;
+    const { index, to } = e.currentTarget.dataset;
+    const fields = this.data.form.fields.slice();
+    if (to === 'remove') fields.splice(index, 1);
+    else {
+      const j = to === 'up' ? index - 1 : index + 1;
+      if (j < 0 || j >= fields.length) return;
+      const t = fields[index]; fields[index] = fields[j]; fields[j] = t;
+    }
+    tick();
+    this.setData({ 'form.fields': fields });
+    this.changed();
+  },
+
+  /** 沿用别的活动的报名表：整张换成那一张，每一项换新的 id */
+  onFieldCopy(e) {
+    if (!this.data.loaded || this.data.busy) return;
+    const src = this.data.copySources[Number(e.detail.value)];
+    if (!src) return;
+    const fields = editableFields(src.form).map((f) => Object.assign(f, { id: admin.newFieldId('f') }));
+    this.setData({ 'form.fields': fields });
+    this.changed();
+    toast(copy.form.formCopied.replace('[名称]', src.title));
+  },
+
+  onFieldCopyEmpty() {
+    toast(copy.form.formCopyEmpty);
+  },
+
   /** 选一张图传到云存储，活动存的是它的 fileID */
   onCover() {
     if (!this.data.loaded || this.data.busy || this.data.uploading) return;
@@ -215,7 +316,8 @@ Page({
       cost: cost, contact: f.contact,
       type: f.type, title: f.title, city: f.city, venue: f.venue,
       quota: quota, quotaText: f.quotaText,
-      cover: f.cover, intro: f.intro, status: f.published ? 'published' : 'draft'
+      cover: f.cover, intro: f.intro, status: f.published ? 'published' : 'draft',
+      form: fieldsPayload(f.fields)
     };
     TIME_FIELDS.forEach((k) => {
       const t = this.data.times[k];
@@ -234,7 +336,7 @@ Page({
     if (this.data.busy) return;
     const event = this.payload();
     // 先在本机拦一下必填项，省一次来回；云函数里还会再检查
-    const invalid = admin.eventError(event);
+    const invalid = admin.eventError(event) || admin.formError(event.form);
     if (invalid) { toast(copy.errors[invalid]); return; }
     // 新建的：记下交上去的是哪一份，存成功时只清这一份草稿
     const submitted = this.snapshot();

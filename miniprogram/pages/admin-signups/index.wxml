@@ -18,6 +18,7 @@
     </view>
     <view wx:elif="{{list.length}}">
       <view class="as-btn as-btn--line sx-pressable" hover-class="sx-press" bindtap="onCopy">{{copy.copy}}</view>
+      <view class="as-count">{{copy.copyHint}}</view>
       <view wx:for="{{list}}" wx:key="memberNo" class="as-card">
         <view class="as-card__text">
           <text class="as-card__name">{{item.name}}</text>
@@ -26,6 +27,19 @@
           <view class="as-card__phone" data-phone="{{item.phone}}" bindtap="onCall">
             <text class="as-card__phone-num sx-num" user-select="{{true}}">{{item.phone}}</text>
             <text class="as-card__phone-call">{{copy.call}}</text>
+          </view>
+          <!-- 报名表：点开看这个人填的内容 -->
+          <view wx:if="{{form.length}}" class="as-form">
+            <view class="as-form__toggle" data-no="{{item.memberNo}}" bindtap="onToggle">
+              <text>{{open[item.memberNo] ? copy.hideForm : copy.showForm}}</text>
+              <text wx:if="{{item.missing}}" class="as-form__missing">{{copy.formMissing}}</text>
+            </view>
+            <view wx:if="{{open[item.memberNo]}}" class="as-form__list">
+              <view wx:for="{{item.answers}}" wx:for-item="a" wx:key="label" class="as-form__row">
+                <text class="as-form__k">{{a.label}}</text>
+                <text class="as-form__v" user-select="{{true}}">{{a.value}}</text>
+              </view>
+            </view>
           </view>
         </view>
         <view class="as-mini sx-pressable" hover-class="sx-press" data-no="{{item.memberNo}}" bindtap="onCancel">{{copy.cancel}}</view>

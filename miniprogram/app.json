@@ -6,11 +6,16 @@
     "pages/me/index",
     "pages/product/index",
     "pages/event-detail/index",
+    "pages/signup-form/index",
+    "pages/interact/index",
+    "pages/webview/index",
     "pages/doc/index",
     "pages/points/index",
     "pages/admin/index",
     "pages/admin-event/index",
-    "pages/admin-signups/index"
+    "pages/admin-signups/index",
+    "pages/admin-interact/index",
+    "pages/admin-draws/index"
   ],
   "window": {
     "navigationStyle": "custom",

@@ -1,0 +1,51 @@
+/* 互动的新建和编辑（设计稿里没有）：样式和活动的表单页一致 */
+.ai-header { position: relative; height: calc(254rpx + var(--sx-safe-top)); color: #FFFFFF; }
+.ai-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; height: 85rpx; padding: 0 15rpx;
+}
+.ai-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.ai-header__title { position: absolute; left: 38rpx; bottom: 46rpx; font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+
+.ai-body { padding: 15rpx 38rpx calc(77rpx + env(safe-area-inset-bottom)); }
+.ai-card { margin-top: 23rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.ai-card__title { font-size: 31rpx; line-height: 46rpx; font-weight: 900; color: #010439; }
+.ai-field { margin-bottom: 27rpx; }
+.ai-field--last { margin-bottom: 0; }
+.ai-gap { margin-top: 23rpx; }
+.ai-label { display: block; font-size: 25rpx; line-height: 38rpx; font-weight: 700; color: #010439; }
+.ai-label--small { font-size: 23rpx; font-weight: 500; color: #5E6170; }
+.ai-hint { margin-top: 12rpx; font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ai-hint--top { margin-top: 4rpx; margin-bottom: 8rpx; }
+.ai-input { box-sizing: border-box; height: 92rpx; margin-top: 12rpx; padding: 0 27rpx; border-radius: 23rpx; background: #FFFFFF; font-size: 29rpx; color: #010439; }
+.ai-textarea { box-sizing: border-box; width: 100%; height: 220rpx; margin-top: 12rpx; padding: 23rpx 27rpx; border-radius: 23rpx; background: #FFFFFF; font-size: 29rpx; line-height: 44rpx; color: #010439; }
+.ai-ph { color: #9A9CA8; }
+.ai-pick { display: flex; align-items: center; }
+.ai-pick--empty { color: #9A9CA8; }
+
+/* 类型三选一 */
+.ai-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; margin-top: 12rpx; }
+.ai-seg__btn { display: flex; align-items: center; justify-content: center; height: 85rpx; border-radius: 19rpx; background: #FFFFFF; font-size: 25rpx; font-weight: 700; color: #14141E; }
+.ai-seg__btn--on { background: #010439; color: #FFFFFF; }
+/* 谁能参与：字数不一样长，排成一行行的胶囊 */
+.ai-pills { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.ai-pill { display: flex; align-items: center; height: 77rpx; padding: 0 27rpx; border-radius: 19rpx; background: #FFFFFF; font-size: 25rpx; font-weight: 700; color: #14141E; }
+.ai-pill--on { background: #010439; color: #FFFFFF; }
+
+/* 奖品：名称一行，数量和机会并排 */
+.ai-prize { margin-top: 23rpx; padding-top: 23rpx; border-top: 1px solid #E6E6E7; }
+.ai-prize__row { display: flex; align-items: flex-end; gap: 15rpx; }
+.ai-prize__name { flex: 1; min-width: 0; }
+.ai-prize__remove { flex-shrink: 0; height: 92rpx; padding: 0 12rpx; font-size: 25rpx; line-height: 92rpx; color: #061A70; }
+.ai-prize__col { flex: 1; min-width: 0; margin-top: 12rpx; }
+.ai-sum { margin-top: 23rpx; font-weight: 700; color: #010439; }
+
+.ai-mini {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 69rpx; padding: 0 38rpx; border-radius: 35rpx;
+  background: #FFFFFF; border: 1px solid #C9CEE8; font-size: 25rpx; font-weight: 700; color: #010439;
+}
+.ai-btn {
+  display: flex; align-items: center; justify-content: center; height: 104rpx; margin-top: 38rpx; border-radius: 52rpx;
+  background: #C2E541; color: #010439; font-size: 31rpx; font-weight: 900;
+}
+.ai-btn--busy { opacity: .5; }

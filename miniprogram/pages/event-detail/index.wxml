@@ -26,6 +26,14 @@
       <text>{{clientCopy.stale}}</text>
       <view class="ed-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
     </view>
+    <!-- 这场活动正在进行的现场互动（设计稿里没有，运营打开后才有） -->
+    <view wx:for="{{live}}" wx:key="id" class="ed-live sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onLive" aria-role="button">
+      <view class="ed-live__text">
+        <text class="ed-live__tag sx-slant">{{interactCopy.entry.tag}}</text>
+        <text class="ed-live__title">{{item.title}}</text>
+      </view>
+      <view class="ed-live__btn">{{interactCopy.entry.action}}</view>
+    </view>
     <view class="ed-rows">
       <view wx:for="{{rowFields}}" wx:key="k" class="ed-row {{index < rowFields.length - 1 ? 'ed-row--line' : ''}}">
         <text class="ed-row__k">{{item.k}}</text>
@@ -45,6 +53,15 @@
       <text class="sx-eyebrow ed-about__eyebrow">{{detail.about.eyebrow}}</text>
       <view class="ed-about__title">{{detail.about.title}}</view>
       <view class="ed-about__body">{{detail.about.body}}</view>
+    </view>
+
+    <!-- 报名表：报了名、这场有报名表时显示（设计稿里没有，后加的） -->
+    <view wx:if="{{form}}" class="ed-form">
+      <view class="ed-form__text">
+        <text class="ed-form__title">{{form.title}}</text>
+        <text class="ed-form__body {{form.todo ? 'ed-form__body--todo' : ''}}">{{form.body}}</text>
+      </view>
+      <view class="ed-form__btn sx-pressable {{form.todo ? 'ed-form__btn--todo' : ''}}" hover-class="sx-press" bindtap="onForm" aria-role="button">{{form.button}}</view>
     </view>
 
     <!-- 报名须知：要用多少积分、报名后不能自行取消、有事找谁（设计稿里没有，后加的） -->

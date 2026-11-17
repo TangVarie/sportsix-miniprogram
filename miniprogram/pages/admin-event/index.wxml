@@ -100,6 +100,40 @@
       </view>
     </view>
 
+    <!-- 报名表：按模块拼，用户报名时填 -->
+    <view class="ae-card">
+      <view class="ae-card__title">{{copy.groups.form}}</view>
+      <view class="ae-hint ae-hint--top">{{copy.hints.form}}</view>
+      <view wx:if="{{!form.fields.length}}" class="ae-hint">{{copy.formEmpty}}</view>
+      <view wx:for="{{form.fields}}" wx:key="id" class="ae-ff">
+        <view class="ae-ff__head">
+          <text class="ae-ff__kind">{{index + 1}} · {{kindNames[item.kind]}}</text>
+          <view class="ae-ff__req" data-index="{{index}}" bindtap="onFieldRequired" aria-role="checkbox" aria-checked="{{item.required}}">
+            <view class="{{item.required ? 'sx-check' : 'ae-ff__box'}}" />
+            <text>{{copy.formField.required}}</text>
+          </view>
+        </view>
+        <input class="ae-input" value="{{item.label}}" maxlength="20" placeholder="{{copy.formField.label}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="label" bindinput="onFieldInput" />
+        <textarea wx:if="{{item.kind === 'single' || item.kind === 'multi'}}" class="ae-textarea ae-ff__options" value="{{item.optionsText}}" maxlength="500"
+          placeholder="{{copy.formField.optionsPlaceholder}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="optionsText" bindinput="onFieldInput" />
+        <text wx:if="{{item.kind === 'single' || item.kind === 'multi'}}" class="ae-hint">{{copy.formField.options}}</text>
+        <view class="ae-ff__btns">
+          <view wx:if="{{index > 0}}" class="ae-ff__btn" data-index="{{index}}" data-to="up" bindtap="onFieldMove">{{copy.formField.up}}</view>
+          <view wx:if="{{index < form.fields.length - 1}}" class="ae-ff__btn" data-index="{{index}}" data-to="down" bindtap="onFieldMove">{{copy.formField.down}}</view>
+          <view class="ae-ff__btn" data-index="{{index}}" data-to="remove" bindtap="onFieldMove">{{copy.formField.remove}}</view>
+        </view>
+      </view>
+      <view wx:if="{{hasIdno}}" class="ae-hint">{{copy.formSensitive}}</view>
+      <text class="ae-label ae-ff__add-label">{{copy.formAdd}}</text>
+      <view class="ae-chips">
+        <view wx:for="{{presets}}" wx:key="key" class="ae-chip sx-pressable" hover-class="sx-press" data-key="{{item.key}}" bindtap="onFieldAdd">{{item.text}}</view>
+      </view>
+      <picker wx:if="{{copyNames.length}}" mode="selector" range="{{copyNames}}" bindchange="onFieldCopy">
+        <view class="ae-mini ae-ff__copy">{{copy.formCopy}}</view>
+      </picker>
+      <view wx:else class="ae-mini ae-ff__copy" bindtap="onFieldCopyEmpty">{{copy.formCopy}}</view>
+    </view>
+
     <!-- 头图和介绍 -->
     <view class="ae-card">
       <view class="ae-card__title">{{copy.groups.more}}</view>

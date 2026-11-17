@@ -81,6 +81,8 @@
 /* 已设提醒、已报名：换成灰色时弹一下 */
 .ed-btn--done { border-color: #F5F5F5; background: #F5F5F5; color: #5E6170; animation: sxPop .3s ease-out; }
 .ed-btn--primary { flex: 1.4; background: #C2E541; font-weight: 900; }
+/* 主按钮报过名、报不了时也换成灰色（上面的 --done 写在前面，会被主按钮的黄绿底盖掉） */
+.ed-btn--primary.ed-btn--done { background: #F5F5F5; }
 .ed-btn__icon { display: block; width: 38rpx; height: 38rpx; }
 
 .ed-status { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; padding: 23rpx; border-radius: 19rpx; background: #F5F5F5; color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
@@ -88,3 +90,23 @@
 .ed-status__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }
 .ed-state-head { height: calc(123rpx + var(--sx-safe-top)); }
 .ed-state-skeleton { width: 100%; height: 300rpx; border-radius: 19rpx; }
+
+/* 现场互动的入口（设计稿里没有）：深蓝圆角条，黄绿斜切标签同头图上的标签 */
+.ed-live { display: flex; align-items: center; gap: 23rpx; margin-top: 23rpx; padding: 27rpx 31rpx; border-radius: 27rpx; background: #010439; color: #FFFFFF; }
+.ed-live__text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12rpx; }
+.ed-live__tag { display: inline-block; padding: 4rpx 23rpx; background: #C2E541; color: #010439; font-size: 21rpx; line-height: 31rpx; font-weight: 700; }
+.ed-live__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; }
+.ed-live__btn { flex-shrink: 0; display: flex; align-items: center; height: 77rpx; padding: 0 31rpx; border-radius: 38rpx; background: #C2E541; color: #010439; font-size: 25rpx; font-weight: 900; }
+
+/* 报名表（设计稿里没有）：同报名须知的灰底卡片，没填齐时按钮换成黄绿 */
+.ed-form { display: flex; align-items: center; gap: 23rpx; margin-top: 38rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.ed-form__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.ed-form__title { font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.ed-form__body { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.ed-form__body--todo { color: #061A70; font-weight: 700; }
+.ed-form__btn {
+  flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box;
+  height: 77rpx; padding: 0 31rpx; border-radius: 38rpx; border: 3rpx solid #010439;
+  color: #010439; font-size: 25rpx; font-weight: 700;
+}
+.ed-form__btn--todo { border-color: #C2E541; background: #C2E541; font-weight: 900; }

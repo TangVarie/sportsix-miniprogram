@@ -33,3 +33,12 @@
   flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 69rpx; padding: 0 31rpx; border-radius: 35rpx;
   background: #FFFFFF; border: 1px solid #C9CEE8; font-size: 25rpx; font-weight: 700; color: #010439;
 }
+
+/* 报名表的回答：点开后一项一行，标题在左、内容在右 */
+.as-form { margin-top: 15rpx; padding-top: 15rpx; border-top: 1px solid #E6E6E7; }
+.as-form__toggle { display: flex; align-items: center; gap: 15rpx; min-height: 62rpx; font-size: 25rpx; font-weight: 700; color: #061A70; }
+.as-form__missing { padding: 2rpx 15rpx; border-radius: 19rpx; background: #C2E541; color: #010439; font-size: 21rpx; line-height: 31rpx; }
+.as-form__list { display: flex; flex-direction: column; gap: 8rpx; margin-top: 8rpx; }
+.as-form__row { display: flex; gap: 19rpx; font-size: 25rpx; line-height: 38rpx; }
+.as-form__k { flex-shrink: 0; width: 200rpx; color: #5E6170; }
+.as-form__v { flex: 1; min-width: 0; color: #010439; font-weight: 700; word-break: break-all; }

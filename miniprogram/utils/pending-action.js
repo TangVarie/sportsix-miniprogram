@@ -2,8 +2,14 @@
 let pending = null;
 const TTL = 30 * 60 * 1000;
 
+/** 没登录时点了报名：加入完回到这场活动，由用户再点一次确认 */
 function setSignup(eventId) {
   pending = eventId ? { type: 'signup', eventId: String(eventId), createdAt: Date.now() } : null;
+}
+
+/** 只对会员开放的现场互动：加入完回到这个互动 */
+function setInteract(id) {
+  pending = id ? { type: 'interact', id: String(id), createdAt: Date.now() } : null;
 }
 
 function take() {
@@ -14,4 +20,4 @@ function take() {
 
 function clear() { pending = null; }
 
-module.exports = { setSignup, take, clear };
+module.exports = { setSignup, setInteract, take, clear };

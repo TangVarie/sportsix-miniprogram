@@ -151,6 +151,83 @@ function uploadCover(tempPath) {
   });
 }
 
+/* ---------- 现场互动 ---------- */
+
+/** 全部互动（删掉的不列），新改的在前 */
+function listInteractions() {
+  return cloud.call('adminInteractions').then((d) => d.interactions || []);
+}
+/** 新建（id 为空）或修改。修改要带读到时的 version，被别人改过了 reject { code: 'conflict' } */
+function saveInteraction(id, interaction, version) {
+  return cloud.call('adminSaveInteraction', { id: id || '', interaction: interaction, version: version }).then((d) => d.interaction);
+}
+/** 打开（on）或关掉（off） */
+function setInteractionStatus(id, status, version) {
+  return cloud.call('adminSetInteractionStatus', { id: id, status: status, version: version }).then((d) => d.interaction);
+}
+function deleteInteraction(id) {
+  return cloud.call('adminDeleteInteraction', { id: id });
+}
+/** 中奖名单：{ interaction, draws, wins: [{ id, prizeName, code, redeemed, at, memberNo, nickname, phone }] } */
+function draws(id) {
+  return cloud.call('adminDraws', { id: id });
+}
+/** 核销（redeemed 为 true）或撤回核销 */
+function redeem(drawId, redeemed) {
+  return cloud.call('adminRedeem', { id: drawId, redeemed: redeemed !== false });
+}
+/** 互动的小程序码：{ fileID, url }。码打开的是现在这个小程序所在的版本（开发版、体验版、正式版） */
+function interactionCode(id) {
+  let envVersion = 'release';
+  try { envVersion = wx.getAccountInfoSync().miniProgram.envVersion || 'release'; } catch (e) { /* 取不到按正式版 */ }
+  return cloud.call('adminInteractionCode', { id: id, envVersion: envVersion });
+}
+
+/** 和云端一致的互动表单检查，先在本机拦一下，云端还会再查 */
+function interactionError(x) {
+  if (!x.kind) return 'bad_kind';
+  if (!String(x.title || '').trim()) return 'missing_title';
+  if (x.audience === 'signed' && !x.eventId) return 'missing_event';
+  if (x.kind === 'wheel') {
+    if (!x.prizes.length) return 'missing_prizes';
+    if (x.prizes.length > 8) return 'too_many_prizes';
+    let sum = 0;
+    for (const p of x.prizes) {
+      if (!String(p.name || '').trim()) return 'missing_prize_name';
+      if (!Number.isInteger(p.total) || p.total < 0 || p.total > 100000) return 'bad_prize_total';
+      if (!isFinite(p.chance) || p.chance < 0 || p.chance > 100 || Math.abs(Math.round(p.chance * 100) - p.chance * 100) > 1e-6) return 'bad_chance';
+      sum += Math.round(p.chance * 100);
+    }
+    if (sum > 10000) return 'bad_chance';
+    if (!Number.isInteger(x.tries) || x.tries < 1 || x.tries > 20) return 'bad_tries';
+  } else if (x.kind === 'web') {
+    if (!/^https:\/\/[^\s/]+\.[^\s]+$/.test(String(x.url || '').trim())) return 'bad_url';
+  } else if (x.shortLink) {
+    if (String(x.shortLink).trim().indexOf('#小程序://') !== 0) return 'bad_mini';
+  } else if (!/^wx[0-9a-f]{16}$/.test(String(x.appId || '').trim())) return 'bad_mini';
+  return '';
+}
+
+/** 报名表的检查，和云端 formData 一致 */
+function formError(fields) {
+  if (fields.length > 20) return 'form_too_long';
+  for (const f of fields) {
+    if (!String(f.label || '').trim()) return 'missing_field_label';
+    if (f.kind === 'single' || f.kind === 'multi') {
+      const options = [];
+      (f.options || []).forEach((o) => { const v = String(o).trim(); if (v && options.indexOf(v) < 0) options.push(v); });
+      if (options.length < 2) return 'missing_options';
+      if (options.length > 20) return 'too_many_options';
+    }
+  }
+  return '';
+}
+
+/** 报名表、奖品新加一项时的 id：之后不再变，云端按它对上原来的那一项 */
+function newFieldId(prefix) {
+  return (prefix || 'f') + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
 /** 接口报错的 code → 给人看的话 */
 function errorText(e) {
   return content.errors[e && e.code] || content.errors.network;
@@ -171,4 +248,5 @@ function fromPicker(date, time, defaultTime) {
   return new Date(p[0], p[1] - 1, p[2], t[0], t[1]).getTime();
 }
 
-module.exports = { listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, getEventDraft, setEventDraft, clearEventDraft, clearEventDraftIf, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };
+module.exports = { listInteractions, saveInteraction, setInteractionStatus, deleteInteraction, draws, redeem, interactionCode, interactionError, formError, newFieldId,
+  listEvents, eventsOverview, notifyEvent, signups, cancelSignup, cancelEvent, listPast, savePast, deletePast, saveEvent, setEventStatus, getNotice, saveNotice, findMember, adjustPoints, newOperationId, eventError, watchUnsaved, confirmDiscard, getEventDraft, setEventDraft, clearEventDraft, clearEventDraftIf, memberStats, members, webCode, uploadCover, errorText, toPicker, fromPicker };

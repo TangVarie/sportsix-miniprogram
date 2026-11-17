@@ -54,3 +54,18 @@
 /* 恢复了上次没填完的内容时，表单最上面的一行提示 */
 .ae-draft { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; margin-top: 23rpx; }
 .ae-draft__text { margin-top: 0; }
+
+/* 报名表：每一项一块，加项的模块排成一片胶囊 */
+.ae-hint--top { margin-top: 0; margin-bottom: 8rpx; }
+.ae-ff { margin-top: 23rpx; padding-top: 23rpx; border-top: 1px solid #E6E6E7; }
+.ae-ff__head { display: flex; align-items: center; justify-content: space-between; gap: 19rpx; }
+.ae-ff__kind { font-size: 23rpx; line-height: 35rpx; font-weight: 700; color: #5E6170; }
+.ae-ff__req { display: flex; align-items: center; gap: 12rpx; min-height: 62rpx; font-size: 25rpx; color: #010439; }
+.ae-ff__box { flex-shrink: 0; box-sizing: border-box; width: 31rpx; height: 31rpx; border-radius: 6rpx; border: 2rpx solid #C9CEE8; background: #FFFFFF; }
+.ae-ff__options { height: 220rpx; }
+.ae-ff__btns { display: flex; justify-content: flex-end; gap: 31rpx; margin-top: 8rpx; }
+.ae-ff__btn { min-height: 62rpx; display: flex; align-items: center; font-size: 25rpx; color: #061A70; }
+.ae-ff__add-label { margin-top: 31rpx; }
+.ae-ff__copy { margin-top: 23rpx; }
+.ae-chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.ae-chip { display: flex; align-items: center; height: 69rpx; padding: 0 23rpx; border-radius: 19rpx; background: #FFFFFF; font-size: 25rpx; font-weight: 700; color: #010439; }

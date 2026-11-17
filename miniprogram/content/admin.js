@@ -9,6 +9,10 @@ module.exports = {
       "text": "活动"
     },
     {
+      "key": "interact",
+      "text": "互动"
+    },
+    {
       "key": "past",
       "text": "往期"
     },
@@ -83,7 +87,19 @@ module.exports = {
     "cancelEventDone": "活动已取消",
     "cancelling": "正在处理，还剩 [人数] 人",
     "loadFailed": "没有读到当前内容，请重试",
-    "retry": "重新读取"
+    "retry": "重新读取",
+    "formTitle": "报名表",
+    "formMissing": "报名表还没填齐",
+    "formEmptyValue": "—",
+    "formRemoved": "（已删掉的项）",
+    "showForm": "看报名表",
+    "hideForm": "收起",
+    "copyHint": "复制出来的名单每人一行，各项用制表符隔开，可以直接贴进表格",
+    "copyHeader": [
+      "昵称",
+      "会员编号",
+      "手机号"
+    ]
   },
   "past": {
     "hint": "活动页「往期」里的赞助赛事。保存后小程序里马上能看到，不用重新发版。",
@@ -123,7 +139,8 @@ module.exports = {
     "groups": {
       "basic": "基本信息",
       "signup": "报名",
-      "more": "头图和介绍"
+      "more": "头图和介绍",
+      "form": "报名表"
     },
     "labels": {
       "type": "类型",
@@ -141,7 +158,8 @@ module.exports = {
       "drawAt": "开奖时间",
       "cover": "头图",
       "intro": "介绍",
-      "status": "上架"
+      "status": "上架",
+      "form": "报名表"
     },
     "placeholders": {
       "title": "活动名称",
@@ -160,7 +178,8 @@ module.exports = {
       "contact": "显示在活动详情里。报名后会员不能自己取消，要找这里联系你们。",
       "memberSignupStart": "填了，活动卡片上显示「会员优先报名」，提醒也按这个时间发。",
       "status": "打开后保存，小程序里就能看到。",
-      "cover": "不选就用默认配图。"
+      "cover": "不选就用默认配图。",
+      "form": "有报名表的活动，用户点报名先填表，提交才算报上名，报名后到活动开始前可以改。已经有人报名后再加必填项，已报名的人会在活动详情里看到「去补填」。"
     },
     "clear": "清除",
     "chooseCover": "选择图片",
@@ -173,7 +192,119 @@ module.exports = {
     "retry": "重新读取",
     "conflict": "活动已被其他管理员修改。你的填写已保留，重新读取后再编辑。",
     "draftRestored": "已恢复上次没填完的内容",
-    "draftClear": "清空重填"
+    "draftClear": "清空重填",
+    "formEmpty": "没有报名表，用户点报名直接报上",
+    "formAdd": "添加一项",
+    "formCopy": "沿用别的活动的报名表",
+    "formCopyEmpty": "别的活动都没有报名表",
+    "formCopied": "已沿用「[名称]」的报名表",
+    "formField": {
+      "label": "标题",
+      "required": "必填",
+      "options": "选项，一行一个",
+      "optionsPlaceholder": "比如\n男\n女",
+      "up": "上移",
+      "down": "下移",
+      "remove": "删除"
+    },
+    "formKinds": {
+      "text": "一行字",
+      "textarea": "多行字",
+      "phone": "电话",
+      "idno": "证件号码",
+      "date": "日期",
+      "single": "单选",
+      "multi": "多选"
+    },
+    "formPresets": [
+      {
+        "key": "name",
+        "text": "姓名",
+        "kind": "text",
+        "label": "姓名"
+      },
+      {
+        "key": "phone",
+        "text": "手机号",
+        "kind": "phone",
+        "label": "手机号"
+      },
+      {
+        "key": "gender",
+        "text": "性别",
+        "kind": "single",
+        "label": "性别",
+        "options": [
+          "男",
+          "女"
+        ]
+      },
+      {
+        "key": "birth",
+        "text": "出生日期",
+        "kind": "date",
+        "label": "出生日期"
+      },
+      {
+        "key": "idno",
+        "text": "证件号码",
+        "kind": "idno",
+        "label": "证件号码"
+      },
+      {
+        "key": "size",
+        "text": "服装尺码",
+        "kind": "single",
+        "label": "服装尺码",
+        "options": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "XXL"
+        ]
+      },
+      {
+        "key": "emergencyName",
+        "text": "紧急联系人",
+        "kind": "text",
+        "label": "紧急联系人"
+      },
+      {
+        "key": "emergencyPhone",
+        "text": "紧急联系电话",
+        "kind": "phone",
+        "label": "紧急联系电话"
+      },
+      {
+        "key": "single",
+        "text": "单选题",
+        "kind": "single",
+        "label": "",
+        "options": []
+      },
+      {
+        "key": "multi",
+        "text": "多选题",
+        "kind": "multi",
+        "label": "",
+        "options": []
+      },
+      {
+        "key": "text",
+        "text": "填空",
+        "kind": "text",
+        "label": ""
+      },
+      {
+        "key": "textarea",
+        "text": "多行文字",
+        "kind": "textarea",
+        "label": ""
+      }
+    ],
+    "formSensitive": "证件号码属于敏感个人信息，只在确实需要时（比如办理保险）加这一项。"
   },
   "notice": {
     "labels": {
@@ -264,7 +395,25 @@ module.exports = {
     "bad_quota": "名额请填正整数，留空表示不限",
     "conflict": "活动已被修改，请重新读取后再编辑",
     "operation_conflict": "这笔调整的内容已变更，请重新填写",
-    "load_first": "当前内容还没读到，请稍后再试"
+    "load_first": "当前内容还没读到，请稍后再试",
+    "bad_form": "报名表有一项不对，请检查",
+    "form_too_long": "报名表最多 20 项",
+    "missing_field_label": "报名表的每一项都要写标题",
+    "missing_options": "单选和多选至少要有两个选项",
+    "too_many_options": "每项最多 20 个选项",
+    "bad_kind": "请选择类型",
+    "missing_event": "只给报名的人参与时，要选关联活动；关联的活动要存在",
+    "missing_prizes": "请添加奖品",
+    "too_many_prizes": "最多 8 个奖品",
+    "missing_prize_name": "每个奖品都要写名称",
+    "bad_prize_total": "奖品数量填 0 到 100000 的整数",
+    "bad_chance": "中奖机会填 0 到 100，最多两位小数，加起来不超过 100",
+    "bad_tries": "每人能抽几次填 1 到 20",
+    "bad_url": "网页地址要以 https:// 开头",
+    "bad_mini": "请填 wx 开头的 AppID，或者 #小程序:// 开头的链接",
+    "prize_below_won": "奖品数量不能比已经抽中的少",
+    "code_failed": "小程序码没生成出来。正式版要等带互动页面的版本发布后才能生成",
+    "closed": "这个互动已经关掉了"
   },
   "web": {
     "title": "在电脑上用后台",
@@ -288,5 +437,109 @@ module.exports = {
     "discardTitle": "放弃未保存的修改",
     "discard": "放弃修改",
     "keep": "继续编辑"
+  },
+  "interact": {
+    "hint": "活动现场的互动。新建后是关着的，小程序里看不到；点「打开」后，活动页顶上和关联活动的详情里出现入口，也可以生成小程序码打印出来让现场的人扫。里面的内容随时可以换，不用发版。",
+    "create": "新建互动",
+    "empty": "还没有互动",
+    "edit": "编辑",
+    "open": "打开",
+    "close": "关掉",
+    "wins": "中奖名单",
+    "code": "小程序码",
+    "delete": "删除",
+    "status": {
+      "on": "进行中",
+      "off": "已关"
+    },
+    "kinds": {
+      "wheel": "大转盘",
+      "web": "网页",
+      "mini": "其他小程序"
+    },
+    "audiences": {
+      "all": "所有人",
+      "member": "会员",
+      "signed": "报了关联活动的会员"
+    },
+    "stats": "抽了 [次数] 次，中奖 [中奖] 人，已领 [已领] 人",
+    "opened": "已打开，小程序里有入口了",
+    "closed": "已关掉，入口不再显示",
+    "deleteTitle": "删除互动",
+    "deleteConfirm": "删掉「[名称]」。入口会消失，扫码也进不来，抽奖和领奖的记录还留着。",
+    "deleted": "已删除",
+    "codeTitle": "小程序码",
+    "codeHint": "扫码直接进这个互动。互动关着的时候扫进来，看到的是「现在没有开放」。",
+    "codeSave": "保存到相册",
+    "codeSaved": "已保存到相册",
+    "codeSaveFailed": "没保存上，请在设置里允许保存到相册",
+    "codeLoading": "正在生成",
+    "form": {
+      "titleNew": "新建互动",
+      "titleEdit": "编辑互动",
+      "labels": {
+        "kind": "类型",
+        "title": "名称",
+        "note": "说明",
+        "event": "关联活动",
+        "audience": "谁能参与",
+        "prizes": "奖品",
+        "tries": "每人能抽几次",
+        "url": "网页地址",
+        "appId": "AppID",
+        "path": "页面路径",
+        "shortLink": "小程序链接",
+        "prizeName": "奖品名称",
+        "prizeTotal": "数量",
+        "prizeChance": "中奖机会 %"
+      },
+      "placeholders": {
+        "title": "比如 幸运大转盘",
+        "note": "显示在互动页面上，比如 领奖地点和时间",
+        "url": "https:// 开头",
+        "appId": "wx 开头的 18 位",
+        "path": "比如 pages/index/index，可以不填",
+        "shortLink": "#小程序:// 开头，填了就不用填 AppID",
+        "prizeName": "比如 运动毛巾",
+        "prizeTotal": "个数",
+        "prizeChance": "比如 10"
+      },
+      "noEvent": "不关联",
+      "hints": {
+        "event": "关联后，这场活动的详情里也有入口。",
+        "audience": "「会员」「报了关联活动的会员」只对大转盘在云端核对；网页和其他小程序只在打开前提示。",
+        "prizes": "每个奖品单独设机会，加起来不超过 100%，剩下的是谢谢参与。某个奖品发完后，抽中它的机会变成谢谢参与。",
+        "url": "网页的域名要先加进小程序后台的业务域名，否则打不开。",
+        "mini": "填小程序链接，或者填 AppID 加页面路径。"
+      },
+      "chanceSum": "加起来 [合计]%，谢谢参与 [剩下]%",
+      "addPrize": "添加奖品",
+      "removePrize": "删除",
+      "wonText": "已抽中 [个数]",
+      "save": "保存",
+      "saved": "已保存",
+      "conflict": "互动已被其他管理员修改。你的填写已保留，重新读取后再编辑。"
+    },
+    "draws": {
+      "title": "中奖名单",
+      "count": "抽了 [次数] 次，中奖 [中奖] 人，已领 [已领] 人",
+      "empty": "还没有人中奖",
+      "search": "输入领奖码",
+      "noMatch": "没有这个领奖码",
+      "redeem": "核销",
+      "undo": "撤回",
+      "redeemed": "已领取",
+      "unredeemed": "待领取",
+      "redeemTitle": "核销领奖码",
+      "redeemConfirm": "[领奖码] · [奖品]，确认已经发给对方",
+      "redeemDone": "已核销",
+      "already": "这个领奖码已经核销过",
+      "undoTitle": "撤回核销",
+      "undoConfirm": "把 [领奖码] 改回待领取",
+      "notMember": "不是会员",
+      "copy": "复制名单",
+      "copied": "名单已复制"
+    },
+    "codeClose": "关闭"
   }
 };
