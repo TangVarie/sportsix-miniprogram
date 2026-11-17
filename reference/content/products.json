@@ -11,8 +11,8 @@
     {
       "stage": "运动中", "stageEn": "DURING",
       "products": [
-        { "id": "energy-gel", "name": "能量胶BASIC", "role": "赛中补给 · 青葡萄味 / 桃子味", "fact": "45mg 咖啡因 · 120 千卡", "image": "assets/product/energy-gel-grape.png", "detail": true },
-        { "id": "energy-gel-pro", "name": "能量胶PRO", "role": "赛中补给 · 菠萝味", "fact": "0 咖啡因 · 85 千卡", "image": "assets/product/energy-gel-pro-pineapple.png", "detail": true }
+        { "id": "energy-gel", "name": "能量胶BASIC", "role": "赛中补给 · 青葡萄味 / 桃子味", "fact": "45mg 咖啡因 · 120 千卡", "image": "assets/product/energy-gel-grape-v2.png", "detail": true },
+        { "id": "energy-gel-pro", "name": "能量胶PRO", "role": "赛中补给 · 菠萝味", "fact": "0 咖啡因 · 85 千卡", "image": "assets/product/energy-gel-pro-pineapple-v2.png", "detail": true }
       ]
     },
     {
@@ -26,8 +26,8 @@
     "_note": "产品速选对比，两款详情页底部共用，当前产品一列加粗。",
     "eyebrow": "QUICK PICK", "title": "产品速选对比",
     "columns": [
-      { "id": "energy-gel", "name": "能量胶BASIC", "image": "assets/product/energy-gel-grape.png" },
-      { "id": "energy-gel-pro", "name": "能量胶PRO", "image": "assets/product/energy-gel-pro-pineapple.png" }
+      { "id": "energy-gel", "name": "能量胶BASIC", "image": "assets/product/energy-gel-grape-v2.png" },
+      { "id": "energy-gel-pro", "name": "能量胶PRO", "image": "assets/product/energy-gel-pro-pineapple-v2.png" }
     ],
     "rows": [
       {"label": "一句话定位", "energyGel": "高能续航 + 天然提神", "energyGelPro": "极速排空 + 护胃抗损"},
@@ -46,8 +46,8 @@
     "tag": "运动中 · 赛中补给",
     "headline": ["长距离不撞墙", "SPORTSIX 双碳能量胶"],
     "flavors": [
-      { "key": "grape", "label": "青葡萄味", "image": "assets/product/energy-gel-grape.png" },
-      { "key": "peach", "label": "桃子味", "image": "assets/product/energy-gel-peach.png" }
+      { "key": "grape", "label": "青葡萄味", "image": "assets/product/energy-gel-grape-v2.png" },
+      { "key": "peach", "label": "桃子味", "image": "assets/product/energy-gel-peach-v2.png" }
     ],
     "positioning": "高能续航 + 天然提神",
     "keyPoints": {
@@ -164,7 +164,7 @@
     "headline": ["重新定义“零负担”能量胶", "长跑不胀肚，夜跑不失眠"],
     "chips": ["缓释", "超低渗", "HBCD"],
     "flavor": "菠萝味",
-    "image": "assets/product/energy-gel-pro-pineapple.png",
+    "image": "assets/product/energy-gel-pro-pineapple-v2.png",
     "positioning": "极速排空 + 护胃抗损",
     "keyPoints": {
       "eyebrow": "KEY POINTS",

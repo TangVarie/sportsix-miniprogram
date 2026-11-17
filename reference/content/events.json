@@ -22,7 +22,7 @@
     {
       "style": "lime", "type": "试用装", "tag": "会员专享 · 试用装",
       "title": "[试用装活动名称]", "window": "[申领时间]", "quota": "[名额]",
-      "image": "assets/product/energy-gel-pro-pineapple.png", "action": "申领"
+      "image": "assets/product/energy-gel-pro-pineapple-v2.png", "action": "申领"
     },
     {
       "style": "row", "type": "抽奖", "title": "[抽奖活动名称]", "drawAt": "[开奖时间]", "icon": "ticket"

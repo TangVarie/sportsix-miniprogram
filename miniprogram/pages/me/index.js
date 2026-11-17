@@ -166,8 +166,8 @@ Page({
     slogan: assetUrl('assets/logo/win-your-day-white.svg'),
     joinArc: assetUrl('assets/graphics/join-arc.svg'),
     cardArc: assetUrl('assets/graphics/member-card-arc.svg'),
-    packGel: assetUrl('assets/product/energy-gel-grape.png'),
-    packPro: assetUrl('assets/product/energy-gel-pro-pineapple.png'),
+    packGel: assetUrl('assets/product/energy-gel-grape-v2.png'),
+    packPro: assetUrl('assets/product/energy-gel-pro-pineapple-v2.png'),
     agreed: false,
     // 改昵称的弹层
     nameEditing: false,
