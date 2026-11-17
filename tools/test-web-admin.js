@@ -528,6 +528,19 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await expectToast('已改回待领取', '撤回核销');
     ok(undoAsk.includes('把 123456 改回待领取'), '撤回前问一句');
     eq(cloud.col('draws').find((d) => d.code === '123456').redeemed, false, '云端改回待领取');
+    // 中奖的人超过名单上限：说明没列全，输入完整的领奖码到云端查
+    for (let i = 0; i < 2000; i++) {
+      cloud.col('draws').push({ _id: wheelId + '_bulk' + i + '_1', interactionId: wheelId, openid: 'bulk' + i, n: 1, win: true, prizeId: prizes[0].id, prizeName: '运动毛巾',
+        code: String(300000 + i), redeemed: false, createdAt: new Date(now - 100000 + i) });
+    }
+    await page.click('#draws-close');
+    await ixRow().getByText('中奖名单').click();
+    await page.waitForFunction(() => document.getElementById('draws-count').textContent.includes('只列出先中奖的 2000 人'));
+    ok(!(await page.locator('#draws-rows tr[data-code="301999"]').count()), '最后中奖的人不在名单里');
+    await page.fill('#draws-search', '301999');
+    await page.waitForFunction(() => document.querySelectorAll('#draws-rows tr[data-code="301999"]').length === 1);
+    ok(true, '输入完整的领奖码，到云端查到名单外的人');
+    await page.fill('#draws-search', '');
     await shot('draws');
     const download3 = page.waitForEvent('download');
     await page.click('#draws-export');

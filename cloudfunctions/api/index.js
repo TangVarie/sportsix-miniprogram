@@ -29,6 +29,7 @@
  *   interactions 现场互动  大转盘、网页、其他小程序；平时关着，运营打开后小程序里才有入口。第一次用到时云函数自己建
  *   draws        抽奖记录  每抽一次一条，中了的带领奖码；第一次用到时云函数自己建
  *   draw_users   抽奖次数  每人在每个互动里抽了几次；第一次用到时云函数自己建
+ *   draw_codes   领奖码    每个中奖的领奖码占一条（_id 是「互动id_领奖码」），保证同一个互动里不重复；第一次用到时云函数自己建
  *
  * 报名表存在活动的 form 上，填好的内容存在报名记录的 answers 上（见「报名表」一节）。
  */
@@ -698,6 +699,7 @@ const PLAN_KEYS = { sport: 'string', scene: 'string', start: 'string', minutes: 
  *
  * draws       每抽一次一条：_id 是「互动id_openid_第几次」，中了的带 6 位领奖码，现场核销后 redeemed 为 true
  * draw_users  每人在每个互动里抽了几次：_id 是「互动id_openid」
+ * draw_codes  已经发出去的领奖码：_id 是「互动id_领奖码」，同一个互动里领奖码不重复
  */
 const INTERACT_KINDS = ['wheel', 'web', 'mini'];
 /** 谁能参与：所有人、会员、报了关联活动的会员 */
@@ -716,7 +718,7 @@ const shortId = () => {
   return s;
 };
 const randomBelow = (n) => (crypto.randomInt ? crypto.randomInt(n) : crypto.randomBytes(4).readUInt32BE(0) % n);
-/** 6 位领奖码，第一位是 1 到 9（252 以上的字节丢掉，九个数字出现的机会一样） */
+/** 6 位领奖码，第一位是 1 到 9（252 以上的字节丢掉，九个数字出现的机会一样）。导出的表格用 Excel 打开时不会把开头的 0 吞掉 */
 function prizeCode() {
   for (;;) {
     const b = crypto.randomBytes(1)[0];
@@ -1017,8 +1019,11 @@ const actions = {
     if (e.cancelled === true || (ms(e.date) && Date.now() >= ms(e.date))) throw fail('form_closed');
     const fields = formOf(e);
     if (!fields.length) throw fail('no_form');
-    const { answers, missing } = cleanAnswers(fields, event.answers);
-    if (missing.length) throw fail('form_incomplete');
+    const cleaned = cleanAnswers(fields, event.answers);
+    if (cleaned.missing.length) throw fail('form_incomplete');
+    // 运营后来删掉的项：之前填的内容留着（名单上照样列出来），只换现在报名表上有的项
+    const kept = (Array.isArray(s.answers) ? s.answers : []).filter((a) => !fields.some((f) => f.id === a.id));
+    const answers = cleaned.answers.concat(kept);
     const res = await db.collection('signups').where({ _id: id, token: s.token }).update({ data: { answers: answers, answeredAt: db.serverDate() } });
     if (!res.stats.updated) throw fail('not_signed');
     return { answers: answerMap(answers), complete: true };
@@ -1053,6 +1058,7 @@ const actions = {
     if (blocked) throw fail(blocked);
     await ensureCollection('draws');
     await ensureCollection('draw_users');
+    await ensureCollection('draw_codes');
     const userId = id + '_' + openid;
     const token = randomId();
     let refused = '';
@@ -1061,6 +1067,11 @@ const actions = {
       refused = ''; result = null;
       const cur = await transactionDoc(t, 'interactions', id);
       if (!cur || cur.deleted === true || cur.status !== 'on' || cur.kind !== 'wheel') { refused = 'closed'; return; }
+      // 谁能参与在事务里按现在的设置再核对一次：运营刚收紧了范围、他的报名刚被取消，都不能再抽
+      if (cur.audience === 'member' || cur.audience === 'signed') {
+        if (!(await transactionDoc(t, 'members', openid))) { refused = 'not_member'; return; }
+        if (cur.audience === 'signed' && !(cur.eventId && await transactionDoc(t, 'signups', openid + '_' + cur.eventId))) { refused = 'not_signed'; return; }
+      }
       const user = await transactionDoc(t, 'draw_users', userId);
       const used = user ? user.count || 0 : 0;
       if (used >= (cur.tries || 1)) { refused = 'no_tries'; return; }
@@ -1081,8 +1092,18 @@ const actions = {
       }
       if (user) await t.collection('draw_users').doc(userId).update({ data: { count: n, updatedAt: db.serverDate() } });
       else await t.collection('draw_users').doc(userId).set({ data: { interactionId: id, openid: openid, count: n, createdAt: db.serverDate(), updatedAt: db.serverDate() } });
-      // 领奖码 6 位，第一位不是 0：导出的表格用 Excel 打开时不会把开头的 0 吞掉
-      result = { n: n, win: !!hit, prizeId: hit ? hit.id : '', prizeName: hit ? hit.name : '', code: hit ? prizeCode() : '' };
+      // 领奖码在这个互动里不重复：每个码在 draw_codes 里占一条（_id 是「互动id_领奖码」），撞上已有的就换一个。
+      // 占码和这次抽奖在同一个事务里，两个人同时抽到同一个码时只有一个能写成
+      let code = '';
+      if (hit) {
+        for (let i = 0; i < 8 && !code; i++) {
+          const c = prizeCode();
+          if (!(await transactionDoc(t, 'draw_codes', id + '_' + c))) code = c;
+        }
+        if (!code) throw fail('server_error');
+        await t.collection('draw_codes').doc(id + '_' + code).set({ data: { interactionId: id, code: code, drawId: userId + '_' + n, createdAt: db.serverDate() } });
+      }
+      result = { n: n, win: !!hit, prizeId: hit ? hit.id : '', prizeName: hit ? hit.name : '', code: code };
       await t.collection('draws').doc(userId + '_' + n).set({ data: {
         interactionId: id, openid: openid, n: n, win: result.win, prizeId: result.prizeId, prizeName: result.prizeName, code: result.code,
         redeemed: false, token: token, createdAt: db.serverDate()
@@ -1354,9 +1375,13 @@ const actions = {
     const x = await findInteraction(String(event.id || ''));
     if (!x) throw fail('not_found');
     await ensureCollection('draws');
+    // code：按领奖码直接查（中奖的人超过名单上限时，后面的人也能找到、核销）
+    const code = typeof event.code === 'string' && /^\d{6}$/.test(event.code) ? event.code : '';
+    const cond = { interactionId: x._id, win: true };
+    if (code) cond.code = code;
     const all = [];
     for (let page = 0; page < DRAWS_PAGES; page++) {
-      const res = await db.collection('draws').where({ interactionId: x._id, win: true }).skip(page * 100).limit(100).get();
+      const res = await db.collection('draws').where(cond).orderBy('createdAt', 'asc').skip(page * 100).limit(100).get();
       all.push(...res.data);
       if (res.data.length < 100) break;
     }
@@ -1367,10 +1392,17 @@ const actions = {
       const res = await db.collection('members').where({ _id: _.in(ids.slice(i, i + 100)) }).limit(100).get();
       res.data.forEach((m) => { members[m._id] = m; });
     }
-    const total = (await db.collection('draws').where({ interactionId: x._id }).count()).total;
+    const count = async (c) => (await db.collection('draws').where(Object.assign({ interactionId: x._id }, c)).count()).total;
+    const total = await count({});
+    const winsTotal = await count({ win: true });
+    const redeemed = await count({ win: true, redeemed: true });
     return {
-      interaction: adminInteractionView(x, { draws: total, wins: all.length, redeemed: all.filter((d) => d.redeemed === true).length }),
+      interaction: adminInteractionView(x, { draws: total, wins: winsTotal, redeemed: redeemed }),
       draws: total,
+      // 一共多少人中奖；名单最多给 DRAWS_PAGES × 100 人，超出时 partial 为 true，页面上说明并让人按完整的领奖码查
+      winsTotal: winsTotal,
+      partial: !code && winsTotal > all.length,
+      code: code,
       wins: all.map((d) => {
         const m = members[d.openid] || {};
         return { id: d._id, prizeName: d.prizeName || '', code: d.code || '', redeemed: d.redeemed === true, redeemedAt: ms(d.redeemedAt), at: ms(d.createdAt),

@@ -412,6 +412,18 @@ async function adminToolsFlow() {
   } finally { s.env.wx.showModal = realModal; }
   eq(s.calls.filter((c) => c.action === 'adminRedeem').pop(), { action: 'adminRedeem', id: 'd1', redeemed: true }, '确认后核销');
   eq(dw.data.list[0].redeemed, true, '核销后重读，显示已领取');
+  // 名单没列全：输入完整的领奖码，到云端按码查
+  s.handlers.adminDraws = (data) => (data.code
+    ? { interaction: { id: 'w1', title: '幸运大转盘', redeemed: 1 }, draws: 3000, winsTotal: 2500, partial: false, code: data.code,
+      wins: [{ id: 'd9', prizeName: '毛巾', code: data.code, redeemed: false, at: Date.now(), memberNo: '', nickname: '', phone: '' }] }
+    : { interaction: { id: 'w1', title: '幸运大转盘', redeemed: 1 }, draws: 3000, winsTotal: 2500, partial: true,
+      wins: [{ id: 'd1', prizeName: '帽子', code: '123456', redeemed: true, at: Date.now(), memberNo: '', nickname: '', phone: '' }] });
+  await dw.load();
+  ok(dw.data.partialText.includes('1') && dw.data.countText.includes('2500'), '没列全时说明，人数按云端的总数写');
+  dw.onQuery({ detail: { value: '777777' } });
+  await tick();
+  eq(s.calls.filter((c) => c.action === 'adminDraws').pop().code, '777777', '名单里没有就到云端按码查');
+  eq(dw.data.shown.map((x) => x.code), ['777777'], '查到的显示出来，可以核销');
   dw.onUnload();
 }
 

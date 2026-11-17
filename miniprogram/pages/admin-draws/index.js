@@ -29,6 +29,8 @@ Page({
     common: copy.signups,
     title: '',
     countText: '',
+    partial: false,
+    partialText: '',
     query: '',
     list: [],
     shown: [],
@@ -54,10 +56,14 @@ Page({
       .then((d) => {
         if (mine !== this.seq) return;
         const list = d.wins.map(row);
-        const redeemed = list.filter((x) => x.redeemed).length;
+        const total = d.winsTotal != null ? d.winsTotal : list.length;
+        const redeemed = d.interaction && d.interaction.redeemed != null ? d.interaction.redeemed : list.filter((x) => x.redeemed).length;
         this.setData({
           title: d.interaction.title,
-          countText: c.count.replace('[次数]', d.draws).replace('[中奖]', list.length).replace('[已领]', redeemed),
+          countText: c.count.replace('[次数]', d.draws).replace('[中奖]', total).replace('[已领]', redeemed),
+          // 中奖的人超过名单上限：说明没列全，输入完整的领奖码到云端查
+          partialText: d.partial ? c.partial.replace('[显示]', list.length) : '',
+          partial: !!d.partial,
           list: list, loading: false
         });
         this.filter();
@@ -65,10 +71,30 @@ Page({
       .catch((e) => { if (mine === this.seq) { this.setData({ loading: false, loadFailed: true }); toast(admin.errorText(e)); } });
   },
 
-  /** 按领奖码筛：输入几位就显示码里含这几位的 */
+  /**
+   * 按领奖码筛：输入几位就显示码里含这几位的。
+   * 名单没列全、输入了完整的 6 位码、名单里又没有：到云端按码查，查到的并进名单
+   */
   filter() {
     const q = this.data.query.replace(/\D/g, '');
-    this.setData({ shown: q ? this.data.list.filter((x) => x.code.indexOf(q) >= 0) : this.data.list });
+    const shown = q ? this.data.list.filter((x) => x.code.indexOf(q) >= 0) : this.data.list;
+    this.setData({ shown: shown });
+    if (this.data.partial && /^\d{6}$/.test(q) && !shown.length) this.lookup(q);
+  },
+
+  lookup(code) {
+    const mine = this.seq;
+    admin.draws(this.id, code)
+      .then((d) => {
+        if (mine !== this.seq || this.data.query.replace(/\D/g, '') !== code) return;
+        const have = {};
+        this.data.list.forEach((x) => { have[x.id] = true; });
+        const add = d.wins.map(row).filter((x) => !have[x.id]);
+        if (!add.length) return;
+        this.setData({ list: this.data.list.concat(add) });
+        this.filter();
+      })
+      .catch((e) => toast(admin.errorText(e)));
   },
 
   onQuery(e) {

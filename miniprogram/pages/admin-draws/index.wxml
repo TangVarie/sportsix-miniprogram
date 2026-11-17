@@ -9,6 +9,7 @@
   <view class="dw-body">
     <view class="dw-event">{{title}}</view>
     <view wx:if="{{!loading && !loadFailed}}" class="dw-count">{{countText}}</view>
+    <view wx:if="{{partialText}}" class="dw-count">{{partialText}}</view>
     <view wx:if="{{loadFailed}}" class="dw-empty">{{common.loadFailed}}</view>
     <view wx:if="{{loadFailed}}" class="dw-btn dw-btn--line" bindtap="onRetry">{{common.retry}}</view>
 

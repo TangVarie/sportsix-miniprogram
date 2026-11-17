@@ -24,7 +24,7 @@ function createCloud() {
     beforeTxRead: null, // (集合名, 文档ID) => Promise，事务快照读后暂停，验证与普通写入的冲突
     beforeCommit: null, // () => Promise，事务提交前暂停
     beforeTx: null,    // () => Promise：事务开始之前先等它，用来排出特定的先后顺序
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true, subscription_batches: true, interactions: true, draws: true, draw_users: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true, subscription_batches: true, interactions: true, draws: true, draw_users: true, draw_codes: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;

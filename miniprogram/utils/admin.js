@@ -168,9 +168,12 @@ function setInteractionStatus(id, status, version) {
 function deleteInteraction(id) {
   return cloud.call('adminDeleteInteraction', { id: id });
 }
-/** 中奖名单：{ interaction, draws, wins: [{ id, prizeName, code, redeemed, at, memberNo, nickname, phone }] } */
-function draws(id) {
-  return cloud.call('adminDraws', { id: id });
+/**
+ * 中奖名单：{ interaction, draws, winsTotal, partial, wins: [{ id, prizeName, code, redeemed, at, memberNo, nickname, phone }] }。
+ * 名单最多 2000 人，超出时 partial 为 true；带 code（完整的 6 位领奖码）是直接按码查，后面的人也查得到
+ */
+function draws(id, code) {
+  return cloud.call('adminDraws', code ? { id: id, code: code } : { id: id });
 }
 /** 核销（redeemed 为 true）或撤回核销 */
 function redeem(drawId, redeemed) {

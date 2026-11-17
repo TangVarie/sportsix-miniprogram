@@ -2141,9 +2141,12 @@
     body.textContent = '';
     if (!drawsData) return;
     var wins = drawsData.wins;
-    $('draws-count').textContent = tpl(IX_STATS, { 次数: drawsData.draws, 中奖: wins.length, 已领: wins.filter(function (w) { return w.redeemed; }).length });
+    $('draws-count').textContent = tpl(IX_STATS, { 次数: drawsData.draws, 中奖: drawsData.winsTotal, 已领: drawsData.redeemed }) +
+      (drawsData.partial ? '。中奖的人太多，这里只列出先中奖的 ' + drawsData.listed + ' 人，输入完整的 6 位领奖码可以查到所有人' : '');
     var q = $('draws-search').value.replace(/\s/g, '');
     var rows = q ? wins.filter(function (w) { return w.code.indexOf(q) >= 0; }) : wins;
+    // 名单没列全、输入了完整的码、名单里又没有：到云端按码查
+    if (drawsData.partial && /^\d{6}$/.test(q) && !rows.length) lookupDraw(q);
     rows.forEach(function (w) {
       var tr = el('tr');
       tr.setAttribute('data-code', w.code);
@@ -2174,6 +2177,23 @@
     empty.hidden = rows.length > 0;
     empty.textContent = wins.length ? '没有这个领奖码' : '还没有人中奖';
   }
+  /** 按完整的领奖码到云端查（名单只列出前 2000 人时用），查到的并进名单 */
+  var lookingUp = {};
+  function lookupDraw(code) {
+    if (!drawsOf || lookingUp[code]) return;
+    lookingUp[code] = true;
+    var mine = drawsSeq;
+    call('adminDraws', { id: drawsOf.id, code: code }).then(function (d) {
+      if (mine !== drawsSeq || !drawsData) return;
+      var have = {};
+      drawsData.wins.forEach(function (w) { have[w.id] = true; });
+      var add = (d.wins || []).filter(function (w) { return !have[w.id]; });
+      if (!add.length) return;
+      drawsData.wins = drawsData.wins.concat(add);
+      renderDraws();
+    }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { delete lookingUp[code]; });
+  }
   function loadDraws() {
     if (!drawsOf) return null;
     var mine = ++drawsSeq;
@@ -2181,7 +2201,12 @@
     $('draws-retry').hidden = true;
     return call('adminDraws', { id: drawsOf.id }).then(function (d) {
       if (mine !== drawsSeq) return;
-      drawsData = { draws: d.draws || 0, wins: d.wins || [] };
+      var wins = d.wins || [];
+      drawsData = {
+        draws: d.draws || 0, wins: wins, listed: wins.length, partial: !!d.partial,
+        winsTotal: d.winsTotal != null ? d.winsTotal : wins.length,
+        redeemed: d.interaction && d.interaction.redeemed != null ? d.interaction.redeemed : wins.filter(function (w) { return w.redeemed; }).length
+      };
       $('draws-export').disabled = false;
       renderDraws();
     }).catch(function (e) {
@@ -2215,7 +2240,12 @@
     renderDraws();
     call('adminRedeem', { id: w.id, redeemed: on }).then(function (r) {
       if (drawsData && drawsOf && drawsOf.id === forId) {
-        drawsData.wins.forEach(function (x) { if (x.id === r.id) { x.redeemed = r.redeemed; x.redeemedAt = r.redeemedAt; } });
+        // 「已领」按页面上这一条前后的变化加减（别人刚核销过的，这里也照样加上）
+        drawsData.wins.forEach(function (x) {
+          if (x.id !== r.id) return;
+          if (x.redeemed !== r.redeemed) drawsData.redeemed = Math.max(0, drawsData.redeemed + (r.redeemed ? 1 : -1));
+          x.redeemed = r.redeemed; x.redeemedAt = r.redeemedAt;
+        });
       }
       toast(on ? (r.already ? '这个领奖码已经核销过' : '已核销') : '已改回待领取');
       loadInteractions(); // 列表上的「已领」跟着变

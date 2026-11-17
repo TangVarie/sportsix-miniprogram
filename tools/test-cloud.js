@@ -405,6 +405,11 @@ async function formTests() {
   eq(r.data.form.map((f) => f.id), ['name', 'gender', 'idno', 'birth', 'size', 'tel', 'shirt'], '名单带上现在的报名表');
   eq(r.data.signups.map((s) => s.complete), [false, false], '名单上看得出谁还没填齐');
   eq(r.data.signups[1].answers.find((a) => a.id === 'memo').value, '第一行\n第二行', '删掉的项，之前填的内容还在');
+  // 删掉的项之后，他再改报名表：现在报名表上的项换成新的，删掉的那项之前填的内容还留着
+  r = await as('user-c', 'saveAnswers', { eventId: id, answers: Object.assign({}, good, { name: '陈老师', shirt: 'L' }) });
+  eq(r.data.complete, true, '补填好了');
+  eq(signupDoc('user-c', id).answers.find((a) => a.id === 'memo').value, '第一行\n第二行', '再改报名表，删掉的项之前填的内容不丢');
+  eq(signupDoc('user-c', id).answers.find((a) => a.id === 'name').value, '陈老师', '现在的项换成新填的');
   eq((await as('user-b', 'adminSignups', { id: id })).code, 'forbidden', '普通会员看不了名单');
   // 用户填表时运营改了报名表：报名的事务里按新的报名表核对
   cloud.state.beforeTx = async () => {
@@ -578,6 +583,59 @@ async function interactTests() {
   r = await as('user-b', 'draw', { id: once });
   eq([r.ok, r.data.result.win, r.data.mine.used], [true, true, 1], '结果没传回来也按抽过一次返回');
   eq((await as('user-b', 'draw', { id: once })).code, 'no_tries', '没有多出一次');
+
+  // 领奖码在一个互动里不重复：第二个人先抽到和第一个人一样的码，换一个
+  const crypto = require('crypto');
+  const realBytes = crypto.randomBytes;
+  let sameCode = 0;
+  crypto.randomBytes = (size) => {
+    if (sameCode > 0 && (size === 1 || size === 10)) { if (size === 10) sameCode -= 1; return Buffer.alloc(size); }
+    return realBytes(size);
+  };
+  try {
+    r = await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { tries: 1, prizes: [{ id: 'p1', name: '必中', total: 10, chance: 100 }] }) });
+    const sure = r.data.interaction.id;
+    await call('adminSetInteractionStatus', { id: sure, status: 'on' });
+    sameCode = 1;
+    const first = (await as('user-b', 'draw', { id: sure })).data.result.code;
+    sameCode = 1;
+    const second = (await as('user-c', 'draw', { id: sure })).data.result.code;
+    eq(first, '100000', '第一个人拿到 100000');
+    ok(/^[1-9]\d{5}$/.test(second) && second !== first, '第二个人撞上了，换了一个不重复的码');
+    eq(cloud.col('draw_codes').filter((c) => c.interactionId === sure).map((c) => c.code).sort(), [first, second].sort(), '每个发出去的码占一条');
+  } finally { crypto.randomBytes = realBytes; }
+
+  // 谁能参与在事务里再核对一次：刚好被改成只给报名的人，没加入的人抽不到
+  r = await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { audience: 'all', tries: 1, prizes: [{ id: 'p1', name: '必中', total: 10, chance: 100 }] }) });
+  const open = r.data.interaction.id;
+  await call('adminSetInteractionStatus', { id: open, status: 'on' });
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    Object.assign(cloud.col('interactions').find((x) => x._id === open), { audience: 'signed', eventId: 'trial' });
+  };
+  eq((await as('user-y', 'draw', { id: open })).code, 'not_member', '抽的时候范围刚收紧：不是会员的抽不到');
+  eq(cloud.col('draws').filter((d) => d.interactionId === open).length, 0, '没有留下抽奖记录');
+  // 报名刚被取消：抽不到
+  cloud.col('members').push({ _id: 'user-s', openid: 'user-s', phone: '13300003333', memberNo: '100777', numbered: true, points: 0, welcomeBonus: true, ledgerVersion: 1, createdAt: new Date(cloud.state.now) });
+  await as('user-s', 'signup', { eventId: 'trial', answers: {} });
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    cloud.state.data.signups = cloud.col('signups').filter((x) => x._id !== 'user-s_trial');
+  };
+  eq((await as('user-s', 'draw', { id: open })).code, 'not_signed', '抽的时候报名刚被取消：抽不到');
+
+  // 中奖的人超过名单上限：说明没列全，按完整的领奖码能查到后面的人
+  const many = cloud.col('interactions').find((x) => x._id === open);
+  for (let i = 0; i < 2001; i++) {
+    cloud.col('draws').push({ _id: open + '_bulk' + i + '_1', interactionId: open, openid: 'bulk' + i, n: 1, win: true, prizeId: 'p1', prizeName: '必中',
+      code: String(200000 + i), redeemed: false, createdAt: new Date(cloud.state.now + i) });
+  }
+  r = await call('adminDraws', { id: many._id });
+  eq([r.data.wins.length, r.data.winsTotal, r.data.partial], [2000, 2001, true], '名单最多 2000 人，说明没列全');
+  ok(!r.data.wins.some((w) => w.code === '202000'), '最后一个人不在名单里');
+  r = await call('adminDraws', { id: many._id, code: '202000' });
+  eq([r.data.wins.map((w) => w.code), r.data.partial, r.data.winsTotal], [['202000'], false, 2001], '按领奖码直接查到');
+  eq((await call('adminRedeem', { id: r.data.wins[0].id })).data.redeemed, true, '查到的就能核销');
   require('crypto').randomInt = realRandom;
 }
 

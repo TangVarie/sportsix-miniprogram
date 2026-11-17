@@ -541,7 +541,8 @@ module.exports = {
       "notMember": "不是会员",
       "copy": "复制名单",
       "copied": "名单已复制",
-      "undone": "已改回待领取"
+      "undone": "已改回待领取",
+      "partial": "中奖的人太多，这里只列出先中奖的 [显示] 人。输入完整的 6 位领奖码可以查到所有人"
     },
     "codeClose": "关闭",
     "statusConflict": "互动已被其他管理员修改，已重新读取，请再看一下"
