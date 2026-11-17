@@ -61,10 +61,12 @@ miniprogram/
   config.js                      资源前缀 assetBase、本机后台开关等
   custom-tab-bar/                自定义底部导航
   pages/<页面>/index.*           home、fuel、events、event-detail、product、me、points（积分）、doc（用户协议和隐私政策）、
-                                 admin、admin-event 和 admin-signups（运营后台，只有管理员能进）
+                                 signup-form（报名表）、interact（现场互动）、webview（现场互动里的网页）、
+                                 admin、admin-event、admin-signups、admin-interact 和 admin-draws（运营后台，只有管理员能进）
   components/<组件>/index.*      member-cta、dual-carb 等
   utils/                         assets.js、page.js、fonts.js、cloud.js、store.js、events.js、format.js、admin.js（运营后台的接口）、fuel-plan.js（原样复制，不改）、
-                                 event-state.js（一场活动现在能不能报、按钮上写什么）、pending-action.js（去登录之前想做的事）
+                                 event-state.js（一场活动现在能不能报、按钮上写什么）、pending-action.js（去登录之前想做的事）、
+                                 signup-form.js（报名表的显示和本机检查）、interact.js（现场互动的读取、抽奖和转盘的格子）
   content/*.js                   由 reference/content/*.json 生成，不要手改
   assets/icons/                  图标随包；另补了 chevron-*、back-* 两组箭头
 cloudfunctions/
@@ -109,7 +111,7 @@ tools/
 - 首屏头部：高度写 `calc(设计高度 + var(--sx-safe-top))`，头部里绝对定位的内容 `top` 也加上 `var(--sx-safe-top)`，背景图形贴底。
 - 底部导航页（home、fuel、events、me）：根节点加 `sx-tab-page`，`onShow` 里 `selectTab(this, 序号)`。
 - 每个页面都要写 `onShareAppMessage() { return shareCard(路径, 标题); }`（`utils/page.js`），否则右上角菜单里的「转发」是灰的；`npm test` 会检查。会员页有个人信息，注册后用 `wx.hideShareMenu` 收起转发。「分享到朋友圈」只开了首页和产品页（`onShareTimeline` 加页面 json 里的 `singlePage`），其他页面依赖跳转或云开发，单页模式下用不了。
-- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('points')`、`go('admin')`、`go('admin-event', { id })`、`go('admin-signups', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
+- 跳转用 `go()`（`utils/page.js`）：`go('fuel')`、`go('join')`、`go('energy-gel')`、`go('energy-gel-pro')`、`go('event-detail', { id })`、`go('signup-form', { id })`、`go('interact', { id })`、`go('points')`、`go('admin')`、`go('admin-event', { id })`、`go('admin-signups', { id })`、`go('admin-interact', { id })`、`go('admin-draws', { id })`、`go('doc', { type: 'agreement' | 'privacy' })`。
 
 ### 动效
 
@@ -140,6 +142,8 @@ tools/
 - 购买渠道：小程序自己不卖东西，`components/shop-entry` 把人带到店铺小程序里对应的商品（首页产品卡片下面、产品详情页底部、「我的」菜单）。文案和两款产品的小程序链接在 `reference/content/shop.json`；某一款的链接留空，这款就不显示购买入口。
 - 运营后台：页面只经过 `utils/admin.js` 调云函数；云函数里 `admin` 开头的接口第一句都是 `await requireAdmin(openid)`，新加的后台接口照做，并在 `tools/test-cloud.js` 的 `adminTests` 里测「普通会员调不通」。后台的文字在 `reference/content/admin.json`。
 - 新建活动填到一半的内容会留成草稿（小程序经 `utils/admin.js` 的 `getEventDraft` 等存在本机，电脑端存在浏览器里），下次点「新建活动」摆回来，存成功或点「清空重填」后清掉。新建的表单退出时不拦；编辑已有活动时没保存的修改会丢，退出前要问。电脑端点表单外面的空白处不关表单。
+- 报名表：活动上的 `form` 是运营按模块拼的几项（`[{ id, kind, label, required, options }]`，类型见 `api/index.js` 的 `FORM_KINDS`）。有报名表的活动点报名先进 `signup-form` 页，填的内容和报名一起交（`store.signup` 的 `answers`），在报名的事务里写进报名记录；报名后经 `store.saveAnswers` 改。检查规则写在两处，改一处要改另一处：云端 `cleanAnswers`、页面 `utils/signup-form.js`。保存活动时不带 `form` 的不动已有的报名表（照顾更新前的后台页面）；报名时不带 `answers` 的是旧版小程序，照常报上，之后补填。报名表的文字在 `reference/content/signup-form.json`。
+- 现场互动：`interactions` 集合，平时关着没有入口；运营打开后入口跟着活动列表（`events` 接口的 `live`）和活动详情（`event` 接口的 `live`）下发，只放在内存里，不进缓存。大转盘的输赢只在云端 `draw` 里定，页面只按结果转；次数、奖品数量、记录在一个事务里写。网页互动走 `pages/webview`（地址每次按 id 从云端取，不从页面参数里拿）。小程序码的 scene 是互动的 8 位 id，`interact` 页用 `decodeURIComponent(query.scene)` 读。互动的文字在 `reference/content/interact.json`，后台的在 `admin.json` 的 `interact`。
 - 电脑端后台（`web-admin/index.html`）没有微信身份，调的也是 `api`。新加的后台接口要让网页能用，把名字加进 `api/index.js` 的 `WEB_ACTIONS`；不在这个名单里的接口，没有微信身份一律调不通，不要为了省事放宽。改了网页跑 `npm run test:web`。
 
 ### 只有真机和审核才会暴露的事
@@ -150,6 +154,8 @@ tools/
 - 按钮在「现在不能用」的时候点了要有提示，不能没反应（没勾选协议点注册、订阅消息被拒绝后点提醒）。
 - 给用户看的地方不能露出方括号占位；没有数据就不显示或显示「—」。
 - 调用手机号验证的页面上不能出现「微信」字样和微信的图标。
+- 有 `web-view` 的页面自定义导航不生效，`pages/webview` 用微信自带的导航栏；web-view 要配业务域名，个人主体不能用。
+- 跳到其他小程序（`navigateToMiniProgram`）必须由点击直接触发，微信会先弹确认；用户点取消时不提示。
 - 页面顶部右侧留给微信的胶囊按钮，内容不要伸到那里；有个人信息的页面不让转发。
 - 发新版本后靠 `app.js` 的 `watchUpdate` 提示重启；页面路径改了，旧的转发卡片由 `onPageNotFound` 兜到首页。
 
