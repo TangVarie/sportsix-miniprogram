@@ -34,7 +34,11 @@ function session(options) {
           const fn = handlers[data.action] || defaults[data.action];
           if (!fn) throw new Error('unexpected action ' + data.action);
           return fn(data);
-        }).then((result) => ({ result: { ok: true, data: result } }));
+        }).then((result) => ({ result: { ok: true, data: result } }), (e) => {
+          // 业务错误（带 business 的）按云函数的样子返回 { ok: false, code }，其余照旧算网络失败
+          if (e && e.business) return { result: { ok: false, code: e.business } };
+          throw e;
+        });
       }
     } }
   });
@@ -246,11 +250,55 @@ async function signupFormFlow() {
   eq(s.calls.filter((c) => c.action === 'saveAnswers').pop().answers.name, '王大明', '修改交给 saveAnswers');
   edit.onUnload();
 
+  // 填表时运营改了选项：云端说格式不对，页面重新读取，选过但已经没有的标出来，提示报名表更新了
+  const fresh = record('g', { form: FORM });
+  s.options.events.push(fresh);
+  s.handlers.event = (data) => (data.id === 'g' ? { event: fresh, readOnly: false, mine: null, live: [] } : { event, readOnly: false, mine: mine, live: [] });
+  const stale = s.env.openPage('pages/signup-form/index', { id: 'g' });
+  await tick();
+  input(stale, 'name', '王小明');
+  option(stale, 'gender', '男');
+  input(stale, 'idno', 'E12345678');
+  stale.onAgree();
+  fresh.form = FORM.map((f) => (f.id === 'gender' ? Object.assign({}, f, { options: ['先生', '女士'] }) : f));
+  s.handlers.signup = () => { throw Object.assign(new Error('bad'), { business: 'bad_answer' }); };
+  stale.onSubmit();
+  await tick(); await tick();
+  eq(stale.data.fields.find((f) => f.id === 'gender').options.map((o) => o.text), ['先生', '女士'], '重新读取后换成新的选项');
+  ok(stale.data.fields.find((f) => f.id === 'gender').error && !stale.values.gender, '选过但已经没有的去掉并标出来');
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, stale.data.copy.errors.form_changed, '提示报名表刚更新');
+  eq(stale.values.name, '王小明', '别的项填的内容留着');
+  ok(stale.data.fields.some((f) => f.id === 'idno' && f.value === 'E12345678'), '护照号这类带字母的证件号码能填');
+  stale.onUnload();
+  ok(!require('fs').readFileSync(path.join(ROOT, 'pages/signup-form/index.wxml'), 'utf8').includes('idcard'), '证件号码不用只有数字和 X 的身份证键盘');
+
   // 旧版本报的名没填表：详情里提示补填
   mine = { answers: {}, complete: false };
   await detail.onRetry();
   eq(detail.data.form.todo, true, '没填齐时提示去补填');
   detail.onUnload();
+}
+
+/** 已报名的人打开报名表时没读到云端：不显示一张空表让人保存（保存会把之前填的冲掉），停在读取失败 */
+async function signupFormLoadFailure() {
+  const event = record('h', { form: FORM });
+  const s = session({ member: { nickname: '会员', points: 500, memberNo: '100001' }, events: [event] });
+  s.env.wx.setStorageSync('sx_signups', ['h']);
+  require(path.join(ROOT, 'utils/store.js')).sync();
+  s.handlers.bootstrap = () => ({ member: s.options.member, plan: null, reminders: [], signups: ['h'], news: false, notice: null, inbox: [] });
+  await require(path.join(ROOT, 'utils/events.js')).refresh(true);
+  await tick();
+  s.handlers.event = () => { throw new Error('offline'); };
+  const page = s.env.openPage('pages/signup-form/index', { id: 'h' });
+  await tick();
+  ok(page.data.loadFailed && !page.data.fields.length, '读不到时停在读取失败，不显示空表');
+  page.onSubmit();
+  await tick();
+  eq(s.calls.filter((c) => c.action === 'saveAnswers' || c.action === 'signup').length, 0, '读取失败时点提交什么也不交');
+  s.handlers.event = () => ({ event, readOnly: false, mine: { answers: { name: '王小明', gender: '男', idno: '11010519491231002X' }, complete: true }, live: [] });
+  await page.onRetry();
+  eq([page.data.loadFailed, page.data.mode, page.data.fields.find((f) => f.id === 'name').value], [false, 'edit', '王小明'], '重新加载后带着填过的内容');
+  page.onUnload();
 }
 
 /** 现场互动：扫码进来；只给会员的先去加入再回来；抽奖按云端结果转，次数用完了点了有提示 */
@@ -430,6 +478,7 @@ async function adminToolsFlow() {
 (async () => {
   await adminToolsFlow();
   await signupFormFlow();
+  await signupFormLoadFailure();
   await interactFlow();
   await activityFailureAndRetry();
   await directDetailAndLoginReturn();

@@ -44,6 +44,23 @@ function check(fields, values) {
   return { answers: answers, errors: errors, first: first };
 }
 
+/**
+ * 选过、但已经不在选项里的回答（填表时运营改了选项）：从 values 里去掉，返回去掉了哪几项的 id。
+ * 不去掉的话会一直交上去，云端一直说格式不对
+ */
+function dropStale(fields, values) {
+  const out = [];
+  (fields || []).forEach((f) => {
+    const v = values[f.id];
+    if (f.kind === 'single' && v && f.options.indexOf(v) < 0) { delete values[f.id]; out.push(f.id); }
+    if (f.kind === 'multi' && Array.isArray(v) && v.some((x) => f.options.indexOf(x) < 0)) {
+      values[f.id] = v.filter((x) => f.options.indexOf(x) >= 0);
+      out.push(f.id);
+    }
+  });
+  return out;
+}
+
 /** 报名表 → 页面上每一项的显示数据。values 是现在填的内容，errors 是 check 给的错误 */
 function view(fields, values, errors) {
   const today = new Date();
@@ -72,4 +89,4 @@ function hasForm(event) {
   return !!(e && Array.isArray(e.form) && e.form.length);
 }
 
-module.exports = { check, view, hasForm, idnoOk, normalize };
+module.exports = { check, view, hasForm, idnoOk, normalize, dropStale };

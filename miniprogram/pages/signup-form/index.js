@@ -63,10 +63,12 @@ Page({
     // 每次读取占一个号：先发出的旧读取晚回来，不盖掉新的
     const seq = this.loadSeq = (this.loadSeq || 0) + 1;
     this.setData({ loading: true, loadFailed: false });
-    return events.fetchEvent(this.eventId).catch(() => null).then(() => {
+    return events.fetchEvent(this.eventId).then(() => true, () => false).then((ok) => {
       if (this.disposed || seq !== this.loadSeq) return;
       const event = events.getEvent(this.eventId);
-      if (!event) { this.setData({ loading: false, loadFailed: true }); return; }
+      // 没从云端读到就不显示表：缓存里的报名表可能是旧的，本人填过的内容也没读到，
+      // 这时候让人改了保存，会把之前填的冲掉。停在「读取失败」，点重新加载
+      if (!ok || !event) { this.setData({ loading: false, loadFailed: true }); return; }
       this.event = event;
       const mine = events.getSignupForm(this.eventId);
       const signed = events.hasSignup(this.eventId) || !!mine;
@@ -76,6 +78,9 @@ Page({
       if (!this.filled && mine && mine.answers) this.values = Object.assign({}, mine.answers);
       this.filled = true;
       this.fields = event.form || [];
+      // 填表时运营改了选项：选过但已经不在选项里的去掉，标出来让人重新选
+      this.stale = form.dropStale(this.fields, this.values);
+      this.stale.forEach((id) => { this.errors[id] = 'missing'; });
       this.setData({
         loading: false,
         title: event.title,
@@ -90,7 +95,7 @@ Page({
   },
 
   onRetry() {
-    if (!this.data.loading) this.load();
+    if (!this.data.loading) return this.load();
   },
 
   onBack() {
@@ -190,6 +195,12 @@ Page({
     if (code === 'form_changed' || code === 'form_incomplete' || code === 'cost_changed') this.load();
     // 活动开始了：变成只能看
     if (code === 'form_closed') this.load();
+    // 格式不对：多半是填表时运营改了选项（选过的那项没了）。重新读取，选项换成新的，
+    // 选过但已经没有的标出来；真是格式问题的照常提示
+    if (code === 'bad_answer') {
+      this.load().then(() => toast(this.stale && this.stale.length ? copy.errors.form_changed : errorText(e)));
+      return;
+    }
     toast(errorText(e));
   },
 

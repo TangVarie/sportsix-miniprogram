@@ -31,9 +31,9 @@
             <text wx:if="{{item.required}}" class="sf-star" aria-label="{{copy.required}}">*</text>
             <text wx:if="{{item.kind === 'multi'}}" class="sf-label__hint">{{copy.multiHint}}</text>
           </view>
-          <!-- 一行字、电话、证件号码 -->
+          <!-- 一行字、电话、证件号码。证件号码用普通键盘：身份证键盘只有数字和 X，护照、港澳台证件里的字母打不进去 -->
           <input wx:if="{{item.kind === 'text' || item.kind === 'phone' || item.kind === 'idno'}}" class="sf-input {{item.error ? 'sf-input--error' : ''}}"
-            value="{{item.value}}" type="{{item.kind === 'phone' ? 'number' : item.kind === 'idno' ? 'idcard' : 'text'}}" maxlength="{{item.kind === 'text' ? 50 : 30}}"
+            value="{{item.value}}" type="{{item.kind === 'phone' ? 'number' : 'text'}}" maxlength="{{item.kind === 'text' ? 50 : 30}}"
             disabled="{{mode === 'view'}}" placeholder="{{item.placeholder}}" placeholder-class="sf-ph" data-id="{{item.id}}" bindinput="onInput" />
           <!-- 多行字 -->
           <textarea wx:elif="{{item.kind === 'textarea'}}" class="sf-textarea {{item.error ? 'sf-input--error' : ''}}" value="{{item.value}}" maxlength="300"
