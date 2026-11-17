@@ -303,7 +303,8 @@
         "label": ""
       }
     ],
-    "formSensitive": "证件号码属于敏感个人信息，只在确实需要时（比如办理保险）加这一项。"
+    "formSensitive": "证件号码属于敏感个人信息，只在确实需要时（比如办理保险）加这一项。",
+    "formCopyConfirm": "用「[名称]」的报名表换掉现在的 [项数] 项"
   },
   "notice": {
     "labels": {
@@ -412,7 +413,8 @@
     "bad_mini": "请填 wx 开头的 AppID，或者 #小程序:// 开头的链接",
     "prize_below_won": "奖品数量不能比已经抽中的少",
     "code_failed": "小程序码没生成出来。正式版要等带互动页面的版本发布后才能生成",
-    "closed": "这个互动已经关掉了"
+    "closed": "这个互动已经关掉了",
+    "option_too_long": "每个选项最多 20 个字"
   },
   "web": {
     "title": "在电脑上用后台",
@@ -537,8 +539,10 @@
       "undoConfirm": "把 [领奖码] 改回待领取",
       "notMember": "不是会员",
       "copy": "复制名单",
-      "copied": "名单已复制"
+      "copied": "名单已复制",
+      "undone": "已改回待领取"
     },
-    "codeClose": "关闭"
+    "codeClose": "关闭",
+    "statusConflict": "互动已被其他管理员修改，已重新读取，请再看一下"
   }
 }

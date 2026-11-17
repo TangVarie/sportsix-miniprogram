@@ -416,7 +416,9 @@ function formData(input) {
     if (kind === 'single' || kind === 'multi') {
       const options = [];
       (Array.isArray(f.options) ? f.options : []).forEach((o) => {
-        const v = cleanText(o, 20);
+        const v = cleanText(o, 100);
+        // 选项超长直接报错，不悄悄截断：截掉以后运营看到的和用户看到的对不上
+        if (Array.from(v).length > 20) throw fail('option_too_long');
         if (v && options.indexOf(v) < 0) options.push(v);
       });
       if (options.length < 2) throw fail('missing_options');
@@ -714,6 +716,13 @@ const shortId = () => {
   return s;
 };
 const randomBelow = (n) => (crypto.randomInt ? crypto.randomInt(n) : crypto.randomBytes(4).readUInt32BE(0) % n);
+/** 6 位领奖码，第一位是 1 到 9（252 以上的字节丢掉，九个数字出现的机会一样） */
+function prizeCode() {
+  for (;;) {
+    const b = crypto.randomBytes(1)[0];
+    if (b < 252) return String(b % 9 + 1) + randomDigits(5);
+  }
+}
 
 /** 后台表单交上来的互动 → 要存的数据（不含状态、版本和各奖品已经抽中了几个） */
 function interactionData(input) {
@@ -1072,7 +1081,8 @@ const actions = {
       }
       if (user) await t.collection('draw_users').doc(userId).update({ data: { count: n, updatedAt: db.serverDate() } });
       else await t.collection('draw_users').doc(userId).set({ data: { interactionId: id, openid: openid, count: n, createdAt: db.serverDate(), updatedAt: db.serverDate() } });
-      result = { n: n, win: !!hit, prizeId: hit ? hit.id : '', prizeName: hit ? hit.name : '', code: hit ? randomDigits(6) : '' };
+      // 领奖码 6 位，第一位不是 0：导出的表格用 Excel 打开时不会把开头的 0 吞掉
+      result = { n: n, win: !!hit, prizeId: hit ? hit.id : '', prizeName: hit ? hit.name : '', code: hit ? prizeCode() : '' };
       await t.collection('draws').doc(userId + '_' + n).set({ data: {
         interactionId: id, openid: openid, n: n, win: result.win, prizeId: result.prizeId, prizeName: result.prizeName, code: result.code,
         redeemed: false, token: token, createdAt: db.serverDate()
@@ -1359,7 +1369,7 @@ const actions = {
     }
     const total = (await db.collection('draws').where({ interactionId: x._id }).count()).total;
     return {
-      interaction: adminInteractionView(x),
+      interaction: adminInteractionView(x, { draws: total, wins: all.length, redeemed: all.filter((d) => d.redeemed === true).length }),
       draws: total,
       wins: all.map((d) => {
         const m = members[d.openid] || {};

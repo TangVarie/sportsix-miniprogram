@@ -110,7 +110,7 @@ Page({
         tick();
         this.setData({ busy: true });
         admin.redeem(w.id, !undo)
-          .then((d) => toast(d.already && !undo ? c.already : undo ? c.unredeemed : c.redeemDone))
+          .then((d) => toast(d.already && !undo ? c.already : undo ? c.undone : c.redeemDone))
           .catch((err) => toast(admin.errorText(err)))
           .then(() => this.load())
           .then(() => this.setData({ busy: false }));

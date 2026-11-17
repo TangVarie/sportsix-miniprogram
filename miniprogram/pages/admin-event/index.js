@@ -273,10 +273,20 @@ Page({
     if (!this.data.loaded || this.data.busy) return;
     const src = this.data.copySources[Number(e.detail.value)];
     if (!src) return;
-    const fields = editableFields(src.form).map((f) => Object.assign(f, { id: admin.newFieldId('f') }));
-    this.setData({ 'form.fields': fields });
-    this.changed();
-    toast(copy.form.formCopied.replace('[名称]', src.title));
+    const apply = () => {
+      const fields = editableFields(src.form).map((f) => Object.assign(f, { id: admin.newFieldId('f') }));
+      this.setData({ 'form.fields': fields });
+      this.changed();
+      toast(copy.form.formCopied.replace('[名称]', src.title));
+    };
+    const have = (this.data.form.fields || []).length;
+    // 已经拼了几项的：先问一句，免得手滑把拼好的换掉
+    if (!have) { apply(); return; }
+    wx.showModal({
+      title: copy.form.formCopy,
+      content: copy.form.formCopyConfirm.replace('[名称]', src.title).replace('[项数]', have),
+      success: (r) => { if (r.confirm) apply(); }
+    });
   },
 
   onFieldCopyEmpty() {

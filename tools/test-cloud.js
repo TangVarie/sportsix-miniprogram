@@ -354,6 +354,7 @@ async function formTests() {
   eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'nope', label: 'x' }] }) })).code, 'bad_form', '不认识的类型');
   eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'text', label: ' ' }] }) })).code, 'missing_field_label', '每项要有标题');
   eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'single', label: '单选', options: ['只有一个'] }] }) })).code, 'missing_options', '单选至少两个选项');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'single', label: '单选', options: ['短', '一二三四五六七八九十一二三四五六七八九十多'] }] }) })).code, 'option_too_long', '选项超过 20 个字报错，不悄悄截断');
   eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'text', label: 'x' }, { id: 'a', kind: 'text', label: 'y' }] }) })).code, 'bad_form', '项的 id 不能重复');
   eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: Array.from({ length: 21 }, (v, i) => ({ id: 'f' + i, kind: 'text', label: '第' + i })) }) })).code, 'form_too_long', '最多 20 项');
   let r = await call('adminSaveEvent', { event: Object.assign({}, base, { form: form }) });
@@ -486,7 +487,7 @@ async function interactTests() {
   rolls.push(100, 2000, 2000);
   r = await as('user-b', 'draw', { id: id });
   eq([r.data.result.win, r.data.result.prizeName, r.data.mine.used, r.data.mine.left], [true, '运动毛巾', 1, 1], '抽中毛巾');
-  ok(/^\d{6}$/.test(r.data.result.code), '中了有 6 位领奖码');
+  ok(/^[1-9]\d{5}$/.test(r.data.result.code), '中了有 6 位领奖码，第一位不是 0');
   const code = r.data.result.code;
   r = await as('user-c', 'draw', { id: id });
   eq([r.data.result.win, r.data.result.code], [false, ''], '毛巾只有一条，落在毛巾上的第二个人算没中');
@@ -507,6 +508,7 @@ async function interactTests() {
   // 后台：中奖名单、核销
   r = await call('adminDraws', { id: id });
   eq([r.data.draws, r.data.wins.length, r.data.wins[0].code, r.data.wins[0].memberNo, r.data.wins[0].phone], [5, 1, code, '100002', '13900005678'], '名单里有中奖的人和领奖码');
+  eq([r.data.interaction.draws, r.data.interaction.wins], [5, 1], '名单上的互动也带着抽奖次数和中奖人数');
   const drawId = r.data.wins[0].id;
   r = await call('adminRedeem', { id: drawId });
   eq([r.data.redeemed, r.data.already], [true, false], '核销');

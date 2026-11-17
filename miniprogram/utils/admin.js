@@ -215,7 +215,11 @@ function formError(fields) {
     if (!String(f.label || '').trim()) return 'missing_field_label';
     if (f.kind === 'single' || f.kind === 'multi') {
       const options = [];
-      (f.options || []).forEach((o) => { const v = String(o).trim(); if (v && options.indexOf(v) < 0) options.push(v); });
+      for (const o of f.options || []) {
+        const v = String(o).trim();
+        if (Array.from(v).length > 20) return 'option_too_long';
+        if (v && options.indexOf(v) < 0) options.push(v);
+      }
       if (options.length < 2) return 'missing_options';
       if (options.length > 20) return 'too_many_options';
     }

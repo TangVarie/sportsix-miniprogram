@@ -262,7 +262,8 @@ Page({
     this.setData({ busy: true });
     admin.setInteractionStatus(row.id, row.on ? 'off' : 'on', row.version)
       .then((x) => { toast(x.status === 'on' ? copy.interact.opened : copy.interact.closed); events.refresh(true); })
-      .catch((err) => toast(admin.errorText(err)))
+      // 别人刚改过：下面会重新读取，提示再看一下
+      .catch((err) => toast(err && err.code === 'conflict' ? copy.interact.statusConflict : admin.errorText(err)))
       .then(() => this.loadInteractions())
       .then(() => this.setData({ busy: false }));
   },
