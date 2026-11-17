@@ -113,10 +113,13 @@
             <text>{{copy.formField.required}}</text>
           </view>
         </view>
-        <input class="ae-input" value="{{item.label}}" maxlength="20" placeholder="{{copy.formField.label}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="label" bindinput="onFieldInput" />
+        <text class="ae-ff__cap">{{copy.formField.label}}</text>
+        <input class="ae-input ae-ff__input" value="{{item.label}}" maxlength="20" placeholder="{{copy.formField.labelPlaceholder}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="label" bindinput="onFieldInput" />
+        <text class="ae-ff__cap">{{copy.formField.hint}}</text>
+        <input class="ae-input ae-ff__input" value="{{item.hint}}" maxlength="60" placeholder="{{copy.formField.hintPlaceholder}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="hint" bindinput="onFieldInput" />
+        <text wx:if="{{item.kind === 'single' || item.kind === 'multi'}}" class="ae-ff__cap">{{copy.formField.options}}</text>
         <textarea wx:if="{{item.kind === 'single' || item.kind === 'multi'}}" class="ae-textarea ae-ff__options" value="{{item.optionsText}}" maxlength="500"
           placeholder="{{copy.formField.optionsPlaceholder}}" placeholder-class="ae-ph" data-index="{{index}}" data-field="optionsText" bindinput="onFieldInput" />
-        <text wx:if="{{item.kind === 'single' || item.kind === 'multi'}}" class="ae-hint">{{copy.formField.options}}</text>
         <view class="ae-ff__btns">
           <view wx:if="{{index > 0}}" class="ae-ff__btn" data-index="{{index}}" data-to="up" bindtap="onFieldMove">{{copy.formField.up}}</view>
           <view wx:if="{{index < form.fields.length - 1}}" class="ae-ff__btn" data-index="{{index}}" data-to="down" bindtap="onFieldMove">{{copy.formField.down}}</view>

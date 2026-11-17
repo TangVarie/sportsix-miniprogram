@@ -31,6 +31,8 @@
             <text wx:if="{{item.required}}" class="sf-star" aria-label="{{copy.required}}">*</text>
             <text wx:if="{{item.kind === 'multi'}}" class="sf-label__hint">{{copy.multiHint}}</text>
           </view>
+          <!-- 运营写的填写说明 -->
+          <text wx:if="{{item.hint}}" class="sf-hint">{{item.hint}}</text>
           <!-- 一行字、电话、证件号码。证件号码用普通键盘：身份证键盘只有数字和 X，护照、港澳台证件里的字母打不进去 -->
           <input wx:if="{{item.kind === 'text' || item.kind === 'phone' || item.kind === 'idno'}}" class="sf-input {{item.error ? 'sf-input--error' : ''}}"
             value="{{item.value}}" type="{{item.kind === 'phone' ? 'number' : 'text'}}" maxlength="{{item.kind === 'text' ? 50 : 30}}"

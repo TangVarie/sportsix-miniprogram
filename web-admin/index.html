@@ -1133,7 +1133,7 @@
     var d = { type: form.type, cover: form.cover, published: $('f-published').checked,
       quota: $('f-quota').value, cost: $('f-cost').value, contact: $('f-contact').value };
     TEXT_FIELDS.concat(TIME_FIELDS).forEach(function (k) { d[k] = $('f-' + k).value; });
-    d.form = form.fields.map(function (f) { return { id: f.id, kind: f.kind, label: f.label, required: f.required, options: f.options }; });
+    d.form = form.fields.map(function (f) { return { id: f.id, kind: f.kind, label: f.label, hint: f.hint || '', required: f.required, options: f.options }; });
     return JSON.stringify(d);
   }
   function drawerDirty() {
@@ -1190,7 +1190,7 @@
     $('f-published').checked = !!e && e.status === 'published';
     setCover(e ? e.cover : '');
     form.fields = (e && Array.isArray(e.form) ? e.form : []).map(function (f) {
-      return { id: f.id, kind: f.kind, label: f.label || '', required: f.required === true, options: (f.options || []).join('\n') };
+      return { id: f.id, kind: f.kind, label: f.label || '', hint: f.hint || '', required: f.required === true, options: (f.options || []).join('\n') };
     });
     renderFormFields();
     renderFormCopy();
@@ -1268,7 +1268,7 @@
       if (good) seen[f.id] = true;
       return good;
     }).slice(0, FORM_MAX).map(function (f) {
-      return { id: f.id, kind: f.kind, label: typeof f.label === 'string' ? f.label : '', required: f.required === true, options: typeof f.options === 'string' ? f.options : '' };
+      return { id: f.id, kind: f.kind, label: typeof f.label === 'string' ? f.label : '', hint: typeof f.hint === 'string' ? f.hint : '', required: f.required === true, options: typeof f.options === 'string' ? f.options : '' };
     });
     renderFormFields();
   }
@@ -1313,7 +1313,7 @@
 
   /* ---------- 活动表单里的报名表 ---------- */
   // 和云端的 formData 一样的规矩：最多 20 项，单选和多选 2 到 20 个选项，标题和选项最多 20 个字
-  var FORM_KINDS = { text: '一行字', textarea: '多行字', phone: '电话', idno: '证件号码', date: '日期', single: '单选', multi: '多选' };
+  var FORM_KINDS = { text: '填空', textarea: '多行填空', phone: '电话', idno: '证件号码', date: '日期', single: '单选', multi: '多选' };
   var FORM_KIND_KEYS = Object.keys(FORM_KINDS);
   var FORM_MAX = 20;
   var FIELD_ID = /^[a-zA-Z0-9_-]{1,24}$/;
@@ -1330,7 +1330,7 @@
     { key: 'single', text: '单选题', kind: 'single', label: '', options: [] },
     { key: 'multi', text: '多选题', kind: 'multi', label: '', options: [] },
     { key: 'text', text: '填空', kind: 'text', label: '' },
-    { key: 'textarea', text: '多行文字', kind: 'textarea', label: '' }
+    { key: 'textarea', text: '多行填空', kind: 'textarea', label: '' }
   ];
   var hasOptions = function (kind) { return kind === 'single' || kind === 'multi'; };
   function fieldIdTaken(id) { return form.fields.some(function (f) { return f.id === id; }); }
@@ -1346,7 +1346,7 @@
       top.appendChild(el('span', 'ff__no', String(i + 1)));
       var label = el('input', 'input ff__label');
       label.maxLength = 20;
-      label.placeholder = '标题';
+      label.placeholder = '标题，这一项问什么，比如 微信号';
       label.setAttribute('aria-label', '标题');
       label.value = f.label;
       label.addEventListener('input', function () { f.label = label.value; });
@@ -1370,6 +1370,16 @@
       });
       top.appendChild(ops);
       row.appendChild(top);
+      // 填写说明：显示在标题下面，告诉用户这一项填什么，可以不写
+      var hintWrap = el('label', 'ff__opts');
+      hintWrap.appendChild(el('span', 'field__label', '填写说明'));
+      var hint = el('input', 'input ff__hint');
+      hint.maxLength = 60;
+      hint.placeholder = '选填，显示在标题下面，比如 方便拉活动群';
+      hint.value = f.hint || '';
+      hint.addEventListener('input', function () { f.hint = hint.value; });
+      hintWrap.appendChild(hint);
+      row.appendChild(hintWrap);
       if (hasOptions(f.kind)) {
         var wrap = el('label', 'ff__opts');
         wrap.appendChild(el('span', 'field__label', '选项，一行一个'));
@@ -1412,7 +1422,7 @@
     if (!p) return;
     if (form.fields.length >= FORM_MAX) { toast(ERRORS.form_too_long, true); return; }
     // 新加的项默认必填，和小程序后台一样；不需要的再取消勾选
-    form.fields.push({ id: newId('f', fieldIdTaken), kind: p.kind, label: p.label, required: true, options: (p.options || []).join('\n') });
+    form.fields.push({ id: newId('f', fieldIdTaken), kind: p.kind, label: p.label, hint: '', required: true, options: (p.options || []).join('\n') });
     renderFormFields();
     saveDraft();
     // 单选题、填空这些没有现成标题的，加上以后直接填标题
@@ -1443,7 +1453,7 @@
     form.fields = src.form.slice(0, FORM_MAX).map(function (f) {
       var fid = newId('f', function (x) { return taken[x]; });
       taken[fid] = true;
-      return { id: fid, kind: f.kind, label: f.label || '', required: f.required === true, options: (f.options || []).join('\n') };
+      return { id: fid, kind: f.kind, label: f.label || '', hint: f.hint || '', required: f.required === true, options: (f.options || []).join('\n') };
     });
     renderFormFields();
     saveDraft();
@@ -1465,6 +1475,8 @@
       var label = clean(f.label);
       if (!label) return { error: 'missing_field_label', focus: row && row.querySelector('.ff__label') };
       var field = { id: f.id, kind: f.kind, label: Array.from(label).slice(0, 20).join(''), required: f.required === true };
+      var hintText = clean(f.hint || '');
+      if (hintText) field.hint = Array.from(hintText).slice(0, 60).join('');
       if (hasOptions(f.kind)) {
         var options = [];
         var long = false;

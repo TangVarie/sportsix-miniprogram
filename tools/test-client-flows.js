@@ -188,7 +188,7 @@ const FORM = [
   { id: 'name', kind: 'text', label: '姓名', required: true },
   { id: 'gender', kind: 'single', label: '性别', required: true, options: ['男', '女'] },
   { id: 'idno', kind: 'idno', label: '证件号码', required: true },
-  { id: 'gel', kind: 'multi', label: '想试的补给', required: false, options: ['能量胶BASIC', '能量胶PRO'] }
+  { id: 'gel', kind: 'multi', label: '想试的补给', required: false, options: ['能量胶BASIC', '能量胶PRO'], hint: '会按这个准备现场补给' }
 ];
 const input = (page, id, value) => page.onInput({ currentTarget: { dataset: { id: id } }, detail: { value: value } });
 const option = (page, id, value) => page.onOption({ currentTarget: { dataset: { id: id, option: value } } });
@@ -212,6 +212,7 @@ async function signupFormFlow() {
   const form = s.env.openPage('pages/signup-form/index', { id: 'f' });
   await tick();
   eq([form.data.mode, form.data.fields.length], ['signup', 4], '报名表按活动上的项显示');
+  eq(form.data.fields.find((f) => f.id === 'gel').hint, '会按这个准备现场补给', '运营写的填写说明显示出来');
   form.onSubmit();
   ok(form.data.fields.filter((f) => f.error).map((f) => f.id).join() === 'name,gender,idno', '没填的必填项标出来');
   eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, form.data.copy.errors.missing, '提示还有必填项没填');
@@ -403,9 +404,11 @@ async function adminToolsFlow() {
   editor.onFieldInput({ currentTarget: { dataset: { index: 2, field: 'optionsText' } }, detail: { value: '第一次\n 两到三次 \n\n更多' } });
   editor.onFieldMove({ currentTarget: { dataset: { index: 3, to: 'up' } } });
   editor.onFieldRequired({ currentTarget: { dataset: { index: 0 } } });
+  editor.onFieldInput({ currentTarget: { dataset: { index: 0, field: 'hint' } }, detail: { value: ' 和证件上的一致 ' } });
   editor.onSave();
   await tick();
   const saved = s.calls.filter((c) => c.action === 'adminSaveEvent').pop().event.form;
+  eq(saved.map((f) => f.hint), ['和证件上的一致', undefined, undefined, undefined], '填写说明交上去，没写的不带');
   eq(saved.map((f) => [f.kind, f.label, f.required, f.options]), [
     ['text', '姓名', false, undefined], ['single', '性别', true, ['男', '女']], ['idno', '证件号码', true, undefined], ['single', '参加过几次', true, ['第一次', '两到三次', '更多']]
   ], '报名表按调好的顺序和必填交上去，选项一行一个');

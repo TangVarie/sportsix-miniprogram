@@ -311,7 +311,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForSelector('#drawer:not([hidden])');
     await page.waitForSelector('#drawer-save:enabled');
     ok(await page.isVisible('#ff-empty'), '没有报名表时写着用户点报名直接报上');
-    eq(await page.locator('#ff-presets button').allTextContents(), ['姓名', '手机号', '性别', '出生日期', '证件号码', '服装尺码', '紧急联系人', '紧急联系电话', '单选题', '多选题', '填空', '多行文字'], '「添加一项」里有 12 个现成的模块');
+    eq(await page.locator('#ff-presets button').allTextContents(), ['姓名', '手机号', '性别', '出生日期', '证件号码', '服装尺码', '紧急联系人', '紧急联系电话', '单选题', '多选题', '填空', '多行填空'], '「添加一项」里有 12 个现成的模块');
     await page.click('#ff-presets [data-preset="name"]');
     await page.click('#ff-presets [data-preset="gender"]');
     await page.click('#ff-presets [data-preset="idno"]');
@@ -330,6 +330,7 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await expectToast('单选和多选至少要有两个选项', '只有一个选项不能保存');
     await ffRows.nth(3).locator('.ff__options').fill('跑步\n骑行\n跑步\n\n游泳');
     await ffRows.nth(1).locator('.ff__required').uncheck();
+    await ffRows.nth(3).locator('.ff__hint').fill('  可以选多个  ');
     await ffRows.nth(3).getByText('上移').click(); // 参加项目挪到证件号码前面
     await ffRows.nth(3).getByText('删除').click(); // 删掉证件号码
     ok(await page.isHidden('#ff-sensitive'), '删掉证件号码后提示也没了');
@@ -340,12 +341,20 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     const savedForm = cloud.col('events').find((e) => e._id === made._id).form;
     eq(savedForm.map((f) => [f.kind, f.label, f.required, f.options]), [['text', '姓名', true, undefined], ['single', '性别', false, ['男', '女']], ['multi', '参加项目', true, ['跑步', '骑行', '游泳']]], '报名表存到云端，重复的和空的选项去掉');
     ok(savedForm.every((f) => /^[a-zA-Z0-9_-]{1,24}$/.test(f.id)) && new Set(savedForm.map((f) => f.id)).size === 3, '每一项有自己的 id');
+    eq(savedForm.map((f) => f.hint), [undefined, undefined, '可以选多个'], '填写说明存到云端，没写的不带');
     eq(requests.filter((d) => d.action === 'adminSaveEvent').slice(-1)[0].event.form.length, 3, '保存时带着报名表');
     await westLake().getByText('编辑').click();
     await page.waitForSelector('#drawer-save:enabled');
     eq([await ffLabels(), await ffIds()], [['姓名', '性别', '参加项目'], savedForm.map((f) => f.id)], '再打开时报名表还在，id 不变');
     eq(await ffRows.nth(2).locator('.ff__options').inputValue(), '跑步\n骑行\n游泳', '选项一行一个');
+    eq(await ffRows.nth(2).locator('.ff__hint').inputValue(), '可以选多个', '填写说明也带回来了');
     eq(await page.locator('#ff-list .ff__required').evaluateAll((n) => n.map((x) => x.checked)), [true, false, true], '必填也带回来了');
+    // 只改了填写说明没存：关的时候也要问
+    await ffRows.nth(0).locator('.ff__hint').fill('和证件上的一致');
+    let hintAsk = '';
+    page.once('dialog', (d) => { hintAsk = d.message(); d.dismiss(); });
+    await page.click('#drawer-close');
+    ok(hintAsk.includes('没有保存') && await page.isVisible('#drawer'), '只改了填写说明没存，关的时候也要问');
     // 改了报名表没存：关的时候要问
     await ffRows.nth(1).getByText('删除').click();
     let unsavedAsk = '';
@@ -372,8 +381,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForSelector('#ev-rows tr');
     await page.click('#ev-new');
     await page.waitForSelector('#drawer:not([hidden])');
-    eq([await page.inputValue('#f-title'), await ffLabels(), await ffIds(), await ffRows.nth(1).locator('.ff__options').inputValue()],
-      ['有报名表的草稿', ['姓名', '性别', '参加项目'], copiedIds, '男\n女'], '刷新后新建的草稿里报名表还在，id 不变');
+    eq([await page.inputValue('#f-title'), await ffLabels(), await ffIds(), await ffRows.nth(1).locator('.ff__options').inputValue(), await ffRows.nth(2).locator('.ff__hint').inputValue()],
+      ['有报名表的草稿', ['姓名', '性别', '参加项目'], copiedIds, '男\n女', '可以选多个'], '刷新后新建的草稿里报名表还在，id 和填写说明都在');
     await page.click('#drawer-draft-clear');
     eq([await ffRows.count(), await page.isVisible('#ff-empty')], [0, true], '清空重填后报名表也清掉了');
     await page.click('#drawer-close');

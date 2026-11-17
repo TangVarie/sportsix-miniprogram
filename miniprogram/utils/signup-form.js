@@ -69,7 +69,7 @@ function view(fields, values, errors) {
   return (fields || []).map((f, i) => {
     const v = values ? values[f.id] : undefined;
     const item = {
-      id: f.id, kind: f.kind, label: f.label, required: !!f.required,
+      id: f.id, kind: f.kind, label: f.label, hint: f.hint || '', required: !!f.required,
       error: !!(errors && errors[f.id]), last: i === fields.length - 1,
       value: f.kind === 'multi' ? '' : (v == null ? '' : String(v)),
       placeholder: copy.placeholders[f.kind] || copy.placeholders.text
