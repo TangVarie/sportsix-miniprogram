@@ -349,6 +349,12 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     eq(await ffRows.nth(2).locator('.ff__options').inputValue(), '跑步\n骑行\n游泳', '选项一行一个');
     eq(await ffRows.nth(2).locator('.ff__hint').inputValue(), '可以选多个', '填写说明也带回来了');
     eq(await page.locator('#ff-list .ff__required').evaluateAll((n) => n.map((x) => x.checked)), [true, false, true], '必填也带回来了');
+    // 只改了填写说明没存：关的时候也要问
+    await ffRows.nth(0).locator('.ff__hint').fill('和证件上的一致');
+    let hintAsk = '';
+    page.once('dialog', (d) => { hintAsk = d.message(); d.dismiss(); });
+    await page.click('#drawer-close');
+    ok(hintAsk.includes('没有保存') && await page.isVisible('#drawer'), '只改了填写说明没存，关的时候也要问');
     // 改了报名表没存：关的时候要问
     await ffRows.nth(1).getByText('删除').click();
     let unsavedAsk = '';
@@ -375,8 +381,8 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForSelector('#ev-rows tr');
     await page.click('#ev-new');
     await page.waitForSelector('#drawer:not([hidden])');
-    eq([await page.inputValue('#f-title'), await ffLabels(), await ffIds(), await ffRows.nth(1).locator('.ff__options').inputValue()],
-      ['有报名表的草稿', ['姓名', '性别', '参加项目'], copiedIds, '男\n女'], '刷新后新建的草稿里报名表还在，id 不变');
+    eq([await page.inputValue('#f-title'), await ffLabels(), await ffIds(), await ffRows.nth(1).locator('.ff__options').inputValue(), await ffRows.nth(2).locator('.ff__hint').inputValue()],
+      ['有报名表的草稿', ['姓名', '性别', '参加项目'], copiedIds, '男\n女', '可以选多个'], '刷新后新建的草稿里报名表还在，id 和填写说明都在');
     await page.click('#drawer-draft-clear');
     eq([await ffRows.count(), await page.isVisible('#ff-empty')], [0, true], '清空重填后报名表也清掉了');
     await page.click('#drawer-close');

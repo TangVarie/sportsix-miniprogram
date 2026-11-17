@@ -1133,7 +1133,7 @@
     var d = { type: form.type, cover: form.cover, published: $('f-published').checked,
       quota: $('f-quota').value, cost: $('f-cost').value, contact: $('f-contact').value };
     TEXT_FIELDS.concat(TIME_FIELDS).forEach(function (k) { d[k] = $('f-' + k).value; });
-    d.form = form.fields.map(function (f) { return { id: f.id, kind: f.kind, label: f.label, required: f.required, options: f.options }; });
+    d.form = form.fields.map(function (f) { return { id: f.id, kind: f.kind, label: f.label, hint: f.hint || '', required: f.required, options: f.options }; });
     return JSON.stringify(d);
   }
   function drawerDirty() {
@@ -1268,7 +1268,7 @@
       if (good) seen[f.id] = true;
       return good;
     }).slice(0, FORM_MAX).map(function (f) {
-      return { id: f.id, kind: f.kind, label: typeof f.label === 'string' ? f.label : '', required: f.required === true, options: typeof f.options === 'string' ? f.options : '' };
+      return { id: f.id, kind: f.kind, label: typeof f.label === 'string' ? f.label : '', hint: typeof f.hint === 'string' ? f.hint : '', required: f.required === true, options: typeof f.options === 'string' ? f.options : '' };
     });
     renderFormFields();
   }
