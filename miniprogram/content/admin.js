@@ -200,6 +200,9 @@ module.exports = {
     "formCopied": "已沿用「[名称]」的报名表",
     "formField": {
       "label": "标题",
+      "labelPlaceholder": "这一项问什么，比如 微信号",
+      "hint": "填写说明",
+      "hintPlaceholder": "选填，显示在标题下面，比如 方便拉活动群",
       "required": "必填",
       "options": "选项，一行一个",
       "optionsPlaceholder": "比如\n男\n女",
@@ -208,8 +211,8 @@ module.exports = {
       "remove": "删除"
     },
     "formKinds": {
-      "text": "一行字",
-      "textarea": "多行字",
+      "text": "填空",
+      "textarea": "多行填空",
       "phone": "电话",
       "idno": "证件号码",
       "date": "日期",
@@ -299,7 +302,7 @@ module.exports = {
       },
       {
         "key": "textarea",
-        "text": "多行文字",
+        "text": "多行填空",
         "kind": "textarea",
         "label": ""
       }

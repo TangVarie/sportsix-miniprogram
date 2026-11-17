@@ -21,6 +21,7 @@
 .sf-field--last { margin-bottom: 0; }
 .sf-label { display: flex; align-items: baseline; gap: 8rpx; font-size: 27rpx; line-height: 40rpx; font-weight: 700; color: #010439; }
 .sf-star { color: #061A70; font-weight: 900; }
+.sf-hint { display: block; margin-top: 4rpx; font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
 .sf-label__hint { margin-left: 8rpx; font-size: 23rpx; font-weight: 400; color: #5E6170; }
 .sf-input { box-sizing: border-box; height: 92rpx; margin-top: 12rpx; padding: 0 27rpx; border-radius: 23rpx; border: 2rpx solid #FFFFFF; background: #FFFFFF; font-size: 29rpx; color: #010439; }
 .sf-textarea { box-sizing: border-box; width: 100%; height: 220rpx; margin-top: 12rpx; padding: 23rpx 27rpx; border-radius: 23rpx; border: 2rpx solid #FFFFFF; background: #FFFFFF; font-size: 29rpx; line-height: 44rpx; color: #010439; }

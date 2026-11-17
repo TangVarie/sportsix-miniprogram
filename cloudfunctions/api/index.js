@@ -389,8 +389,8 @@ function eventData(input) {
 /* ---------- 报名表 ---------- */
 
 /**
- * 报名表由运营在后台按模块拼：每一项有自己的 id（运营新加这一项时页面生成，之后不变）、类型、标题、是否必填，
- * 单选和多选另有选项。存在活动的 form 上（数组，没有报名表是 null）。
+ * 报名表由运营在后台按模块拼：每一项有自己的 id（运营新加这一项时页面生成，之后不变）、类型、标题、是否必填、
+ * 填写说明（hint，可以不写），单选和多选另有选项。存在活动的 form 上（数组，没有报名表是 null）。
  * 类型：text 一行字，textarea 多行字，phone 电话，idno 证件号码，date 日期，single 单选，multi 多选。
  * 「姓名」「性别」「服装尺码」这些是后台页面上预先填好标题和选项的模块，存下来就是上面这几种类型。
  */
@@ -414,6 +414,9 @@ function formData(input) {
     const label = cleanText(f.label, 20);
     if (!label) throw fail('missing_field_label');
     const field = { id: id, kind: kind, label: label, required: f.required === true };
+    // 填写说明：显示在标题下面，告诉用户这一项填什么（比如「方便拉活动群」），可以不写
+    const hint = cleanText(f.hint, 60);
+    if (hint) field.hint = hint;
     if (kind === 'single' || kind === 'multi') {
       const options = [];
       (Array.isArray(f.options) ? f.options : []).forEach((o) => {

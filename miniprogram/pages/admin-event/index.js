@@ -18,13 +18,15 @@ function emptyForm() {
 /** 存着的报名表 → 表单里编辑用的样子（选项写成一行一个） */
 function editableFields(form) {
   return (Array.isArray(form) ? form : []).map((f) => ({
-    id: f.id, kind: f.kind, label: f.label, required: !!f.required, optionsText: (f.options || []).join('\n')
+    id: f.id, kind: f.kind, label: f.label, hint: f.hint || '', required: !!f.required, optionsText: (f.options || []).join('\n')
   }));
 }
 /** 表单里的报名表 → 交给云函数的样子 */
 function fieldsPayload(fields) {
   return (fields || []).map((f) => {
     const out = { id: f.id, kind: f.kind, label: String(f.label || '').trim(), required: !!f.required };
+    const hint = String(f.hint || '').trim();
+    if (hint) out.hint = hint;
     if (f.kind === 'single' || f.kind === 'multi') out.options = String(f.optionsText || '').split('\n').map((o) => o.trim()).filter(Boolean);
     return out;
   });
@@ -232,7 +234,7 @@ Page({
     const p = copy.form.formPresets.find((x) => x.key === e.currentTarget.dataset.key);
     if (!p) return;
     tick();
-    fields.push({ id: admin.newFieldId('f'), kind: p.kind, label: p.label || '', required: true, optionsText: (p.options || []).join('\n') });
+    fields.push({ id: admin.newFieldId('f'), kind: p.kind, label: p.label || '', hint: '', required: true, optionsText: (p.options || []).join('\n') });
     this.setData({ 'form.fields': fields });
     this.changed();
   },

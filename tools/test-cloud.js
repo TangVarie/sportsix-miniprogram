@@ -347,7 +347,7 @@ async function formTests() {
     { id: 'birth', kind: 'date', label: '出生日期', required: false },
     { id: 'size', kind: 'multi', label: '想要的补给', required: false, options: ['能量胶BASIC', '能量胶PRO'] },
     { id: 'tel', kind: 'phone', label: '紧急联系电话', required: true },
-    { id: 'memo', kind: 'textarea', label: '备注', required: false, hacked: 1 }
+    { id: 'memo', kind: 'textarea', label: '备注', required: false, hacked: 1, hint: '  有什么想告诉我们的，比如 第一次跑半马  ' }
   ];
   const base = { type: '赛事', title: '带报名表的跑', status: 'published', date: now + 9 * DAY, signupStart: now - DAY };
   // 报名表的检查
@@ -363,6 +363,7 @@ async function formTests() {
   eq(r.data.event.form[1].options, ['男', '女'], '重复的选项去掉');
   ok(!('hacked' in r.data.event.form[6]), '只存认识的字段');
   eq(r.data.event.form[3].required, false, '可以设成选填');
+  eq([r.data.event.form[6].hint, 'hint' in r.data.event.form[0]], ['有什么想告诉我们的，比如 第一次跑半马', false], '填写说明去掉首尾空格，没写的不存');
   eq((await as('user-b', 'events')).data.events.find((e) => e.id === id).form.length, 7, '小程序拿到报名表');
   // 更新前的后台页面不带 form：保存别的内容时不把报名表清掉
   r = await call('adminSaveEvent', { id: id, event: Object.assign({}, base, { title: '改了名字' }) });
