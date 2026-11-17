@@ -1,0 +1,41 @@
+<view class="page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="dw-header sx-grid-bg">
+    <view class="dw-back" bindtap="onBack">
+      <image class="dw-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="dw-header__title">{{copy.title}}</view>
+  </view>
+
+  <view class="dw-body">
+    <view class="dw-event">{{title}}</view>
+    <view wx:if="{{!loading && !loadFailed}}" class="dw-count">{{countText}}</view>
+    <view wx:if="{{partialText}}" class="dw-count">{{partialText}}</view>
+    <view wx:if="{{loadFailed}}" class="dw-empty">{{common.loadFailed}}</view>
+    <view wx:if="{{loadFailed}}" class="dw-btn dw-btn--line" bindtap="onRetry">{{common.retry}}</view>
+
+    <view wx:if="{{loading}}">
+      <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="dw-skel sx-skeleton"></view>
+    </view>
+    <view wx:elif="{{list.length}}">
+      <input class="dw-search" value="{{query}}" type="number" maxlength="6" placeholder="{{copy.search}}" placeholder-class="dw-ph" bindinput="onQuery" />
+      <view wx:if="{{!shown.length}}" class="dw-empty">{{copy.noMatch}}</view>
+      <view wx:for="{{shown}}" wx:key="id" class="dw-card {{item.redeemed ? 'dw-card--done' : ''}}">
+        <view class="dw-card__text">
+          <view class="dw-card__top">
+            <text class="dw-card__code sx-num-700" user-select="{{true}}">{{item.code}}</text>
+            <text class="dw-chip {{item.redeemed ? 'dw-chip--done' : ''}}">{{item.status}}</text>
+          </view>
+          <text class="dw-card__prize">{{item.prize}}</text>
+          <text class="dw-card__meta">{{item.who}}</text>
+          <text class="dw-card__meta">{{item.at}}</text>
+          <view wx:if="{{item.phone}}" class="dw-card__phone" data-phone="{{item.phone}}" bindtap="onCall">
+            <text class="sx-num" user-select="{{true}}">{{item.phone}}</text>
+          </view>
+        </view>
+        <view class="dw-mini sx-pressable {{item.redeemed ? '' : 'dw-mini--on'}}" hover-class="sx-press" data-id="{{item.id}}" bindtap="onRedeem">{{item.redeemed ? copy.undo : copy.redeem}}</view>
+      </view>
+      <view class="dw-btn dw-btn--line sx-pressable" hover-class="sx-press" bindtap="onCopy">{{copy.copy}}</view>
+    </view>
+    <view wx:elif="{{!loadFailed}}" class="dw-empty">{{copy.empty}}</view>
+  </view>
+</view>

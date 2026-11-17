@@ -1,0 +1,62 @@
+// 由 tools/sync-content.js 从 reference/content/interact.json 生成，不要手改。
+module.exports = {
+  "_note": "现场互动（设计稿里没有，后加的）。活动现场的大转盘、网页小游戏、其他小程序，平时没有入口，运营在后台打开后才出现在活动页顶上和对应活动的详情里，也可以扫后台生成的小程序码进来。文字是开发时写的，可以直接在这里改，改完运行 npm run content。",
+  "entry": {
+    "tag": "现场互动",
+    "action": "去参与"
+  },
+  "title": "现场互动",
+  "closed": "这个互动现在没有开放",
+  "missing": "没有找到这个互动",
+  "noneLive": "现在没有进行中的互动",
+  "backToEvents": "返回活动",
+  "loginContinue": "已加入，现在可以参与了",
+  "wheel": {
+    "start": "开始抽奖",
+    "left": "还能抽 [次数] 次",
+    "noLeft": "抽奖次数已经用完",
+    "thanks": "谢谢参与",
+    "winTitle": "恭喜抽中",
+    "winBody": "抽中 [奖品]，领奖码 [领奖码]。请到现场工作人员处出示领奖码领奖。",
+    "loseTitle": "谢谢参与",
+    "loseBody": "这次没有抽中。",
+    "loseBodyMore": "这次没有抽中，还能再抽 [次数] 次。",
+    "ok": "知道了",
+    "mine": "我的抽奖记录",
+    "round": "第 [次数] 次",
+    "lost": "没有抽中",
+    "code": "领奖码",
+    "redeemed": "已领取",
+    "unredeemed": "待领取",
+    "redeemHint": "到现场工作人员处出示领奖码领奖"
+  },
+  "web": {
+    "open": "打开"
+  },
+  "mini": {
+    "open": "前往参与",
+    "hint": "会打开另一个小程序",
+    "failed": "没打开，请稍后再试"
+  },
+  "blocked": {
+    "not_member": {
+      "title": "加入会员后参与",
+      "body": "这个互动只对会员开放。新会员送 500 积分。",
+      "button": "手机号快捷登录"
+    },
+    "not_signed": {
+      "title": "报名后参与",
+      "body": "这个互动只对报名了这场活动的会员开放。",
+      "button": "查看活动"
+    }
+  },
+  "errors": {
+    "closed": "这个互动现在没有开放",
+    "no_tries": "抽奖次数已经用完",
+    "not_member": "请先加入会员",
+    "not_signed": "报名这场活动后才能参与",
+    "not_found": "没有找到这个互动",
+    "bad_kind": "这个互动不能抽奖",
+    "network": "网络异常，请稍后再试"
+  }
+};

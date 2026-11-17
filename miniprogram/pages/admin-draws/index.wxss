@@ -1,0 +1,37 @@
+/* 中奖名单（设计稿里没有）：头部、卡片、按钮同报名名单 */
+.dw-header { position: relative; height: calc(254rpx + var(--sx-safe-top)); color: #FFFFFF; }
+.dw-back {
+  position: absolute; left: 23rpx; top: calc(15rpx + var(--sx-safe-top));
+  display: flex; align-items: center; height: 85rpx; padding: 0 15rpx;
+}
+.dw-back__icon { display: block; width: 38rpx; height: 38rpx; }
+.dw-header__title { position: absolute; left: 38rpx; bottom: 46rpx; font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
+
+.dw-body { padding: 38rpx 38rpx calc(77rpx + env(safe-area-inset-bottom)); }
+.dw-event { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #010439; }
+.dw-count { margin-top: 8rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.dw-empty { margin-top: 46rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.dw-skel { height: 200rpx; margin-top: 23rpx; border-radius: 31rpx; }
+.dw-search { box-sizing: border-box; height: 92rpx; margin-top: 31rpx; padding: 0 27rpx; border-radius: 23rpx; border: 2rpx solid #010439; background: #FFFFFF; font-size: 31rpx; color: #010439; }
+.dw-ph { color: #9A9CA8; }
+
+.dw-card { display: flex; align-items: flex-start; gap: 19rpx; margin-top: 23rpx; padding: 31rpx; border-radius: 31rpx; background: #F5F5F5; }
+.dw-card--done { opacity: .7; }
+.dw-card__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.dw-card__top { display: flex; align-items: center; gap: 15rpx; }
+.dw-card__code { font-size: 50rpx; line-height: 58rpx; letter-spacing: 4rpx; color: #010439; }
+.dw-card__prize { font-size: 29rpx; line-height: 42rpx; font-weight: 900; color: #010439; }
+.dw-card__meta { font-size: 23rpx; line-height: 35rpx; color: #5E6170; }
+.dw-card__phone { margin-top: 8rpx; font-size: 31rpx; line-height: 42rpx; color: #061A70; }
+.dw-chip { flex-shrink: 0; padding: 4rpx 19rpx; border-radius: 23rpx; background: #C2E541; color: #010439; font-size: 21rpx; line-height: 35rpx; font-weight: 700; }
+.dw-chip--done { background: #E6E6E7; color: #5E6170; }
+.dw-mini {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 69rpx; padding: 0 31rpx; border-radius: 35rpx;
+  background: #FFFFFF; border: 1px solid #C9CEE8; font-size: 25rpx; font-weight: 700; color: #010439;
+}
+.dw-mini--on { background: #010439; border-color: #010439; color: #FFFFFF; }
+.dw-btn {
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 96rpx; margin-top: 31rpx; border-radius: 48rpx;
+  font-size: 29rpx; font-weight: 900; color: #010439;
+}
+.dw-btn--line { background: #FFFFFF; border: 2rpx solid #010439; }

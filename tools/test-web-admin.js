@@ -303,6 +303,300 @@ const SDK_STUB = `window.cloud = { Cloud: function (o) {
     await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('#ev-rows tr'), (tr) => tr.textContent.includes('上海半程马拉松') && tr.textContent.includes('已取消')));
     eq([raceDoc.status, raceDoc.cancelled, memberB.points], ['draft', true, 500], '活动下架并标成取消，积分退回');
 
+    // ----- 报名表：用现成的模块拼一张，检查和云端一样，存上，再打开还在 -----
+    const westLake = () => page.locator('#ev-rows tr', { hasText: '杭州西湖越野赛' });
+    const ffLabels = () => page.locator('#ff-list .ff__label').evaluateAll((n) => n.map((x) => x.value));
+    const ffIds = () => page.locator('#ff-list .ff').evaluateAll((n) => n.map((x) => x.getAttribute('data-id')));
+    await westLake().getByText('编辑').click();
+    await page.waitForSelector('#drawer:not([hidden])');
+    await page.waitForSelector('#drawer-save:enabled');
+    ok(await page.isVisible('#ff-empty'), '没有报名表时写着用户点报名直接报上');
+    eq(await page.locator('#ff-presets button').allTextContents(), ['姓名', '手机号', '性别', '出生日期', '证件号码', '服装尺码', '紧急联系人', '紧急联系电话', '单选题', '多选题', '填空', '多行文字'], '「添加一项」里有 12 个现成的模块');
+    await page.click('#ff-presets [data-preset="name"]');
+    await page.click('#ff-presets [data-preset="gender"]');
+    await page.click('#ff-presets [data-preset="idno"]');
+    ok(await page.isVisible('#ff-sensitive') && await page.isHidden('#ff-empty'), '加了证件号码有敏感信息的提示');
+    await page.click('#ff-presets [data-preset="multi"]');
+    const ffRows = page.locator('#ff-list .ff');
+    eq(await ffRows.count(), 4, '加了四项');
+    eq(await page.locator('#ff-list .ff__required').evaluateAll((n) => n.map((x) => x.checked)), [true, true, true, true], '新加的项默认必填，和小程序后台一样');
+    ok(await page.evaluate(() => document.activeElement.classList.contains('ff__label') && document.activeElement.value === ''), '多选题没有现成的标题，加上后直接填标题');
+    eq([await ffRows.nth(1).locator('.ff__label').inputValue(), await ffRows.nth(1).locator('.ff__kind').textContent(), await ffRows.nth(1).locator('.ff__options').inputValue()], ['性别', '单选', '男\n女'], '性别是单选，带好了选项');
+    await page.click('#drawer-save');
+    await expectToast('报名表的每一项都要写标题', '多选题没写标题不能保存');
+    await ffRows.nth(3).locator('.ff__label').fill('参加项目');
+    await ffRows.nth(3).locator('.ff__options').fill('跑步');
+    await page.click('#drawer-save');
+    await expectToast('单选和多选至少要有两个选项', '只有一个选项不能保存');
+    await ffRows.nth(3).locator('.ff__options').fill('跑步\n骑行\n跑步\n\n游泳');
+    await ffRows.nth(1).locator('.ff__required').uncheck();
+    await ffRows.nth(3).getByText('上移').click(); // 参加项目挪到证件号码前面
+    await ffRows.nth(3).getByText('删除').click(); // 删掉证件号码
+    ok(await page.isHidden('#ff-sensitive'), '删掉证件号码后提示也没了');
+    eq(await ffLabels(), ['姓名', '性别', '参加项目'], '上移、删除后的顺序');
+    await shot('signup-form');
+    await page.click('#drawer-save');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    const savedForm = cloud.col('events').find((e) => e._id === made._id).form;
+    eq(savedForm.map((f) => [f.kind, f.label, f.required, f.options]), [['text', '姓名', true, undefined], ['single', '性别', false, ['男', '女']], ['multi', '参加项目', true, ['跑步', '骑行', '游泳']]], '报名表存到云端，重复的和空的选项去掉');
+    ok(savedForm.every((f) => /^[a-zA-Z0-9_-]{1,24}$/.test(f.id)) && new Set(savedForm.map((f) => f.id)).size === 3, '每一项有自己的 id');
+    eq(requests.filter((d) => d.action === 'adminSaveEvent').slice(-1)[0].event.form.length, 3, '保存时带着报名表');
+    await westLake().getByText('编辑').click();
+    await page.waitForSelector('#drawer-save:enabled');
+    eq([await ffLabels(), await ffIds()], [['姓名', '性别', '参加项目'], savedForm.map((f) => f.id)], '再打开时报名表还在，id 不变');
+    eq(await ffRows.nth(2).locator('.ff__options').inputValue(), '跑步\n骑行\n游泳', '选项一行一个');
+    eq(await page.locator('#ff-list .ff__required').evaluateAll((n) => n.map((x) => x.checked)), [true, false, true], '必填也带回来了');
+    // 改了报名表没存：关的时候要问
+    await ffRows.nth(1).getByText('删除').click();
+    let unsavedAsk = '';
+    page.once('dialog', (d) => { unsavedAsk = d.message(); d.dismiss(); });
+    await page.click('#drawer-close');
+    ok(unsavedAsk.includes('没有保存') && await page.isVisible('#drawer'), '删了一项没存，关的时候要问，选不关就留着');
+    page.once('dialog', (d) => d.accept());
+    await page.click('#drawer-close');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    eq(cloud.col('events').find((e) => e._id === made._id).form.length, 3, '没存的修改不会写到云端');
+    // 新建活动沿用这张报名表：每一项换新的 id；新建的草稿里也带着报名表
+    await page.click('#ev-new');
+    await page.waitForSelector('#drawer:not([hidden])');
+    ok((await page.locator('#ff-copy option').allTextContents()).includes('杭州西湖越野赛（3 项）'), '「沿用」里列出有报名表的活动');
+    await page.selectOption('#ff-copy', made._id);
+    await expectToast('已沿用「杭州西湖越野赛」的报名表', '沿用别的活动的报名表');
+    const copiedIds = await ffIds();
+    eq(await ffLabels(), ['姓名', '性别', '参加项目'], '三项都带过来了');
+    ok(copiedIds.every((id) => /^[a-zA-Z0-9_-]{1,24}$/.test(id) && !savedForm.some((f) => f.id === id)), '带过来的每一项换了新的 id');
+    await page.fill('#f-title', '有报名表的草稿');
+    await page.click('#drawer-close');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+    await page.reload();
+    await page.waitForSelector('#ev-rows tr');
+    await page.click('#ev-new');
+    await page.waitForSelector('#drawer:not([hidden])');
+    eq([await page.inputValue('#f-title'), await ffLabels(), await ffIds(), await ffRows.nth(1).locator('.ff__options').inputValue()],
+      ['有报名表的草稿', ['姓名', '性别', '参加项目'], copiedIds, '男\n女'], '刷新后新建的草稿里报名表还在，id 不变');
+    await page.click('#drawer-draft-clear');
+    eq([await ffRows.count(), await page.isVisible('#ff-empty')], [0, true], '清空重填后报名表也清掉了');
+    await page.click('#drawer-close');
+    await page.waitForSelector('#drawer', { state: 'hidden' });
+
+    // ----- 报名名单里有报名表的回答，导出的表格里也有（删掉的项也导出） -----
+    const fid = (label) => savedForm.find((f) => f.label === label).id;
+    cloud.col('signups').push(
+      { _id: 'user-b_' + made._id, openid: 'user-b', eventId: made._id, cost: 0, createdAt: new Date(now - 2 * 3600 * 1000), answeredAt: new Date(now - 2 * 3600 * 1000),
+        answers: [{ id: fid('姓名'), label: '姓名', value: '李四' }, { id: fid('性别'), label: '性别', value: '男' }, { id: fid('参加项目'), label: '参加项目', value: ['跑步', '游泳'] }, { id: 'gone', label: '鞋码', value: '42' }] },
+      { _id: 'user-a_' + made._id, openid: 'user-a', eventId: made._id, cost: 0, createdAt: new Date(now - 3600 * 1000), answers: [{ id: fid('性别'), label: '性别', value: '女' }] }
+    );
+    await westLake().getByText('名单').click();
+    await page.waitForFunction(() => document.querySelectorAll('#roster-rows tr').length === 2);
+    eq(await page.locator('#roster-head th').allTextContents(), ['会员', '手机号', '报名时间', '积分', '姓名', '性别', '参加项目', '操作'], '表头多出报名表的每一项');
+    const leeRow = await page.locator('#roster-rows tr', { hasText: '老李' }).textContent();
+    ok(leeRow.includes('李四') && leeRow.includes('跑步、游泳') && !leeRow.includes('报名表还没填齐'), '回答显示在名单里，多选用顿号连起来；填齐的人没有标记');
+    const tangRow = page.locator('#roster-rows tr', { hasText: '运营小唐' });
+    eq([(await tangRow.textContent()).includes('报名表还没填齐'), await tangRow.locator('.cell-answer').allTextContents()], [true, ['—', '女', '—']], '必填项没填的人有标记，没填的写「—」');
+    ok(await page.locator('#roster').evaluate((n) => n.classList.contains('drawer--wide')), '有报名表时名单放宽');
+    await shot('roster-form');
+    const download2 = page.waitForEvent('download');
+    await page.click('#roster-export');
+    const csv2 = fs.readFileSync(await (await download2).path(), 'utf8');
+    const csvLines = (csv2.charCodeAt(0) === 0xfeff ? csv2.slice(1) : csv2).split('\r\n');
+    eq(csvLines[0], '"昵称","会员编号","手机号","报名时间","用的积分","姓名","性别","参加项目","鞋码（已删掉的项）"', '导出的表头带着报名表的各项，删掉的项排在后面');
+    ok(csvLines.some((l) => l.startsWith('"老李"') && l.endsWith('"李四","男","跑步、游泳","42"')), '导出的表格里有回答');
+    ok(csvLines.some((l) => l.startsWith('"运营小唐"') && l.endsWith('"—","女","—","—"')), '没填的写「—」');
+    await page.click('#roster-close');
+
+    // ----- 现场互动：新建大转盘、打开、改（撞上别人的修改）、中奖名单、核销和撤回、小程序码、删除 -----
+    await page.click('[data-tab="interact"]');
+    await page.waitForFunction(() => document.getElementById('ix-empty-text').textContent === '还没有互动');
+    ok(await page.isVisible('#ix-empty'), '没有互动时写着还没有');
+    await page.click('#ix-new');
+    await page.waitForSelector('#ix-drawer:not([hidden])');
+    const pz = (i) => page.locator('#ix-prizes .pz').nth(i);
+    eq([await page.textContent('#ix-drawer-title'), await page.textContent('#ix-kind-seg .seg__btn--on'), await page.textContent('#ix-aud-seg .seg__btn--on'), await page.inputValue('#x-tries'), await page.locator('#ix-prizes .pz').count()],
+      ['新建互动', '大转盘', '会员', '1', 1], '新建默认是大转盘、只给会员、每人一次，先有一行奖品');
+    await page.click('#ix-save');
+    await expectToast('请填写名称', '没写名称不能保存');
+    await page.fill('#x-title', '幸运大转盘');
+    await pz(0).locator('.pz__name').fill('运动毛巾');
+    await pz(0).locator('.pz__total').fill('10');
+    await pz(0).locator('.pz__chance').fill('30');
+    await page.click('#ix-add-prize');
+    await pz(1).locator('.pz__name').fill('能量胶PRO 一支');
+    await pz(1).locator('.pz__total').fill('100');
+    await pz(1).locator('.pz__chance').fill('80');
+    eq(await page.textContent('#ix-chance-sum'), '加起来 110%，谢谢参与 0%', '机会加起来实时算');
+    await page.click('#ix-save');
+    await expectToast('中奖机会填 0 到 100，最多两位小数，加起来不超过 100', '机会加起来超过 100 不能保存');
+    await pz(1).locator('.pz__chance').fill('20.5');
+    eq(await page.textContent('#ix-chance-sum'), '加起来 50.5%，谢谢参与 49.5%', '剩下的是谢谢参与');
+    await page.click('#ix-aud-seg [data-aud="signed"]');
+    await page.click('#ix-save');
+    await expectToast('只给报名的人参与时，要选关联活动；关联的活动要存在', '只给报名的人参与时要选活动');
+    await page.selectOption('#x-event', made._id);
+    await page.fill('#x-tries', '2');
+    await page.fill('#x-note', '领奖到 1 号帐篷');
+    await page.locator('#x-tries').scrollIntoViewIfNeeded();
+    await shot('interact-form');
+    await page.click('#ix-save');
+    await page.waitForSelector('#ix-drawer', { state: 'hidden' });
+    const wheelId = cloud.col('interactions').find((x) => x.title === '幸运大转盘')._id;
+    const ixDoc = () => cloud.col('interactions').find((x) => x._id === wheelId);
+    ok(ixDoc().kind === 'wheel' && ixDoc().status === 'off' && ixDoc().audience === 'signed' && ixDoc().eventId === made._id && ixDoc().tries === 2 && ixDoc().note === '领奖到 1 号帐篷', '新建的互动写到云端，是关着的');
+    eq(ixDoc().prizes.map((p) => [p.name, p.total, p.chance]), [['运动毛巾', 10, 30], ['能量胶PRO 一支', 100, 20.5]], '奖品、数量、机会按填的存');
+    ok(ixDoc().prizes.every((p) => /^[a-zA-Z0-9_-]{1,24}$/.test(p.id)), '奖品有自己的 id');
+    const ixRow = () => page.locator('#ix-rows tr', { hasText: '幸运大转盘' });
+    await ixRow().waitFor();
+    const ixText = await ixRow().textContent();
+    ok(ixText.includes('大转盘') && ixText.includes('已关') && ixText.includes('杭州西湖越野赛') && ixText.includes('抽了 0 次，中奖 0 人，已领 0 人'), '列表上有类型、状态、关联活动和抽奖情况');
+    await ixRow().getByText('打开', { exact: true }).click();
+    await expectToast('已打开，小程序里有入口了', '打开互动');
+    await page.waitForFunction(() => document.getElementById('ix-rows').textContent.includes('进行中'));
+    eq([ixDoc().status, requests.filter((d) => d.action === 'adminSetInteractionStatus').slice(-1)[0].version], ['on', 1], '云端打开了，带着读到时的版本');
+    await shot('interact');
+
+    // 编辑时另一位管理员改了它：填的内容留着，重新读取后再存
+    ixDoc().prizes[0].won = 1; // 毛巾已经有人抽中了一条
+    await ixRow().getByText('编辑').click();
+    await page.waitForSelector('#ix-save:enabled');
+    eq([await page.inputValue('#x-title'), await page.inputValue('#x-event'), await page.textContent('#ix-aud-seg .seg__btn--on'), await page.locator('#ix-prizes .pz__won').allTextContents()],
+      ['幸运大转盘', made._id, '报了关联活动的会员', ['已抽中 1', '已抽中 0']], '编辑时填好原来的内容，奖品带着已抽中的个数');
+    await pz(0).getByText('删除').click();
+    await expectToast('奖品数量不能比已经抽中的少', '已经有人抽中的奖品不能删');
+    eq(await page.locator('#ix-prizes .pz').count(), 2, '奖品还在');
+    await pz(0).locator('.pz__total').fill('0');
+    await page.click('#ix-save');
+    await expectToast('奖品数量不能比已经抽中的少', '数量不能改得比已经抽中的少');
+    await pz(0).locator('.pz__total').fill('10');
+    await page.fill('#x-title', '幸运大转盘 二期');
+    Object.assign(ixDoc(), { title: '别人改的名字', version: ixDoc().version + 1 });
+    await page.click('#ix-save');
+    await page.waitForFunction(() => !document.getElementById('ix-hint').hidden && document.getElementById('ix-hint').textContent.includes('其他管理员'));
+    eq([await page.inputValue('#x-title'), await page.isDisabled('#ix-save'), await page.isVisible('#ix-reread')], ['幸运大转盘 二期', true, true], '撞上别人的修改：填的内容留着，先不让存，可以重新读取');
+    page.once('dialog', (d) => d.dismiss());
+    await page.keyboard.press('Escape');
+    ok(await page.isVisible('#ix-drawer'), '按 Esc 时问要不要放弃，选不放弃就留着');
+    await page.click('#ix-mask', { position: { x: 10, y: 100 } });
+    ok(await page.isVisible('#ix-drawer') && await page.inputValue('#x-title') === '幸运大转盘 二期', '点表单外面的空白处不关');
+    page.once('dialog', (d) => d.accept());
+    await page.click('#ix-reread');
+    await page.waitForSelector('#ix-save:enabled');
+    eq(await page.inputValue('#x-title'), '别人改的名字', '重新读取后是最新的内容');
+    await page.fill('#x-title', '幸运大转盘');
+    await page.click('#ix-save');
+    await page.waitForSelector('#ix-drawer', { state: 'hidden' });
+    eq([ixDoc().title, requests.filter((d) => d.action === 'adminSaveInteraction').slice(-1)[0].version, ixDoc().version], ['幸运大转盘', 3, 4], '重新读取后带着新的版本存上');
+    eq(ixDoc().status, 'on', '改内容不改开关');
+
+    // 中奖名单：两个人中了（一个不是会员），一次没中
+    const prizes = ixDoc().prizes;
+    cloud.col('draws').push(
+      { _id: wheelId + '_user-b_1', interactionId: wheelId, openid: 'user-b', n: 1, win: true, prizeId: prizes[0].id, prizeName: '运动毛巾', code: '123456', redeemed: false, createdAt: new Date(now - 600000) },
+      { _id: wheelId + '_guest_1', interactionId: wheelId, openid: 'guest', n: 1, win: true, prizeId: prizes[1].id, prizeName: '能量胶PRO 一支', code: '654321', redeemed: false, createdAt: new Date(now - 300000) },
+      { _id: wheelId + '_guest_2', interactionId: wheelId, openid: 'guest', n: 2, win: false, prizeId: '', prizeName: '', code: '', redeemed: false, createdAt: new Date(now - 200000) }
+    );
+    await page.click('[data-tab="interact"]');
+    await page.waitForFunction(() => document.getElementById('ix-rows').textContent.includes('抽了 3 次，中奖 2 人，已领 0 人'));
+    ok(true, '列表上的抽奖情况跟着变');
+    await ixRow().getByText('中奖名单').click();
+    await page.waitForFunction(() => document.querySelectorAll('#draws-rows tr').length === 2);
+    eq([await page.textContent('#draws-title'), await page.textContent('#draws-count')], ['幸运大转盘', '抽了 3 次，中奖 2 人，已领 0 人'], '名单上面写着抽了几次、中了几个、领了几个');
+    const winRow = (c) => page.locator('#draws-rows tr[data-code="' + c + '"]');
+    ok((await winRow('123456').textContent()).includes('老李') && (await winRow('123456').textContent()).includes(memberB.phone), '会员带着昵称和手机号');
+    ok((await winRow('654321').textContent()).includes('不是会员'), '不是会员的人只有领奖码');
+    await page.fill('#draws-search', '6543');
+    eq(await page.locator('#draws-rows tr').count(), 1, '按领奖码找');
+    await page.fill('#draws-search', '999');
+    eq([await page.locator('#draws-rows tr').count(), await page.textContent('#draws-empty')], [0, '没有这个领奖码'], '找不到时说没有这个领奖码');
+    await page.fill('#draws-search', '');
+    let redeemAsk = '';
+    page.once('dialog', (d) => { redeemAsk = d.message(); d.accept(); });
+    await winRow('123456').getByText('核销').click();
+    await expectToast('已核销', '核销领奖码');
+    ok(redeemAsk.includes('123456 · 运动毛巾'), '确认框里写着领奖码和奖品');
+    await page.waitForFunction(() => document.getElementById('draws-count').textContent.includes('已领 1 人'));
+    ok((await winRow('123456').textContent()).includes('已领取'), '这一行变成已领取');
+    eq(cloud.col('draws').find((d) => d.code === '123456').redeemed, true, '云端核销了');
+    // 另一位工作人员刚核销过这个码
+    cloud.col('draws').find((d) => d.code === '654321').redeemed = true;
+    page.once('dialog', (d) => d.accept());
+    await winRow('654321').getByText('核销').click();
+    await expectToast('这个领奖码已经核销过', '重复核销有提示');
+    await page.waitForFunction(() => document.getElementById('draws-count').textContent.includes('已领 2 人'));
+    ok((await winRow('654321').textContent()).includes('已领取'), '页面上也改成已领取');
+    let undoAsk = '';
+    page.once('dialog', (d) => { undoAsk = d.message(); d.accept(); });
+    await winRow('123456').getByText('撤回').click();
+    await expectToast('已改回待领取', '撤回核销');
+    ok(undoAsk.includes('把 123456 改回待领取'), '撤回前问一句');
+    eq(cloud.col('draws').find((d) => d.code === '123456').redeemed, false, '云端改回待领取');
+    // 中奖的人超过名单上限：说明没列全，输入完整的领奖码到云端查
+    for (let i = 0; i < 2000; i++) {
+      cloud.col('draws').push({ _id: wheelId + '_bulk' + i + '_1', interactionId: wheelId, openid: 'bulk' + i, n: 1, win: true, prizeId: prizes[0].id, prizeName: '运动毛巾',
+        code: String(300000 + i), redeemed: false, createdAt: new Date(now - 100000 + i) });
+    }
+    await page.click('#draws-close');
+    await ixRow().getByText('中奖名单').click();
+    await page.waitForFunction(() => document.getElementById('draws-count').textContent.includes('只列出先中奖的 2000 人'));
+    ok(!(await page.locator('#draws-rows tr[data-code="301999"]').count()), '最后中奖的人不在名单里');
+    await page.fill('#draws-search', '301999');
+    await page.waitForFunction(() => document.querySelectorAll('#draws-rows tr[data-code="301999"]').length === 1);
+    ok(true, '输入完整的领奖码，到云端查到名单外的人');
+    await page.fill('#draws-search', '');
+    await shot('draws');
+    const download3 = page.waitForEvent('download');
+    await page.click('#draws-export');
+    const csv3 = fs.readFileSync(await (await download3).path(), 'utf8');
+    ok(csv3.includes('"中奖时间","奖品","领奖码","昵称","会员编号","手机号","领奖状态","领取时间"') && csv3.includes('"123456"') && csv3.includes('"老李"') && csv3.includes('"不是会员"'), '导出中奖名单');
+    await page.click('#draws-close');
+    await page.waitForFunction(() => document.getElementById('ix-rows').textContent.includes('抽了 3 次，中奖 2 人，已领 1 人'));
+    ok(true, '关掉名单后列表上的已领人数是新的');
+
+    // 小程序码：生成正式版的，显示出来可以下载；生成失败时说清楚
+    await ixRow().getByText('小程序码').click();
+    await page.waitForSelector('#code-img:not([hidden])');
+    const codeSrc = await page.getAttribute('#code-img', 'src');
+    ok(codeSrc.includes('interact/' + wheelId + '-release.png'), '显示生成的小程序码');
+    eq([cloud.state.codes.slice(-1)[0].scene, cloud.state.codes.slice(-1)[0].envVersion], [wheelId, 'release'], '码里是互动的 id，打开正式版');
+    eq(await page.getAttribute('#code-download', 'href'), codeSrc, '可以下载这张图');
+    await shot('code');
+    await page.click('#code-close');
+    cloud.state.codeError = 41030;
+    await ixRow().getByText('小程序码').click();
+    await page.waitForFunction(() => document.getElementById('code-status').textContent.indexOf('小程序码没生成出来') === 0);
+    ok(await page.isHidden('#code-download') && await page.isHidden('#code-img'), '没生成出来时说清楚，不给下载');
+    cloud.state.codeError = null;
+    await page.keyboard.press('Escape');
+    ok(await page.isHidden('#code-modal'), 'Esc 关掉小程序码');
+
+    // 网页互动：地址要 https；没有中奖名单。新建的填了一半关掉要问
+    await page.click('#ix-new');
+    await page.click('#ix-kind-seg [data-kind="web"]');
+    ok(await page.isHidden('#ix-wheel') && await page.isVisible('#ix-web'), '换成网页后只填网页地址');
+    await page.fill('#x-title', '现场答题');
+    let newAsk = '';
+    page.once('dialog', (d) => { newAsk = d.message(); d.dismiss(); });
+    await page.click('#ix-close');
+    ok(newAsk.includes('没有保存') && await page.isVisible('#ix-drawer'), '新建的互动填了一半关掉也要问');
+    await page.fill('#x-url', 'http://h5.example.com/quiz');
+    await page.click('#ix-save');
+    await expectToast('网页地址要以 https:// 开头', '网页地址要 https');
+    await page.fill('#x-url', 'https://h5.example.com/quiz');
+    await page.click('#ix-save');
+    await page.waitForSelector('#ix-drawer', { state: 'hidden' });
+    await page.locator('#ix-rows tr', { hasText: '现场答题' }).waitFor();
+    eq(await page.locator('#ix-rows tr', { hasText: '现场答题' }).getByText('中奖名单').count(), 0, '网页互动没有中奖名单');
+    eq(cloud.col('interactions').find((x) => x.title === '现场答题').url, 'https://h5.example.com/quiz', '网页地址存上');
+
+    // 删除：问一句，列表里没了，抽奖记录还在
+    let delAsk = '';
+    page.once('dialog', (d) => { delAsk = d.message(); d.accept(); });
+    await ixRow().getByText('删除').click();
+    await expectToast('已删除', '删除互动');
+    ok(delAsk.includes('删掉「幸运大转盘」'), '删除前问一句');
+    await page.waitForFunction(() => !document.getElementById('ix-rows').textContent.includes('幸运大转盘'));
+    eq([ixDoc().deleted, cloud.col('draws').some((d) => d.interactionId === wheelId)], [true, true], '云端标成删除了，抽奖记录还在');
+    await page.click('[data-tab="events"]');
+    await page.waitForSelector('#ev-rows tr');
+
     // ----- 发公告：上架着的活动一键发成公告 -----
     await page.locator('#ev-rows tr', { hasText: '能量胶PRO 试用装申领' }).getByText('上架', { exact: true }).click();
     await expectToast('已上架，小程序里能看到了', '上架一场活动');

@@ -194,7 +194,8 @@ async function adminTests() {
   const DAY = 24 * 3600 * 1000;
 
   // 不是会员、是会员但不是管理员：都不能用
-  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints', 'adminMemberStats', 'adminMembers']) {
+  for (const action of ['adminEvents', 'adminSaveEvent', 'adminSetEventStatus', 'adminNotifyEvent', 'adminSignups', 'adminCancelSignup', 'adminCancelEvent', 'adminPastEvents', 'adminSavePast', 'adminDeletePast', 'adminNotice', 'adminSaveNotice', 'adminFindMember', 'adminAdjustPoints', 'adminMemberStats', 'adminMembers',
+    'adminInteractions', 'adminSaveInteraction', 'adminSetInteractionStatus', 'adminDeleteInteraction', 'adminDraws', 'adminRedeem', 'adminInteractionCode']) {
     eq((await call(action, {})).code, 'forbidden', '没注册不能用 ' + action);
   }
   await call('register', { code: 'code-a' });
@@ -318,6 +319,331 @@ async function adminTests() {
   eq(r.data.member.points, 400, '会员看到调整后的积分');
   eq(r.data.logs.map((l) => l.reason).sort(), ['welcome', '兑换试用装', '线下活动签到'].sort(), '会员在积分页看到调整记录');
   ok(!JSON.stringify(r.data.logs).includes('user-a'), '记录里不带操作人');
+}
+
+/** 报名表：后台按模块拼表单，用户报名时一起交，报名后可以改到活动开始，后台名单里看得到 */
+async function formTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  cloud.state.phones = { 'code-a': '13800001234', 'code-b': '13900005678', 'code-c': '13700002222' };
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const as = async (openid, action, data) => {
+    const who = cloud.state.openid;
+    cloud.state.openid = openid;
+    try { return await call(action, data); } finally { cloud.state.openid = who; }
+  };
+  const now = cloud.state.now;
+  const signupDoc = (openid, id) => cloud.col('signups').find((s) => s._id === openid + '_' + id);
+  await call('register', { code: 'code-a' });
+  cloud.col('members').find((m) => m._id === 'user-a').admin = true;
+  await as('user-b', 'register', { code: 'code-b' });
+  await as('user-c', 'register', { code: 'code-c' });
+
+  const form = [
+    { id: 'name', kind: 'text', label: ' 姓名 ', required: true },
+    { id: 'gender', kind: 'single', label: '性别', required: true, options: ['男', '女', '男'] },
+    { id: 'idno', kind: 'idno', label: '证件号码', required: true },
+    { id: 'birth', kind: 'date', label: '出生日期', required: false },
+    { id: 'size', kind: 'multi', label: '想要的补给', required: false, options: ['能量胶BASIC', '能量胶PRO'] },
+    { id: 'tel', kind: 'phone', label: '紧急联系电话', required: true },
+    { id: 'memo', kind: 'textarea', label: '备注', required: false, hacked: 1 }
+  ];
+  const base = { type: '赛事', title: '带报名表的跑', status: 'published', date: now + 9 * DAY, signupStart: now - DAY };
+  // 报名表的检查
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'nope', label: 'x' }] }) })).code, 'bad_form', '不认识的类型');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'text', label: ' ' }] }) })).code, 'missing_field_label', '每项要有标题');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'single', label: '单选', options: ['只有一个'] }] }) })).code, 'missing_options', '单选至少两个选项');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'single', label: '单选', options: ['短', '一二三四五六七八九十一二三四五六七八九十多'] }] }) })).code, 'option_too_long', '选项超过 20 个字报错，不悄悄截断');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: [{ id: 'a', kind: 'text', label: 'x' }, { id: 'a', kind: 'text', label: 'y' }] }) })).code, 'bad_form', '项的 id 不能重复');
+  eq((await call('adminSaveEvent', { event: Object.assign({}, base, { form: Array.from({ length: 21 }, (v, i) => ({ id: 'f' + i, kind: 'text', label: '第' + i })) }) })).code, 'form_too_long', '最多 20 项');
+  let r = await call('adminSaveEvent', { event: Object.assign({}, base, { form: form }) });
+  const id = r.data.event.id;
+  eq(r.data.event.form.map((f) => f.label), ['姓名', '性别', '证件号码', '出生日期', '想要的补给', '紧急联系电话', '备注'], '标题去掉首尾空格');
+  eq(r.data.event.form[1].options, ['男', '女'], '重复的选项去掉');
+  ok(!('hacked' in r.data.event.form[6]), '只存认识的字段');
+  eq(r.data.event.form[3].required, false, '可以设成选填');
+  eq((await as('user-b', 'events')).data.events.find((e) => e.id === id).form.length, 7, '小程序拿到报名表');
+  // 更新前的后台页面不带 form：保存别的内容时不把报名表清掉
+  r = await call('adminSaveEvent', { id: id, event: Object.assign({}, base, { title: '改了名字' }) });
+  eq([r.data.event.title, r.data.event.form.length], ['改了名字', 7], '没带报名表的保存不动报名表');
+
+  // 报名时一起交
+  const good = { name: '王小明', gender: '男', idno: '11010519491231002x', tel: '138 0000 1111', size: ['能量胶PRO'], memo: '第一行\n第二行' };
+  eq((await as('user-b', 'signup', { eventId: id, answers: { name: '王小明' } })).code, 'form_incomplete', '必填项没填齐报不上');
+  eq(signupDoc('user-b', id), undefined, '没留报名记录');
+  eq((await as('user-b', 'signup', { eventId: id, answers: Object.assign({}, good, { idno: '110105194912310021' }) })).code, 'bad_answer', '身份证号最后一位对不上');
+  eq((await as('user-b', 'signup', { eventId: id, answers: Object.assign({}, good, { gender: '其他' }) })).code, 'bad_answer', '选了不在选项里的');
+  eq((await as('user-b', 'signup', { eventId: id, answers: Object.assign({}, good, { tel: '打电话' }) })).code, 'bad_answer', '电话格式不对');
+  eq((await as('user-b', 'signup', { eventId: id, answers: Object.assign({}, good, { birth: '2001-02-30' }) })).code, 'bad_answer', '日期不存在');
+  eq((await as('user-b', 'signup', { eventId: id, answers: Object.assign({}, good, { size: ['别的胶'] }) })).code, 'bad_answer', '多选选了不在选项里的');
+  r = await as('user-b', 'signup', { eventId: id, answers: good });
+  eq(r.data.already, false, '填齐了报上名');
+  const saved = signupDoc('user-b', id).answers;
+  eq(saved.map((a) => [a.id, a.value]), [['name', '王小明'], ['gender', '男'], ['idno', '11010519491231002X'], ['size', ['能量胶PRO']], ['tel', '13800001111'], ['memo', '第一行\n第二行']], '回答整理好存进报名记录，空着的选填项不存');
+  eq(saved[0].label, '姓名', '带上当时的标题');
+  r = await as('user-b', 'event', { id: id });
+  eq([r.data.mine.complete, r.data.mine.answers.name, r.data.mine.answers.size], [true, '王小明', ['能量胶PRO']], '活动详情里拿到本人填的内容');
+  eq((await as('user-c', 'event', { id: id })).data.mine, null, '没报名的人没有这一项');
+  // 旧版小程序不带 answers：照常报上，之后补填
+  r = await as('user-c', 'signup', { eventId: id });
+  eq([r.ok, signupDoc('user-c', id).answers], [true, []], '旧版小程序照常报名');
+  eq((await as('user-c', 'event', { id: id })).data.mine.complete, false, '旧版报的名显示还没填');
+  // 报名后改
+  eq((await as('user-c', 'saveAnswers', { eventId: id, answers: { name: '老陈' } })).code, 'form_incomplete', '补填也要填齐必填项');
+  r = await as('user-c', 'saveAnswers', { eventId: id, answers: Object.assign({}, good, { name: '老陈' }) });
+  eq([r.data.complete, r.data.answers.name], [true, '老陈'], '补填好了');
+  r = await as('user-b', 'saveAnswers', { eventId: id, answers: Object.assign({}, good, { size: [], memo: '' }) });
+  eq(signupDoc('user-b', id).answers.map((a) => a.id), ['name', 'gender', 'idno', 'tel'], '改成空的选填项整个去掉，不留旧值');
+  eq((await call('saveAnswers', { eventId: id, answers: good })).code, 'not_signed', '没报名的人改不了');
+  eq((await as('user-b', 'saveAnswers', { eventId: 'trial', answers: good })).code, 'not_signed', '别的活动改不了');
+  // 运营后来加了必填项：已经报名的人算没填齐，名单上看得到
+  const more = form.concat([{ id: 'shirt', kind: 'single', label: '服装尺码', required: true, options: ['S', 'M', 'L'] }]);
+  await call('adminSaveEvent', { id: id, event: Object.assign({}, base, { form: more.filter((f) => f.id !== 'memo') }) });
+  eq((await as('user-b', 'event', { id: id })).data.mine.complete, false, '加了必填项以后要补填');
+  r = await call('adminSignups', { id: id });
+  eq(r.data.form.map((f) => f.id), ['name', 'gender', 'idno', 'birth', 'size', 'tel', 'shirt'], '名单带上现在的报名表');
+  eq(r.data.signups.map((s) => s.complete), [false, false], '名单上看得出谁还没填齐');
+  eq(r.data.signups[1].answers.find((a) => a.id === 'memo').value, '第一行\n第二行', '删掉的项，之前填的内容还在');
+  // 删掉的项之后，他再改报名表：现在报名表上的项换成新的，删掉的那项之前填的内容还留着
+  r = await as('user-c', 'saveAnswers', { eventId: id, answers: Object.assign({}, good, { name: '陈老师', shirt: 'L' }) });
+  eq(r.data.complete, true, '补填好了');
+  eq(signupDoc('user-c', id).answers.find((a) => a.id === 'memo').value, '第一行\n第二行', '再改报名表，删掉的项之前填的内容不丢');
+  eq(signupDoc('user-c', id).answers.find((a) => a.id === 'name').value, '陈老师', '现在的项换成新填的');
+  eq((await as('user-b', 'adminSignups', { id: id })).code, 'forbidden', '普通会员看不了名单');
+  // 用户填表时运营改了报名表：报名的事务里按新的报名表核对
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    cloud.col('events').find((e) => e._id === id).form = more.concat([{ id: 'late', kind: 'text', label: '刚加的', required: true }]);
+  };
+  eq((await call('signup', { eventId: id, answers: Object.assign({}, good, { shirt: 'M' }) })).code, 'form_changed', '报名表刚改过：报不上，页面重新读取');
+  eq(signupDoc('user-a', id), undefined, '没报上就没有记录');
+  // 活动开始以后不能再改
+  cloud.state.now = now + 10 * DAY;
+  eq((await as('user-b', 'saveAnswers', { eventId: id, answers: Object.assign({}, good, { shirt: 'M' }) })).code, 'form_closed', '活动开始以后不能改');
+  cloud.state.now = now;
+  // 没有报名表的活动照常报名
+  r = await as('user-b', 'signup', { eventId: 'trial', answers: {} });
+  eq([r.ok, signupDoc('user-b', 'trial').answers], [true, []], '没有报名表的活动照常报名');
+  eq((await as('user-b', 'saveAnswers', { eventId: 'trial', answers: {} })).code, 'no_form', '没有报名表的活动没什么可改');
+  // 清掉报名表
+  r = await call('adminSaveEvent', { id: id, event: Object.assign({}, base, { form: [] }) });
+  eq(r.data.event.form, [], '可以清掉报名表');
+}
+
+/** 现场互动：运营在后台建、开、关；大转盘在云端抽，每人次数和奖品数量不超；中奖后现场核销 */
+async function interactTests() {
+  const cloud = createCloud();
+  seed(cloud);
+  cloud.state.phones = { 'code-a': '13800001234', 'code-b': '13900005678', 'code-c': '13700002222' };
+  const api = cloud.load('api');
+  const call = (action, data) => cloud.run(() => api.main(Object.assign({ action: action }, data)));
+  const as = async (openid, action, data) => {
+    const who = cloud.state.openid;
+    cloud.state.openid = openid;
+    try { return await call(action, data); } finally { cloud.state.openid = who; }
+  };
+  const realRandom = require('crypto').randomInt;
+  const rolls = [];
+  // 抽奖用的随机数：测试里按顺序给定；没给的时候取最大的数，落在「没中」那一段
+  require('crypto').randomInt = (n) => (rolls.length ? rolls.shift() : n - 1);
+
+  eq((await call('liveNope')).code, 'unknown_action', '未知接口');
+  eq((await call('events')).data.live, [], '没有互动时没有入口');
+  eq((await call('interaction', { id: 'nope' })).code, 'not_found', '互动不存在');
+  for (const action of ['adminInteractions', 'adminSaveInteraction', 'adminSetInteractionStatus', 'adminDeleteInteraction', 'adminDraws', 'adminRedeem', 'adminInteractionCode']) {
+    eq((await call(action, {})).code, 'forbidden', '没加入的人不能用 ' + action);
+  }
+  await call('register', { code: 'code-a' });
+  await as('user-b', 'register', { code: 'code-b' });
+  for (const action of ['adminInteractions', 'adminSaveInteraction', 'adminSetInteractionStatus', 'adminDeleteInteraction', 'adminDraws', 'adminRedeem', 'adminInteractionCode']) {
+    eq((await call(action, {})).code, 'forbidden', '普通会员不能用 ' + action);
+  }
+  cloud.col('members').find((m) => m._id === 'user-a').admin = true;
+
+  // 新建：检查
+  const wheel = { kind: 'wheel', title: '幸运大转盘', note: '每人两次', audience: 'all', tries: 2,
+    prizes: [{ id: 'p1', name: '运动毛巾', total: 1, chance: 30 }, { id: 'p2', name: '能量胶PRO 一支', total: 100, chance: 20.5 }] };
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { kind: 'x' }) })).code, 'bad_kind', '类型要认识');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { title: '' }) })).code, 'missing_title', '要有名称');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { prizes: [] }) })).code, 'missing_prizes', '大转盘要有奖品');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { prizes: [{ id: 'p1', name: 'a', total: 1, chance: 60 }, { id: 'p2', name: 'b', total: 1, chance: 50 }] }) })).code, 'bad_chance', '机会加起来不能超过 100%');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { prizes: [{ id: 'p1', name: 'a', total: 1, chance: 1.234 }] }) })).code, 'bad_chance', '机会最多两位小数');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { prizes: [{ id: 'p1', name: 'a', total: -1, chance: 1 }] }) })).code, 'bad_prize_total', '数量不能是负数');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { tries: 0 }) })).code, 'bad_tries', '每人至少抽一次');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { audience: 'signed' }) })).code, 'missing_event', '只给报名的人参与时要关联活动');
+  eq((await call('adminSaveInteraction', { interaction: { kind: 'web', title: '答题', url: 'http://a.com/x' } })).code, 'bad_url', '网页要 https');
+  eq((await call('adminSaveInteraction', { interaction: { kind: 'mini', title: '别家', appId: 'abc' } })).code, 'bad_mini', '小程序要有 AppID 或链接');
+  let r = await call('adminSaveInteraction', { interaction: wheel });
+  const id = r.data.interaction.id;
+  ok(/^[a-z0-9]{8}$/.test(id), '互动的 id 是 8 位，放得进小程序码');
+  eq([r.data.interaction.status, r.data.interaction.prizes.map((p) => [p.name, p.total, p.chance, p.won])], ['off', [['运动毛巾', 1, 30, 0], ['能量胶PRO 一支', 100, 20.5, 0]]], '新建的是关着的');
+  eq((await call('events')).data.live, [], '关着的不出现入口');
+  eq((await as('user-b', 'draw', { id: id })).code, 'closed', '关着的不能抽');
+  r = await as('user-b', 'interaction', { id: id });
+  eq([r.data.interaction.open, r.data.interaction.prizes, r.data.blocked], [false, [{ id: 'p1', name: '运动毛巾' }, { id: 'p2', name: '能量胶PRO 一支' }], ''], '扫码进来看到现在没开放');
+  ok(!JSON.stringify(r.data).includes('chance') && !JSON.stringify(r.data).includes('total'), '小程序拿不到机会和数量');
+
+  // 打开：入口出现
+  r = await call('adminSetInteractionStatus', { id: id, status: 'on' });
+  eq(r.data.interaction.status, 'on', '打开');
+  eq((await as('user-b', 'events')).data.live, [{ id: id, title: '幸运大转盘', kind: 'wheel', eventId: '' }], '活动页拿到入口');
+  // 抽：第一次落在毛巾上，第二次落在毛巾上但毛巾发完了，第三次没机会了
+  rolls.push(100, 2000, 2000);
+  r = await as('user-b', 'draw', { id: id });
+  eq([r.data.result.win, r.data.result.prizeName, r.data.mine.used, r.data.mine.left], [true, '运动毛巾', 1, 1], '抽中毛巾');
+  ok(/^[1-9]\d{5}$/.test(r.data.result.code), '中了有 6 位领奖码，第一位不是 0');
+  const code = r.data.result.code;
+  r = await as('user-c', 'draw', { id: id });
+  eq([r.data.result.win, r.data.result.code], [false, ''], '毛巾只有一条，落在毛巾上的第二个人算没中');
+  r = await as('user-b', 'draw', { id: id });
+  eq(r.ok, true, '第二次');
+  eq((await as('user-b', 'draw', { id: id })).code, 'no_tries', '每人两次，抽完了');
+  r = await as('user-b', 'interaction', { id: id });
+  eq([r.data.mine.used, r.data.mine.left, r.data.mine.results[0].prizeName, r.data.mine.results[0].code], [2, 0, '运动毛巾', code], '页面上看到自己的结果');
+  eq(cloud.col('interactions').find((x) => x._id === id).prizes[0].won, 1, '毛巾记着抽中了一条');
+  // 同一个人同时点两次：两次都算，不多出第三次
+  cloud.state.openid = 'user-d';
+  const both = await Promise.all([call('draw', { id: id }), call('draw', { id: id })]);
+  cloud.state.openid = 'user-a';
+  eq(both.map((x) => x.ok), [true, true], '同时点两次都返回');
+  eq(cloud.col('draws').filter((d) => d.openid === 'user-d').length, 2, '两次都记上，不多不少');
+  eq((await as('user-d', 'draw', { id: id })).code, 'no_tries', '再抽就没了');
+
+  // 后台：中奖名单、核销
+  r = await call('adminDraws', { id: id });
+  eq([r.data.draws, r.data.wins.length, r.data.wins[0].code, r.data.wins[0].memberNo, r.data.wins[0].phone], [5, 1, code, '100002', '13900005678'], '名单里有中奖的人和领奖码');
+  eq([r.data.interaction.draws, r.data.interaction.wins], [5, 1], '名单上的互动也带着抽奖次数和中奖人数');
+  const drawId = r.data.wins[0].id;
+  r = await call('adminRedeem', { id: drawId });
+  eq([r.data.redeemed, r.data.already], [true, false], '核销');
+  eq((await call('adminRedeem', { id: drawId })).data.already, true, '重复核销说已经领过');
+  eq((await as('user-b', 'interaction', { id: id })).data.mine.results[0].redeemed, true, '本人看到已领取');
+  eq((await call('adminRedeem', { id: drawId, redeemed: false })).data.redeemed, false, '点错了可以撤回');
+  r = await call('adminInteractions');
+  eq([r.data.interactions[0].draws, r.data.interactions[0].wins, r.data.interactions[0].redeemed], [5, 1, 0], '列表上有抽奖次数和中奖人数');
+
+  // 修改：版本对不上不让改；数量不能少于已经抽中的
+  eq((await call('adminSaveInteraction', { id: id, version: 1, interaction: wheel })).code, 'conflict', '被改过了要重新读取');
+  const ver = (await call('adminInteractions')).data.interactions[0].version;
+  eq((await call('adminSaveInteraction', { id: id, version: ver, interaction: Object.assign({}, wheel, { prizes: [{ id: 'p1', name: '运动毛巾', total: 0, chance: 30 }] }) })).code, 'prize_below_won', '数量不能少于已经抽中的');
+  r = await call('adminSaveInteraction', { id: id, version: ver, interaction: Object.assign({}, wheel, { tries: 3, prizes: [{ id: 'p1', name: '速干毛巾', total: 5, chance: 30 }, { id: 'p3', name: '帽子', total: 2, chance: 10 }] }) });
+  eq(r.data.interaction.prizes.map((p) => [p.name, p.won]), [['速干毛巾', 1], ['帽子', 0]], '按 id 留着已经抽中的数');
+  eq(r.data.interaction.status, 'on', '改内容不改开关');
+  // 编辑页打开时奖品还没人中，保存前有人抽中了：删掉它的保存不能通过（按事务里的数核对）
+  const before = (await call('adminInteractions')).data.interactions.find((x) => x.id === id);
+  cloud.col('interactions').find((x) => x._id === id).prizes.find((p) => p.id === 'p3').won = 1;
+  eq((await call('adminSaveInteraction', { id: id, version: before.version, interaction: Object.assign({}, wheel, { tries: 3, prizes: [{ id: 'p1', name: '速干毛巾', total: 5, chance: 30 }] }) })).code, 'prize_has_winners', '已经有人抽中的奖品不能删');
+  eq((await call('adminSaveInteraction', { id: id, version: before.version, interaction: { kind: 'web', title: '改成网页', url: 'https://a.com/x' } })).code, 'prize_has_winners', '有人中过奖的大转盘不能改成别的类型');
+  eq(cloud.col('interactions').find((x) => x._id === id).prizes.length, 2, '奖品还在');
+  cloud.col('interactions').find((x) => x._id === id).prizes.find((p) => p.id === 'p3').won = 0;
+  eq((await as('user-b', 'draw', { id: id })).data.mine.left, 0, '加到每人三次，抽过两次的人还能抽一次');
+
+  // 只给会员、只给报名了的会员
+  await call('adminSaveInteraction', { id: id, interaction: Object.assign({}, wheel, { audience: 'member' }) });
+  eq((await as('user-z', 'draw', { id: id })).code, 'not_member', '只给会员时没加入的人抽不了');
+  eq((await as('user-z', 'interaction', { id: id })).data.blocked, 'not_member', '页面上提示先加入');
+  await call('adminSaveInteraction', { id: id, interaction: Object.assign({}, wheel, { audience: 'signed', eventId: 'trial' }) });
+  await as('user-c', 'register', { code: 'code-c' });
+  eq((await as('user-c', 'draw', { id: id })).code, 'not_signed', '只给报名的人时没报名的抽不了');
+  await as('user-c', 'signup', { eventId: 'trial' });
+  eq((await as('user-c', 'draw', { id: id })).ok, true, '报了名就能抽');
+  eq((await call('event', { id: 'trial' })).data.live.map((x) => x.id), [id], '关联活动的详情里有入口');
+  eq((await call('event', { id: 'race' })).data.live, [], '别的活动没有');
+  eq((await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { eventId: 'nope' }) })).code, 'missing_event', '关联的活动要存在');
+
+  // 小程序码
+  r = await call('adminInteractionCode', { id: id, envVersion: 'trial' });
+  eq([cloud.state.codes[0].scene, cloud.state.codes[0].page, cloud.state.codes[0].envVersion, cloud.state.codes[0].checkPath], [id, 'pages/interact/index', 'trial', false], '码里是互动的 id，打开互动页');
+  ok(r.data.fileID.indexOf('interact/' + id) >= 0 && r.data.url, '码存进云存储，返回地址');
+  cloud.state.codeError = 41030;
+  eq((await call('adminInteractionCode', { id: id })).code, 'code_failed', '生成失败时说清楚');
+  cloud.state.codeError = null;
+
+  // 网页、其他小程序
+  r = await call('adminSaveInteraction', { interaction: { kind: 'web', title: '现场答题', url: 'https://h5.example.com/quiz?a=1', audience: 'all' } });
+  const web = r.data.interaction.id;
+  await call('adminSetInteractionStatus', { id: web, status: 'on' });
+  r = await as('user-b', 'interaction', { id: web });
+  eq([r.data.interaction.url, r.data.mine], ['https://h5.example.com/quiz?a=1', null], '网页互动给地址');
+  eq((await as('user-b', 'draw', { id: web })).code, 'bad_kind', '网页互动不能抽奖');
+  r = await call('adminSaveInteraction', { interaction: { kind: 'mini', title: '别家抽奖', shortLink: '#小程序://抽奖助手/abc', appId: 'wx0123456789abcdef' } });
+  eq([r.data.interaction.shortLink, r.data.interaction.appId], ['#小程序://抽奖助手/abc', ''], '填了链接就用链接');
+  r = await call('adminSaveInteraction', { interaction: { kind: 'mini', title: '别家抽奖', appId: 'wx0123456789abcdef', path: 'pages/index?x=1' } });
+  eq([r.data.interaction.appId, r.data.interaction.path], ['wx0123456789abcdef', 'pages/index?x=1'], '或者 AppID 加路径');
+  eq((await as('user-b', 'events')).data.live.length, 2, '两个开着的互动都有入口');
+
+  // 删除：关掉、不再列出，记录还在
+  await call('adminDeleteInteraction', { id: id });
+  eq((await call('adminInteractions')).data.interactions.some((x) => x.id === id), false, '删掉的不再列出');
+  eq((await as('user-b', 'interaction', { id: id })).code, 'not_found', '删掉的扫码也进不来');
+  eq((await as('user-b', 'events')).data.live.map((x) => x.id), [web], '入口跟着消失');
+  ok(cloud.col('draws').some((d) => d.interactionId === id), '抽奖记录还在');
+  eq((await call('adminDeleteInteraction', { id: id })).code, 'not_found', '删过的再删');
+
+  // 事务提交了、结果没传回来：按写下的记录返回，不多抽
+  r = await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { tries: 1 }) });
+  const once = r.data.interaction.id;
+  await call('adminSetInteractionStatus', { id: once, status: 'on' });
+  cloud.state.txFails = 'after';
+  rolls.push(100);
+  r = await as('user-b', 'draw', { id: once });
+  eq([r.ok, r.data.result.win, r.data.mine.used], [true, true, 1], '结果没传回来也按抽过一次返回');
+  eq((await as('user-b', 'draw', { id: once })).code, 'no_tries', '没有多出一次');
+
+  // 领奖码在一个互动里不重复：第二个人先抽到和第一个人一样的码，换一个
+  const crypto = require('crypto');
+  const realBytes = crypto.randomBytes;
+  let sameCode = 0;
+  crypto.randomBytes = (size) => {
+    if (sameCode > 0 && (size === 1 || size === 10)) { if (size === 10) sameCode -= 1; return Buffer.alloc(size); }
+    return realBytes(size);
+  };
+  try {
+    r = await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { tries: 1, prizes: [{ id: 'p1', name: '必中', total: 10, chance: 100 }] }) });
+    const sure = r.data.interaction.id;
+    await call('adminSetInteractionStatus', { id: sure, status: 'on' });
+    sameCode = 1;
+    const first = (await as('user-b', 'draw', { id: sure })).data.result.code;
+    sameCode = 1;
+    const second = (await as('user-c', 'draw', { id: sure })).data.result.code;
+    eq(first, '100000', '第一个人拿到 100000');
+    ok(/^[1-9]\d{5}$/.test(second) && second !== first, '第二个人撞上了，换了一个不重复的码');
+    eq(cloud.col('draw_codes').filter((c) => c.interactionId === sure).map((c) => c.code).sort(), [first, second].sort(), '每个发出去的码占一条');
+  } finally { crypto.randomBytes = realBytes; }
+
+  // 谁能参与在事务里再核对一次：刚好被改成只给报名的人，没加入的人抽不到
+  r = await call('adminSaveInteraction', { interaction: Object.assign({}, wheel, { audience: 'all', tries: 1, prizes: [{ id: 'p1', name: '必中', total: 10, chance: 100 }] }) });
+  const open = r.data.interaction.id;
+  await call('adminSetInteractionStatus', { id: open, status: 'on' });
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    Object.assign(cloud.col('interactions').find((x) => x._id === open), { audience: 'signed', eventId: 'trial' });
+  };
+  eq((await as('user-y', 'draw', { id: open })).code, 'not_member', '抽的时候范围刚收紧：不是会员的抽不到');
+  eq(cloud.col('draws').filter((d) => d.interactionId === open).length, 0, '没有留下抽奖记录');
+  // 报名刚被取消：抽不到
+  cloud.col('members').push({ _id: 'user-s', openid: 'user-s', phone: '13300003333', memberNo: '100777', numbered: true, points: 0, welcomeBonus: true, ledgerVersion: 1, createdAt: new Date(cloud.state.now) });
+  await as('user-s', 'signup', { eventId: 'trial', answers: {} });
+  cloud.state.beforeTx = async () => {
+    cloud.state.beforeTx = null;
+    cloud.state.data.signups = cloud.col('signups').filter((x) => x._id !== 'user-s_trial');
+  };
+  eq((await as('user-s', 'draw', { id: open })).code, 'not_signed', '抽的时候报名刚被取消：抽不到');
+
+  // 中奖的人超过名单上限：说明没列全，按完整的领奖码能查到后面的人
+  const many = cloud.col('interactions').find((x) => x._id === open);
+  for (let i = 0; i < 2001; i++) {
+    cloud.col('draws').push({ _id: open + '_bulk' + i + '_1', interactionId: open, openid: 'bulk' + i, n: 1, win: true, prizeId: 'p1', prizeName: '必中',
+      code: String(200000 + i), redeemed: false, createdAt: new Date(cloud.state.now + i) });
+  }
+  r = await call('adminDraws', { id: many._id });
+  eq([r.data.wins.length, r.data.winsTotal, r.data.partial], [2000, 2001, true], '名单最多 2000 人，说明没列全');
+  ok(!r.data.wins.some((w) => w.code === '202000'), '最后一个人不在名单里');
+  r = await call('adminDraws', { id: many._id, code: '202000' });
+  eq([r.data.wins.map((w) => w.code), r.data.partial, r.data.winsTotal], [['202000'], false, 2001], '按领奖码直接查到');
+  eq((await call('adminRedeem', { id: r.data.wins[0].id })).data.redeemed, true, '查到的就能核销');
+  require('crypto').randomInt = realRandom;
 }
 
 /** 电脑端后台：网页没有微信身份，靠小程序里取的一次性登录码登录，之后带着凭证调后台接口 */
@@ -1950,7 +2276,7 @@ async function fontTests() {
 }
 
 (async () => {
-  for (const run of [fontTests, shopTests, signupClientTests, functionTests, adminTests, webTests,
+  for (const run of [fontTests, shopTests, signupClientTests, functionTests, adminTests, formTests, interactTests, webTests,
     signupFailureTests, remindTests, newsTests, pastTests, signupRecoveryTests, memberBoardTests,
     paidSignupTests, clientTests]) {
     currentStage = run.name;

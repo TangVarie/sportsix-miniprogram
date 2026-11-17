@@ -1,0 +1,3 @@
+/* 网页读不出来时的一行提示，同活动详情的状态条 */
+.wv-status { display: flex; align-items: center; justify-content: space-between; gap: 23rpx; margin: 38rpx; padding: 23rpx; border-radius: 19rpx; background: #F5F5F5; color: #5E6170; font-size: 25rpx; line-height: 38rpx; }
+.wv-status__retry { min-height: 85rpx; display: flex; align-items: center; color: #061A70; font-weight: 700; }

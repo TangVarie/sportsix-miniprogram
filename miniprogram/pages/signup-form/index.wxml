@@ -1,0 +1,63 @@
+<view class="page sf-page" style="--sx-safe-top: {{safeTop}}px">
+  <view class="sf-header sx-grid-bg">
+    <view class="sf-back" bindtap="onBack" aria-role="button" aria-label="{{clientCopy.back}}">
+      <image class="sf-back__icon" src="/assets/icons/back-white.svg" />
+    </view>
+    <view class="sf-header__title">
+      <text class="sf-header__h1">{{copy.title}}</text>
+      <text class="sf-header__event">{{title}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="sf-body">
+    <view wx:for="{{[0, 1, 2]}}" wx:key="*this" class="sf-skel sx-skeleton"></view>
+  </view>
+  <view wx:elif="{{loadFailed}}" class="sf-body">
+    <view class="sf-status">
+      <text>{{clientCopy.loadFailed}}</text>
+      <view class="sf-status__retry" bindtap="onRetry" aria-role="button">{{clientCopy.retry}}</view>
+    </view>
+  </view>
+  <view wx:elif="{{!fields.length}}" class="sf-body">
+    <view class="sf-status"><text>{{copy.noForm}}</text></view>
+  </view>
+  <block wx:else>
+    <view class="sf-body sx-in">
+      <view class="sf-intro">{{mode === 'view' ? copy.closed : copy.intro}}</view>
+      <view class="sf-card">
+        <view wx:for="{{fields}}" wx:key="id" class="sf-field {{item.last ? 'sf-field--last' : ''}}">
+          <view class="sf-label">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="sf-star" aria-label="{{copy.required}}">*</text>
+            <text wx:if="{{item.kind === 'multi'}}" class="sf-label__hint">{{copy.multiHint}}</text>
+          </view>
+          <!-- 一行字、电话、证件号码。证件号码用普通键盘：身份证键盘只有数字和 X，护照、港澳台证件里的字母打不进去 -->
+          <input wx:if="{{item.kind === 'text' || item.kind === 'phone' || item.kind === 'idno'}}" class="sf-input {{item.error ? 'sf-input--error' : ''}}"
+            value="{{item.value}}" type="{{item.kind === 'phone' ? 'number' : 'text'}}" maxlength="{{item.kind === 'text' ? 50 : 30}}"
+            disabled="{{mode === 'view'}}" placeholder="{{item.placeholder}}" placeholder-class="sf-ph" data-id="{{item.id}}" bindinput="onInput" />
+          <!-- 多行字 -->
+          <textarea wx:elif="{{item.kind === 'textarea'}}" class="sf-textarea {{item.error ? 'sf-input--error' : ''}}" value="{{item.value}}" maxlength="300"
+            disabled="{{mode === 'view'}}" placeholder="{{item.placeholder}}" placeholder-class="sf-ph" data-id="{{item.id}}" bindinput="onInput" />
+          <!-- 日期 -->
+          <picker wx:elif="{{item.kind === 'date'}}" mode="date" value="{{item.value}}" start="1900-01-01" end="{{item.end}}" disabled="{{mode === 'view'}}" data-id="{{item.id}}" bindchange="onDate">
+            <view class="sf-input sf-pick {{item.value ? '' : 'sf-pick--empty'}} {{item.error ? 'sf-input--error' : ''}}">{{item.value || item.placeholder}}</view>
+          </picker>
+          <!-- 单选、多选 -->
+          <view wx:else class="sf-options">
+            <view wx:for="{{item.options}}" wx:for-item="o" wx:key="text" class="sf-option sx-pressable {{o.on ? 'sf-option--on' : ''}} {{item.error ? 'sf-option--error' : ''}}"
+              hover-class="sx-press" data-id="{{item.id}}" data-option="{{o.text}}" bindtap="onOption" aria-role="{{item.kind === 'multi' ? 'checkbox' : 'radio'}}" aria-checked="{{o.on}}">{{o.text}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{mode === 'signup'}}" class="sf-agree" bindtap="onAgree" aria-role="checkbox" aria-checked="{{agree}}">
+        <view class="{{agree ? 'sx-check' : 'sf-agree__box'}}" />
+        <view class="sf-agree__text"><text>{{copy.agree.before}}</text><text class="sf-agree__link" catchtap="onPrivacy">{{copy.agree.link}}</text><text>{{copy.agree.after}}</text></view>
+      </view>
+    </view>
+
+    <view wx:if="{{mode !== 'view'}}" class="sf-bar">
+      <view class="sf-btn sx-pressable {{busy ? 'sf-btn--busy' : ''}}" hover-class="sx-press" bindtap="onSubmit" aria-role="button">{{mode === 'edit' ? copy.save : copy.submit}}</view>
+    </view>
+  </block>
+</view>

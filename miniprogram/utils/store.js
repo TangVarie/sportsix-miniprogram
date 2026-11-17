@@ -222,19 +222,27 @@ function subscribeNews(templateId, batchId) {
 function getSignups() { return read(KEY.signups, []); }
 function hasSignup(eventId) { return getSignups().indexOf(eventId) >= 0; }
 /**
- * 报名。失败时 reject 的 Error 带 code：not_member、not_open、closed、full、insufficient_points、not_found、network。
+ * 报名。失败时 reject 的 Error 带 code：not_member、not_open、closed、full、insufficient_points、not_found、network，
+ * 有报名表的活动还有 form_incomplete（必填项没填齐）、form_changed（报名表刚改过）、bad_answer（格式不对）。
  * 没配云环境时没有地方登记报名，直接按 'no_backend' 失败。
  */
-function signup(eventId, templateId, cost) {
+function signup(eventId, templateId, cost, answers) {
   if (!cloud.enabled()) return Promise.reject(Object.assign(new Error('no_backend'), { code: 'no_backend' }));
   // templateId：报名时同意了订阅消息的带上，报名被取消或活动取消时云端用它发通知
   // cost：用户在页面上确认过的积分数。云端发现这场要用的积分已经变了就不扣，返回 cost_changed
-  return tracked('signup', { eventId: eventId, templateId: templateId || '', cost: cost > 0 ? cost : 0 }, (d, revision) => {
+  // answers：报名表上填的 { 项的 id: 值 }。总是带上（没有报名表的活动是空的），云端据此知道这是认识报名表的新版本
+  return tracked('signup', { eventId: eventId, templateId: templateId || '', cost: cost > 0 ? cost : 0, answers: answers || {} }, (d, revision) => {
     addTo(KEY.signups, eventId);
     // 这场用了积分的话，云端返回扣完以后的会员信息
     if (d && d.member) writeMember(d.member, revision, ['points']);
     return d;
   });
+}
+
+/** 报名之后改报名表（或补填）。resolve { answers, complete } */
+function saveAnswers(eventId, answers) {
+  if (!cloud.enabled()) return Promise.reject(Object.assign(new Error('no_backend'), { code: 'no_backend' }));
+  return tracked('saveAnswers', { eventId: eventId, answers: answers || {} }, (d) => d);
 }
 
 /** 补给计划：只保存最近一份，新计划保留公式版本与完整结果快照。 */
@@ -265,6 +273,6 @@ module.exports = {
   sync, onChange, unseenNotice, markNoticeSeen, takeInbox, readInbox,
   getMember, isMember, register, setNickname, fetchPoints,
   getReminders, hasReminder, addReminder, hasNews, subscribeNews,
-  getSignups, hasSignup, signup,
+  getSignups, hasSignup, signup, saveAnswers,
   getPlan, savePlan, setPendingPlan, getPendingPlan, clearPendingPlan
 };

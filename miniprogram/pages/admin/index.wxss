@@ -6,10 +6,11 @@
 }
 .ad-back__icon { display: block; width: 38rpx; height: 38rpx; }
 .ad-header__title { position: absolute; left: 38rpx; top: calc(115rpx + var(--sx-safe-top)); font-size: 58rpx; line-height: 77rpx; font-weight: 900; }
-/* 六个分区要在一行里放下，所以内边距比活动页的标签窄 */
-.ad-tabs { position: absolute; left: 38rpx; bottom: 31rpx; display: flex; gap: 12rpx; }
+/* 分区比较多，一行放不下时横着滑；内边距比活动页的标签窄 */
+.ad-tabs-scroll { position: absolute; left: 0; right: 0; bottom: 31rpx; width: 750rpx; white-space: nowrap; }
+.ad-tabs { display: inline-flex; gap: 12rpx; padding: 0 38rpx; }
 .ad-tab {
-  display: flex; align-items: center; box-sizing: border-box;
+  flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box;
   height: 85rpx; padding: 0 20rpx; border-radius: 42rpx; border: 1px solid #FFFFFF;
   font-size: 27rpx; font-weight: 700; color: #FFFFFF;
 }
@@ -125,3 +126,11 @@
 .ad-mrow__num { font-size: 42rpx; line-height: 46rpx; color: #061A70; }
 .ad-mrow__unit { font-size: 21rpx; line-height: 31rpx; color: #5E6170; }
 .ad-btn--more { margin-top: 31rpx; }
+
+/* 互动的小程序码（设计稿里没有）：盖一层白卡片，码要够大才好打印 */
+.ad-code-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(1, 4, 57, .6); }
+.ad-code { box-sizing: border-box; width: 640rpx; padding: 38rpx; border-radius: 31rpx; background: #FFFFFF; }
+.ad-code__title { font-size: 35rpx; line-height: 50rpx; font-weight: 900; color: #010439; }
+.ad-code__name { margin-top: 4rpx; font-size: 25rpx; line-height: 38rpx; color: #5E6170; }
+.ad-code__img { display: block; width: 400rpx; height: 400rpx; margin: 31rpx auto 0; }
+.ad-code__img--wait { display: flex; align-items: center; justify-content: center; border-radius: 23rpx; font-size: 25rpx; color: #5E6170; }

@@ -34,7 +34,11 @@ function session(options) {
           const fn = handlers[data.action] || defaults[data.action];
           if (!fn) throw new Error('unexpected action ' + data.action);
           return fn(data);
-        }).then((result) => ({ result: { ok: true, data: result } }));
+        }).then((result) => ({ result: { ok: true, data: result } }), (e) => {
+          // 业务错误（带 business 的）按云函数的样子返回 { ok: false, code }，其余照旧算网络失败
+          if (e && e.business) return { result: { ok: false, code: e.business } };
+          throw e;
+        });
       }
     } }
   });
@@ -180,7 +184,302 @@ async function snapshotsAndBoundaries() {
   me.onUnload();
 }
 
+const FORM = [
+  { id: 'name', kind: 'text', label: '姓名', required: true },
+  { id: 'gender', kind: 'single', label: '性别', required: true, options: ['男', '女'] },
+  { id: 'idno', kind: 'idno', label: '证件号码', required: true },
+  { id: 'gel', kind: 'multi', label: '想试的补给', required: false, options: ['能量胶BASIC', '能量胶PRO'] }
+];
+const input = (page, id, value) => page.onInput({ currentTarget: { dataset: { id: id } }, detail: { value: value } });
+const option = (page, id, value) => page.onOption({ currentTarget: { dataset: { id: id, option: value } } });
+
+/** 有报名表的活动：点报名先去填表；没填齐、没勾同意都不提交；填好了和报名一起交；报名后能改 */
+async function signupFormFlow() {
+  const event = record('f', { form: FORM });
+  const s = session({ member: { nickname: '会员', points: 500, memberNo: '100001' }, events: [event] });
+  let mine = null;
+  s.handlers.event = () => ({ event, readOnly: false, mine: mine, live: [{ id: 'w1', title: '幸运大转盘', kind: 'wheel', eventId: 'f' }] });
+  s.handlers.signup = (data) => { mine = { answers: data.answers, complete: true }; return { eventId: data.eventId, member: s.options.member }; };
+  s.handlers.saveAnswers = (data) => ({ answers: data.answers, complete: true });
+  const detail = s.env.openPage('pages/event-detail/index', { id: 'f' });
+  await tick();
+  eq(detail.data.live.map((x) => x.id), ['w1'], '活动详情显示这场的现场互动');
+  eq(detail.data.form, null, '没报名时不显示报名表卡片');
+  detail.onSignup();
+  eq(s.env.wx.__calls.filter((c) => c.api === 'navigateTo').pop().args.url, '/pages/signup-form/index?id=f', '有报名表的活动点报名先去填表');
+  eq(s.calls.filter((c) => c.action === 'signup').length, 0, '去填表时还没报名');
+
+  const form = s.env.openPage('pages/signup-form/index', { id: 'f' });
+  await tick();
+  eq([form.data.mode, form.data.fields.length], ['signup', 4], '报名表按活动上的项显示');
+  form.onSubmit();
+  ok(form.data.fields.filter((f) => f.error).map((f) => f.id).join() === 'name,gender,idno', '没填的必填项标出来');
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, form.data.copy.errors.missing, '提示还有必填项没填');
+  input(form, 'name', ' 王小明 ');
+  option(form, 'gender', '男');
+  option(form, 'gel', '能量胶PRO');
+  input(form, 'idno', '110105194912310021');
+  form.onSubmit();
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, form.data.copy.errors.idno, '身份证号最后一位不对，提交前就拦下');
+  input(form, 'idno', '11010519491231002x');
+  form.onSubmit();
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, form.data.copy.needAgree, '没勾同意隐私政策不提交');
+  eq(s.calls.filter((c) => c.action === 'signup').length, 0, '前面几次都没提交');
+  form.onAgree();
+  form.onSubmit();
+  await tick();
+  const call = s.calls.filter((c) => c.action === 'signup').pop();
+  eq(call.answers, { name: '王小明', gender: '男', idno: '11010519491231002X', gel: ['能量胶PRO'] }, '整理好的回答和报名一起交');
+  eq(call.templateId, 'tmpl', '提交这一下请求订阅');
+  const events = require(path.join(ROOT, 'utils/events.js'));
+  const store = require(path.join(ROOT, 'utils/store.js'));
+  ok(store.hasSignup('f') && events.getSignupForm('f').complete, '报上名，记下已填好');
+  form.onUnload();
+  detail.render();
+  eq([detail.data.form.todo, detail.data.form.button], [false, detail.data.form.button], '报名后详情里有报名表卡片');
+  ok(!detail.data.form.todo, '填齐了不提示补填');
+
+  // 报名后改：不再报名，只改报名表
+  const edit = s.env.openPage('pages/signup-form/index', { id: 'f' });
+  await tick();
+  eq([edit.data.mode, edit.data.fields.find((f) => f.id === 'name').value], ['edit', '王小明'], '再进来是修改，带着填过的内容');
+  input(edit, 'name', '王大明');
+  edit.onSubmit();
+  await tick();
+  eq(s.calls.filter((c) => c.action === 'signup').length, 1, '修改不会再报一次名');
+  eq(s.calls.filter((c) => c.action === 'saveAnswers').pop().answers.name, '王大明', '修改交给 saveAnswers');
+  edit.onUnload();
+
+  // 填表时运营改了选项：云端说格式不对，页面重新读取，选过但已经没有的标出来，提示报名表更新了
+  const fresh = record('g', { form: FORM });
+  s.options.events.push(fresh);
+  s.handlers.event = (data) => (data.id === 'g' ? { event: fresh, readOnly: false, mine: null, live: [] } : { event, readOnly: false, mine: mine, live: [] });
+  const stale = s.env.openPage('pages/signup-form/index', { id: 'g' });
+  await tick();
+  input(stale, 'name', '王小明');
+  option(stale, 'gender', '男');
+  input(stale, 'idno', 'E12345678');
+  stale.onAgree();
+  fresh.form = FORM.map((f) => (f.id === 'gender' ? Object.assign({}, f, { options: ['先生', '女士'] }) : f));
+  s.handlers.signup = () => { throw Object.assign(new Error('bad'), { business: 'bad_answer' }); };
+  stale.onSubmit();
+  await tick(); await tick();
+  eq(stale.data.fields.find((f) => f.id === 'gender').options.map((o) => o.text), ['先生', '女士'], '重新读取后换成新的选项');
+  ok(stale.data.fields.find((f) => f.id === 'gender').error && !stale.values.gender, '选过但已经没有的去掉并标出来');
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, stale.data.copy.errors.form_changed, '提示报名表刚更新');
+  eq(stale.values.name, '王小明', '别的项填的内容留着');
+  ok(stale.data.fields.some((f) => f.id === 'idno' && f.value === 'E12345678'), '护照号这类带字母的证件号码能填');
+  stale.onUnload();
+  ok(!require('fs').readFileSync(path.join(ROOT, 'pages/signup-form/index.wxml'), 'utf8').includes('idcard'), '证件号码不用只有数字和 X 的身份证键盘');
+
+  // 旧版本报的名没填表：详情里提示补填
+  mine = { answers: {}, complete: false };
+  await detail.onRetry();
+  eq(detail.data.form.todo, true, '没填齐时提示去补填');
+  detail.onUnload();
+}
+
+/** 已报名的人打开报名表时没读到云端：不显示一张空表让人保存（保存会把之前填的冲掉），停在读取失败 */
+async function signupFormLoadFailure() {
+  const event = record('h', { form: FORM });
+  const s = session({ member: { nickname: '会员', points: 500, memberNo: '100001' }, events: [event] });
+  s.env.wx.setStorageSync('sx_signups', ['h']);
+  require(path.join(ROOT, 'utils/store.js')).sync();
+  s.handlers.bootstrap = () => ({ member: s.options.member, plan: null, reminders: [], signups: ['h'], news: false, notice: null, inbox: [] });
+  await require(path.join(ROOT, 'utils/events.js')).refresh(true);
+  await tick();
+  s.handlers.event = () => { throw new Error('offline'); };
+  const page = s.env.openPage('pages/signup-form/index', { id: 'h' });
+  await tick();
+  ok(page.data.loadFailed && !page.data.fields.length, '读不到时停在读取失败，不显示空表');
+  page.onSubmit();
+  await tick();
+  eq(s.calls.filter((c) => c.action === 'saveAnswers' || c.action === 'signup').length, 0, '读取失败时点提交什么也不交');
+  s.handlers.event = () => ({ event, readOnly: false, mine: { answers: { name: '王小明', gender: '男', idno: '11010519491231002X' }, complete: true }, live: [] });
+  await page.onRetry();
+  eq([page.data.loadFailed, page.data.mode, page.data.fields.find((f) => f.id === 'name').value], [false, 'edit', '王小明'], '重新加载后带着填过的内容');
+  page.onUnload();
+}
+
+/** 现场互动：扫码进来；只给会员的先去加入再回来；抽奖按云端结果转，次数用完了点了有提示 */
+async function interactFlow() {
+  const s = session({ events: [] });
+  const item = { id: 'w1', kind: 'wheel', title: '幸运大转盘', note: '', eventId: '', audience: 'member', open: true, tries: 1,
+    prizes: [{ id: 'p1', name: '运动毛巾' }, { id: 'p2', name: '帽子' }] };
+  let blocked = 'not_member';
+  let results = [];
+  s.handlers.interaction = () => ({ interaction: item, blocked: blocked, mine: { used: results.length, tries: 1, left: 1 - results.length, results: results } });
+  s.handlers.draw = () => {
+    results = [{ n: 1, win: true, prizeName: '帽子', code: '123456', redeemed: false, at: Date.now() }];
+    return { result: { n: 1, win: true, prizeId: 'p2', prizeName: '帽子', code: '123456' }, mine: { used: 1, tries: 1, left: 0, results: results } };
+  };
+  const page = s.env.openPage('pages/interact/index', { scene: encodeURIComponent('w1') });
+  page.onShow();
+  await tick();
+  eq([page.data.item.id, page.data.blocked, page.data.wheel.labels.length], ['w1', 'not_member', 8], '扫码进来按 scene 打开互动，两个奖品各配一格谢谢参与，不到 6 格整组重复');
+  page.onDraw();
+  eq(s.calls.filter((c) => c.action === 'draw').length, 0, '还不是会员时不抽');
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, page.data.copy.errors.not_member, '点了说明要先加入');
+  page.onBlocked();
+  eq(s.env.wx.__calls.filter((c) => c.api === 'switchTab').pop().args.url, '/pages/me/index', '去加入会员');
+  page.onUnload();
+  const me = s.env.openPage('pages/me/index');
+  await require(path.join(ROOT, 'utils/store.js')).register('phone-code').then((r) => me.afterRegister(r));
+  await tick();
+  eq(s.env.wx.__calls.filter((c) => c.api === 'navigateTo').pop().args.url, '/pages/interact/index?id=w1', '加入后回到这个互动');
+  me.onUnload();
+
+  blocked = '';
+  const again = s.env.openPage('pages/interact/index', { id: 'w1' });
+  again.onShow();
+  await tick();
+  const timers = [];
+  const realTimeout = global.setTimeout;
+  global.setTimeout = (fn) => { timers.push(fn); return 0; };
+  try {
+    again.onDraw();
+    await tick();
+    eq(s.calls.filter((c) => c.action === 'draw').length, 1, '会员点了就抽');
+    ok(again.data.spinning && again.data.rotation >= 360 * 6, '转盘至少转 6 圈');
+    // 停下时指针（正上方）落在「帽子」那一格
+    const size = 360 / again.segments.length;
+    const at = ((360 - (again.data.rotation % 360)) % 360);
+    eq(again.segments[Math.floor(at / size)].prizeId, 'p2', '停在抽中的奖品上');
+    timers.forEach((fn) => fn());
+  } finally { global.setTimeout = realTimeout; }
+  const modal = s.env.wx.__calls.filter((c) => c.api === 'showModal').pop().args;
+  ok(modal.title === again.data.copy.wheel.winTitle && modal.content.includes('123456') && modal.content.includes('帽子'), '转完弹出结果和领奖码');
+  eq([again.data.spinning, again.data.mine.left, again.data.mine.results[0].code], [false, 0, '123456'], '记录里有领奖码，次数用完');
+  again.onDraw();
+  eq(s.calls.filter((c) => c.action === 'draw').length, 1, '次数用完不再抽');
+  eq(s.env.wx.__calls.filter((c) => c.api === 'showToast').pop().args.title, again.data.copy.wheel.noLeft, '点了说明次数用完了');
+  again.onUnload();
+
+  // 没带 id（旧的转发卡片）：打开正在进行的那一个；没有进行中的就说没有
+  s.handlers.events = () => ({ events: [], live: [{ id: 'w1', title: '幸运大转盘', kind: 'wheel', eventId: '' }] });
+  const bare = s.env.openPage('pages/interact/index', {});
+  bare.onShow();
+  await tick();
+  eq(bare.data.item && bare.data.item.id, 'w1', '没带 id 时打开正在进行的互动');
+  bare.onUnload();
+  s.handlers.events = () => ({ events: [], live: [] });
+  require(path.join(ROOT, 'utils/events.js')).refresh(true);
+  await tick();
+  const none = s.env.openPage('pages/interact/index', {});
+  none.onShow();
+  await tick();
+  eq([none.data.item, none.data.error], [null, 'none'], '没有进行中的互动时说明，不报错');
+  none.onUnload();
+  const list = s.env.openPage('pages/events/index');
+  list.onShow();
+  await tick();
+  eq(list.data.live, [], '互动关掉后活动页没有入口');
+  s.handlers.events = () => ({ events: [], live: [{ id: 'w1', title: '幸运大转盘', kind: 'wheel', eventId: '' }] });
+  await list.onRetry();
+  eq(list.data.live.map((x) => x.id), ['w1'], '打开后活动页出现入口');
+  list.onLive({ currentTarget: { dataset: { id: 'w1' } } });
+  eq(s.env.wx.__calls.filter((c) => c.api === 'navigateTo').pop().args.url, '/pages/interact/index?id=w1', '点入口进互动页');
+  list.onUnload();
+}
+
+/** 手机端后台：按模块拼报名表、建大转盘、核销领奖码，交给云端的数据对不对 */
+async function adminToolsFlow() {
+  const admin = { nickname: '运营', points: 0, memberNo: '100001', admin: true };
+  const s = session({ member: admin, events: [record('a', { form: FORM }), record('b')] });
+  s.handlers.adminEvents = () => ({ events: s.options.events, newsWaiting: 0 });
+  s.handlers.adminSaveEvent = (data) => ({ event: Object.assign({ id: 'new' }, data.event) });
+  const editor = s.env.openPage('pages/admin-event/index', {});
+  await tick();
+  eq(editor.data.copyNames, ['活动 a'], '别的活动的报名表可以沿用');
+  const add = (key) => editor.onFieldAdd({ currentTarget: { dataset: { key: key } } });
+  add('name'); add('gender'); add('single'); add('idno');
+  eq(editor.data.form.fields.map((f) => [f.kind, f.label]), [['text', '姓名'], ['single', '性别'], ['single', ''], ['idno', '证件号码']], '按模块加项，预先填好标题');
+  ok(editor.data.hasIdno, '有证件号码时提醒是敏感信息');
+  editor.onInput({ currentTarget: { dataset: { field: 'title' } }, detail: { value: '新活动' } });
+  editor.onTime({ currentTarget: { dataset: { field: 'date', part: 'date' } }, detail: { value: '2030-01-01' } });
+  editor.onSave();
+  eq(s.calls.filter((c) => c.action === 'adminSaveEvent').length, 0, '单选题没写标题和选项时不保存');
+  editor.onFieldInput({ currentTarget: { dataset: { index: 2, field: 'label' } }, detail: { value: '参加过几次' } });
+  editor.onFieldInput({ currentTarget: { dataset: { index: 2, field: 'optionsText' } }, detail: { value: '第一次\n 两到三次 \n\n更多' } });
+  editor.onFieldMove({ currentTarget: { dataset: { index: 3, to: 'up' } } });
+  editor.onFieldRequired({ currentTarget: { dataset: { index: 0 } } });
+  editor.onSave();
+  await tick();
+  const saved = s.calls.filter((c) => c.action === 'adminSaveEvent').pop().event.form;
+  eq(saved.map((f) => [f.kind, f.label, f.required, f.options]), [
+    ['text', '姓名', false, undefined], ['single', '性别', true, ['男', '女']], ['idno', '证件号码', true, undefined], ['single', '参加过几次', true, ['第一次', '两到三次', '更多']]
+  ], '报名表按调好的顺序和必填交上去，选项一行一个');
+  ok(saved.every((f) => /^[a-zA-Z0-9_-]{1,24}$/.test(f.id)), '每项有 id');
+  editor.onUnload();
+
+  const copy = s.env.openPage('pages/admin-event/index', {});
+  await tick();
+  copy.onFieldCopy({ detail: { value: 0 } });
+  eq(copy.data.form.fields.map((f) => f.label), FORM.map((f) => f.label), '沿用别的活动的报名表');
+  ok(copy.data.form.fields.every((f) => FORM.every((g) => g.id !== f.id)), '沿用过来的每项换了新 id');
+  copy.onUnload();
+
+  s.handlers.adminSaveInteraction = (data) => ({ interaction: Object.assign({ id: 'w1', status: 'off', version: 1 }, data.interaction) });
+  s.handlers.adminInteractions = () => ({ interactions: [] });
+  const ix = s.env.openPage('pages/admin-interact/index', {});
+  await tick();
+  eq(ix.data.form.audience, 'member', '新建的互动默认只给会员');
+  const set = (field, value) => ix.onInput({ currentTarget: { dataset: { field: field } }, detail: { value: value } });
+  const prize = (i, field, value) => ix.onPrizeInput({ currentTarget: { dataset: { index: i, field: field } }, detail: { value: value } });
+  set('title', '幸运大转盘');
+  prize(0, 'name', '毛巾'); prize(0, 'total', '10'); prize(0, 'chance', '60');
+  ix.onPrizeAdd();
+  prize(1, 'name', '帽子'); prize(1, 'total', '5'); prize(1, 'chance', '50');
+  ix.onSave();
+  eq(s.calls.filter((c) => c.action === 'adminSaveInteraction').length, 0, '机会加起来超过 100% 不保存');
+  prize(1, 'chance', '12.5');
+  ok(ix.data.chanceText.includes('72.5') && ix.data.chanceText.includes('27.5'), '实时算出合计和谢谢参与的机会');
+  ix.onSave();
+  await tick();
+  const x = s.calls.filter((c) => c.action === 'adminSaveInteraction').pop().interaction;
+  eq([x.kind, x.title, x.tries, x.prizes.map((p) => [p.name, p.total, p.chance])], ['wheel', '幸运大转盘', 1, [['毛巾', 10, 60], ['帽子', 5, 12.5]]], '数字转好交上去');
+  ix.onUnload();
+
+  let redeemed = false;
+  s.handlers.adminDraws = () => ({ interaction: { id: 'w1', title: '幸运大转盘' }, draws: 9, wins: [
+    { id: 'd1', prizeName: '帽子', code: '123456', redeemed: redeemed, at: Date.now(), memberNo: '100002', nickname: '小王', phone: '13800001234' },
+    { id: 'd2', prizeName: '毛巾', code: '654321', redeemed: false, at: Date.now(), memberNo: '', nickname: '', phone: '' }
+  ] });
+  s.handlers.adminRedeem = (data) => { redeemed = data.redeemed; return { id: data.id, redeemed: redeemed, already: false }; };
+  const dw = s.env.openPage('pages/admin-draws/index', { id: 'w1' });
+  await tick();
+  ok(dw.data.countText.includes('9') && dw.data.shown.length === 2, '中奖名单和抽奖次数');
+  dw.onQuery({ detail: { value: '1234' } });
+  eq(dw.data.shown.map((x) => x.code), ['123456'], '按领奖码筛');
+  eq(dw.data.list[1].who, dw.data.copy.notMember, '不是会员的写明');
+  const realModal = s.env.wx.showModal;
+  s.env.wx.showModal = (o) => o.success({ confirm: true });
+  try {
+    dw.onRedeem({ currentTarget: { dataset: { id: 'd1' } } });
+    await tick();
+  } finally { s.env.wx.showModal = realModal; }
+  eq(s.calls.filter((c) => c.action === 'adminRedeem').pop(), { action: 'adminRedeem', id: 'd1', redeemed: true }, '确认后核销');
+  eq(dw.data.list[0].redeemed, true, '核销后重读，显示已领取');
+  // 名单没列全：输入完整的领奖码，到云端按码查
+  s.handlers.adminDraws = (data) => (data.code
+    ? { interaction: { id: 'w1', title: '幸运大转盘', redeemed: 1 }, draws: 3000, winsTotal: 2500, partial: false, code: data.code,
+      wins: [{ id: 'd9', prizeName: '毛巾', code: data.code, redeemed: false, at: Date.now(), memberNo: '', nickname: '', phone: '' }] }
+    : { interaction: { id: 'w1', title: '幸运大转盘', redeemed: 1 }, draws: 3000, winsTotal: 2500, partial: true,
+      wins: [{ id: 'd1', prizeName: '帽子', code: '123456', redeemed: true, at: Date.now(), memberNo: '', nickname: '', phone: '' }] });
+  await dw.load();
+  ok(dw.data.partialText.includes('1') && dw.data.countText.includes('2500'), '没列全时说明，人数按云端的总数写');
+  dw.onQuery({ detail: { value: '777777' } });
+  await tick();
+  eq(s.calls.filter((c) => c.action === 'adminDraws').pop().code, '777777', '名单里没有就到云端按码查');
+  eq(dw.data.shown.map((x) => x.code), ['777777'], '查到的显示出来，可以核销');
+  dw.onUnload();
+}
+
 (async () => {
+  await adminToolsFlow();
+  await signupFormFlow();
+  await signupFormLoadFailure();
+  await interactFlow();
   await activityFailureAndRetry();
   await directDetailAndLoginReturn();
   await historyAndReadOnly();

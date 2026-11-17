@@ -96,6 +96,21 @@ function memberCard(m) {
   };
 }
 
+/** 互动 → 列表里一行的显示数据。titles 是活动 id → 名称，用来写关联的是哪场活动 */
+function interactionRow(x, titles) {
+  const c = copy.interact;
+  return {
+    id: x.id,
+    title: x.title,
+    on: x.status === 'on',
+    statusText: c.status[x.status === 'on' ? 'on' : 'off'],
+    version: x.version,
+    wheel: x.kind === 'wheel',
+    meta: [c.kinds[x.kind], c.audiences[x.audience], x.eventId ? titles[x.eventId] || '' : ''].filter(Boolean).join(' · '),
+    stats: x.kind === 'wheel' ? c.stats.replace('[次数]', x.draws || 0).replace('[中奖]', x.wins || 0).replace('[已领]', x.redeemed || 0) : ''
+  };
+}
+
 /**
  * 运营后台：活动（新建、编辑、上下架）、公告（打开小程序时弹一次）、积分（给会员加减）。
  * 只有管理员能进：会员记录上有 admin: true（在云开发控制台里手动加）。这里的判断只是不让普通会员看到页面，
@@ -132,6 +147,12 @@ Page({
     sign: 1,
     amount: '',
     reason: '',
+    // 现场互动的列表；codeView 不是 null 时盖一层显示小程序码
+    interactions: [],
+    interactLoaded: false,
+    interactLoading: false,
+    interactFailed: false,
+    codeView: null,
     // 电脑端后台的网址和刚取到的登录码（显示成 1234 5678 9012）
     webUrl: config.webAdminUrl || '',
     webCode: ''
@@ -147,8 +168,9 @@ Page({
   },
 
   onShow() {
-    // 从编辑页回来，或者第一次进来：重取活动列表
+    // 从编辑页回来，或者第一次进来：重取活动列表；在看互动的话互动也重取
     this.loadEvents();
+    if (this.data.tab === 'interact') this.loadInteractions();
     this.watchUnsaved();
   },
 
@@ -197,7 +219,108 @@ Page({
     if (tab === 'notice' && (!this.data.noticeLoaded || this.noticeSnapshot === JSON.stringify(this.data.notice))) this.loadNotice(true);
     if (tab === 'past' && !this.data.pastLoaded) this.loadPast();
     if (tab === 'members' && !this.data.board) this.loadMembers();
+    if (tab === 'interact' && !this.data.interactLoaded) this.loadInteractions();
   },
+
+  /* ---------- 现场互动 ---------- */
+
+  loadInteractions() {
+    const mine = this.interactSeq = (this.interactSeq || 0) + 1;
+    this.setData({ interactLoading: true, interactFailed: false });
+    return admin.listInteractions()
+      .then((list) => {
+        if (mine !== this.interactSeq) return;
+        this.interactionList = list;
+        this.setData({ interactions: list.map((x) => interactionRow(x, this.eventTitles || {})), interactLoaded: true, interactLoading: false });
+      })
+      .catch((e) => { if (mine === this.interactSeq) { this.setData({ interactLoading: false, interactFailed: true }); toast(admin.errorText(e)); } });
+  },
+
+  onInteractRetry() {
+    if (!this.data.interactLoading) this.loadInteractions();
+  },
+
+  onInteractCreate() {
+    tick();
+    go('admin-interact');
+  },
+
+  onInteractEdit(e) {
+    go('admin-interact', { id: e.currentTarget.dataset.id });
+  },
+
+  onInteractWins(e) {
+    go('admin-draws', { id: e.currentTarget.dataset.id });
+  },
+
+  /** 打开或关掉。带上读到时的版本：别人刚改过就重新读取 */
+  onInteractStatus(e) {
+    if (this.data.busy) return;
+    const row = this.data.interactions.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!row) return;
+    tick();
+    this.setData({ busy: true });
+    admin.setInteractionStatus(row.id, row.on ? 'off' : 'on', row.version)
+      .then((x) => { toast(x.status === 'on' ? copy.interact.opened : copy.interact.closed); events.refresh(true); })
+      // 别人刚改过：下面会重新读取，提示再看一下
+      .catch((err) => toast(err && err.code === 'conflict' ? copy.interact.statusConflict : admin.errorText(err)))
+      .then(() => this.loadInteractions())
+      .then(() => this.setData({ busy: false }));
+  },
+
+  onInteractDelete(e) {
+    if (this.data.busy) return;
+    const row = this.data.interactions.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!row) return;
+    wx.showModal({
+      title: copy.interact.deleteTitle,
+      content: copy.interact.deleteConfirm.replace('[名称]', row.title),
+      success: (r) => {
+        if (!r.confirm) return;
+        this.setData({ busy: true });
+        admin.deleteInteraction(row.id)
+          .then(() => { toast(copy.interact.deleted); events.refresh(true); })
+          .catch((err) => toast(admin.errorText(err)))
+          .then(() => this.loadInteractions())
+          .then(() => this.setData({ busy: false }));
+      }
+    });
+  },
+
+  /** 生成小程序码，盖一层显示出来，可以存到相册拿去打印 */
+  onInteractCode(e) {
+    if (this.data.busy) return;
+    const row = this.data.interactions.find((x) => x.id === e.currentTarget.dataset.id);
+    if (!row) return;
+    tick();
+    this.setData({ busy: true, codeView: { title: row.title, url: '', loading: true } });
+    admin.interactionCode(row.id)
+      .then((d) => this.setData({ codeView: { title: row.title, url: d.url, loading: false } }))
+      .catch((err) => { this.setData({ codeView: null }); toast(admin.errorText(err)); })
+      .then(() => this.setData({ busy: false }));
+  },
+
+  onCodeClose() {
+    this.setData({ codeView: null });
+  },
+
+  /** 存到相册：先下载临时地址，再存。用户拒绝过相册权限时提示去设置里打开 */
+  onCodeSave() {
+    const v = this.data.codeView;
+    if (!v || !v.url) return;
+    wx.downloadFile({
+      url: v.url,
+      success: (res) => wx.saveImageToPhotosAlbum({
+        filePath: res.tempFilePath,
+        success: () => toast(copy.interact.codeSaved),
+        fail: (err) => { if (!/cancel/.test(String(err && err.errMsg))) toast(copy.interact.codeSaveFailed); }
+      }),
+      fail: () => toast(copy.errors.network)
+    });
+  },
+
+  /** 点码之外的地方不关：只有点「关闭」才关，免得手一抖要重新生成 */
+  noop() {},
 
   /* ---------- 会员看板 ---------- */
 
@@ -251,7 +374,12 @@ Page({
     const mine = this.eventSeq = (this.eventSeq || 0) + 1;
     this.setData({ loading: !this.data.events.length, eventsFailed: false });
     return admin.eventsOverview()
-      .then((d) => { if (mine !== this.eventSeq) return; this.setData({
+      .then((d) => { if (mine !== this.eventSeq) return;
+        // 互动列表上写关联的是哪场活动
+        this.eventTitles = {};
+        d.events.forEach((x) => { this.eventTitles[x.id] = x.title; });
+        if (this.interactionList) this.setData({ interactions: this.interactionList.map((x) => interactionRow(x, this.eventTitles)) });
+        this.setData({
         events: d.events.map(eventRow),
         newsWaiting: d.newsWaiting,
         subscribersText: copy.events.subscribers.replace('[人数]', d.newsWaiting),

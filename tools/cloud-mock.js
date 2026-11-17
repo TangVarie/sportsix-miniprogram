@@ -13,6 +13,8 @@ function createCloud() {
     phones: {},        // code → 手机号
     sent: [],          // 发出的订阅消息
     sendError: null,   // 设了就让发送失败
+    codes: [],         // 生成过的小程序码 { scene, page, envVersion, checkPath }
+    codeError: null,   // 设了就让生成小程序码失败
     addFails: null,    // 'after'：写入成功后抛错（模拟响应丢失）；'before'：没写入就抛错
     getError: null,    // (集合名) => true 时这次查询抛错（模拟数据库一时出错）
     afterGet: null,    // (集合名, 条件) => Promise：查询结果已经取好、还没交出去时先等它，用来模拟「读到的已经是旧的」
@@ -22,7 +24,7 @@ function createCloud() {
     beforeTxRead: null, // (集合名, 文档ID) => Promise，事务快照读后暂停，验证与普通写入的冲突
     beforeCommit: null, // () => Promise，事务提交前暂停
     beforeTx: null,    // () => Promise：事务开始之前先等它，用来排出特定的先后顺序
-    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true, subscription_batches: true },
+    absent: { counters: true, point_logs: true, settings: true, admin_web: true, news_subs: true, past_events: true, inbox: true, subscription_batches: true, interactions: true, draws: true, draw_users: true, draw_codes: true },
     files: {}          // 云存储：fileID → 内容（Buffer）   // 还没建的集合：读写会报错，createCollection 之后才能用
   };
   let seq = 0;
@@ -202,6 +204,13 @@ function createCloud() {
         async getPhoneNumber(o) {
           if (!state.phones[o.code]) throw Object.assign(new Error('invalid code'), { errCode: 40029 });
           return { errCode: 0, phoneInfo: { phoneNumber: state.phones[o.code], purePhoneNumber: state.phones[o.code], countryCode: '86' } };
+        }
+      },
+      wxacode: {
+        async getUnlimited(o) {
+          if (state.codeError) throw Object.assign(new Error('wxacode failed'), { errCode: state.codeError });
+          state.codes.push(o);
+          return { errCode: 0, contentType: 'image/png', buffer: Buffer.from('\x89PNG mock ' + o.scene) };
         }
       },
       subscribeMessage: {

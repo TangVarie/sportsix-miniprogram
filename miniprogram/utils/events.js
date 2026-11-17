@@ -57,6 +57,8 @@ function fromCloud(e) {
     // 报名要用多少积分（0 是不用），和报名的人有事找谁
     cost: e.cost > 0 ? e.cost : 0,
     contact: e.contact || '',
+    // 报名表：运营在后台拼的几项（没有是空数组）。有报名表的活动，点报名先填表
+    form: Array.isArray(e.form) ? e.form : [],
     readOnly: !!e.readOnly,
     raw: e
   };
@@ -73,6 +75,10 @@ const details = Object.create(null);
 const listeners = [];
 let mine = [];
 let mineCursor = null;
+// 正在进行的现场互动（活动列表一起返回），和每场活动详情里带回来的：本人的报名表、这场活动的现场互动
+let liveList = [];
+const signupForms = Object.create(null);
+const liveByEvent = Object.create(null);
 
 function onChange(fn) {
   listeners.push(fn);
@@ -146,6 +152,8 @@ function refresh(force) {
     if (generation !== generations.upcoming) return false;
     const list = d.events || [];
     writeList(CACHE_KEY, list);
+    // 现场互动只放在内存里：关掉以后入口要马上消失，不留在缓存里
+    liveList = Array.isArray(d.live) ? d.live : [];
     complete('upcoming', !list.length);
     return true;
   }).catch((e) => { if (generation === generations.upcoming) failed('upcoming', e); return false; });
@@ -200,6 +208,8 @@ function fetchEvent(id) {
   const promise = cloud.call('event', { id: id }).then((d) => {
     if (generation !== generations[key]) return getEvent(id);
     details[id] = d.event ? fromCloud(Object.assign({}, d.event, { readOnly: !!d.readOnly })) : null;
+    signupForms[id] = d.mine || null;
+    liveByEvent[id] = Array.isArray(d.live) ? d.live : [];
     complete(key, !details[id]);
     return details[id];
   }).catch((e) => {
@@ -215,6 +225,21 @@ function fetchEvent(id) {
   const done = () => { if (flights[key] === promise) delete flights[key]; };
   promise.then(done, done);
   return promise;
+}
+
+/** 正在进行的现场互动：[{ id, title, kind, eventId }]。没有就是空数组，页面上不显示入口 */
+function getLive() { return liveList.slice(); }
+/** 这场活动正在进行的现场互动（详情取到过才有） */
+function getLiveFor(eventId) { return (liveByEvent[eventId] || []).slice(); }
+
+/**
+ * 本人在这场活动的报名表：{ answers: { 项的 id: 值 }, complete }，没报名或还没取到是 null。
+ * 报名、改报名表成功后由 setSignupForm 更新，页面不用再等一次详情。
+ */
+function getSignupForm(eventId) { return signupForms[eventId] || null; }
+function setSignupForm(eventId, value) {
+  signupForms[eventId] = value || null;
+  emit();
 }
 
 function getMyEvents() { return mine.slice(); }
@@ -339,6 +364,7 @@ function subscribeNews() {
 }
 
 module.exports = {
+  getLive, getLiveFor, getSignupForm, setSignupForm,
   listUpcoming, isFirstLoad, refresh, listPast, refreshPast, getEmpty, getEvent, getDetail, remind, hasReminder: store.hasReminder, hasSignup: store.hasSignup,
   getNews, subscribeNews, hasNews: store.hasNews, askSubscribe,
   onChange, getLoadState, setPast, fetchEvent, fetchMyEvents, getMyEvents

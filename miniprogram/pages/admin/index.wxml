@@ -4,9 +4,12 @@
       <image class="ad-back__icon" src="/assets/icons/back-white.svg" />
     </view>
     <view class="ad-header__title">{{copy.title}}</view>
-    <view class="ad-tabs">
-      <view wx:for="{{copy.tabs}}" wx:key="key" class="ad-tab sx-pressable {{tab === item.key ? 'ad-tab--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onTab">{{item.text}}</view>
-    </view>
+    <!-- 分区多了一行放不下：横着滑 -->
+    <scroll-view class="ad-tabs-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="ad-tabs">
+        <view wx:for="{{copy.tabs}}" wx:key="key" class="ad-tab sx-pressable {{tab === item.key ? 'ad-tab--on' : ''}}" hover-class="sx-press" data-key="{{item.key}}" bindtap="onTab">{{item.text}}</view>
+      </view>
+    </scroll-view>
   </view>
 
   <!-- 活动：新建、编辑、上下架 -->
@@ -38,6 +41,35 @@
       </view>
     </view>
     <view wx:elif="{{!eventsFailed}}" class="ad-empty">{{copy.events.empty}}</view>
+  </view>
+
+  <!-- 现场互动：大转盘、网页、其他小程序。打开后小程序里才有入口 -->
+  <view wx:if="{{tab === 'interact'}}" class="ad-body">
+    <view class="ad-btn ad-btn--line sx-pressable" hover-class="sx-press" bindtap="onInteractCreate">{{copy.interact.create}}</view>
+    <view class="ad-hint">{{copy.interact.hint}}</view>
+    <view wx:if="{{interactFailed}}" class="ad-hint">{{copy.editor.loadFailed}}</view>
+    <view wx:if="{{interactFailed}}" class="ad-mini" bindtap="onInteractRetry">{{copy.editor.retry}}</view>
+    <view wx:if="{{!interactLoaded && !interactFailed}}">
+      <view wx:for="{{[0, 1]}}" wx:key="*this" class="ad-skel sx-skeleton"></view>
+    </view>
+    <view wx:elif="{{interactions.length}}" class="ad-list">
+      <view wx:for="{{interactions}}" wx:key="id" class="ad-event">
+        <view class="ad-event__top">
+          <text class="ad-event__title">{{item.title}}</text>
+          <text class="ad-chip {{item.on ? 'ad-chip--published' : 'ad-chip--draft'}}">{{item.statusText}}</text>
+        </view>
+        <text class="ad-event__meta">{{item.meta}}</text>
+        <text wx:if="{{item.stats}}" class="ad-event__meta">{{item.stats}}</text>
+        <view class="ad-event__btns">
+          <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onInteractEdit">{{copy.interact.edit}}</view>
+          <view class="ad-mini {{item.on ? '' : 'ad-mini--on'}} sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onInteractStatus">{{item.on ? copy.interact.close : copy.interact.open}}</view>
+          <view wx:if="{{item.wheel}}" class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onInteractWins">{{copy.interact.wins}}</view>
+          <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onInteractCode">{{copy.interact.code}}</view>
+          <view class="ad-mini sx-pressable" hover-class="sx-press" data-id="{{item.id}}" bindtap="onInteractDelete">{{copy.interact.delete}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:elif="{{!interactFailed}}" class="ad-empty">{{copy.interact.empty}}</view>
   </view>
 
   <!-- 往期：活动页「往期」里的赞助赛事 -->
@@ -223,5 +255,17 @@
       <text class="ad-web__code-hint">{{copy.web.codeHint}}</text>
     </view>
     <view class="ad-btn sx-pressable {{busy ? 'ad-btn--busy' : ''}}" hover-class="sx-press" bindtap="onWebCode">{{webCode ? copy.web.again : copy.web.get}}</view>
+  </view>
+  <!-- 互动的小程序码：只有点「关闭」才关 -->
+  <view wx:if="{{codeView}}" class="ad-code-mask" catchtouchmove="noop">
+    <view class="ad-code" catchtap="noop">
+      <view class="ad-code__title">{{copy.interact.codeTitle}}</view>
+      <view class="ad-code__name">{{codeView.title}}</view>
+      <image wx:if="{{codeView.url}}" class="ad-code__img" src="{{codeView.url}}" mode="aspectFit" show-menu-by-longpress />
+      <view wx:else class="ad-code__img ad-code__img--wait sx-skeleton">{{copy.interact.codeLoading}}</view>
+      <view class="ad-hint">{{copy.interact.codeHint}}</view>
+      <view class="ad-btn sx-pressable {{codeView.url ? '' : 'ad-btn--busy'}}" hover-class="sx-press" bindtap="onCodeSave">{{copy.interact.codeSave}}</view>
+      <view class="ad-btn ad-btn--line ad-btn--second sx-pressable" hover-class="sx-press" bindtap="onCodeClose">{{copy.interact.codeClose}}</view>
+    </view>
   </view>
 </view>
