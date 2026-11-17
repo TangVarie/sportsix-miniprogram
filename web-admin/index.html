@@ -177,6 +177,51 @@
   #tab-members .panel { margin-bottom: 16px; }
   td .chip { margin-left: 8px; }
   @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* 小按钮、提示 */
+  .link--danger { color: var(--danger); }
+  .link:disabled { color: var(--mute); cursor: default; }
+  .hint--bad { color: var(--danger); }
+  .textarea--short { height: 88px; }
+  a.btn { text-decoration: none; }
+  .chip--on { background: var(--lime); color: var(--navy); }
+  .chip--off { background: var(--line); color: var(--sub); }
+  .chip--warn { background: #FBE9E7; color: var(--danger); }
+  .drawer--wide { width: 900px; }
+
+  /* 活动表单里的报名表 */
+  .ff-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+  .ff { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #FAFAFB; }
+  .ff__top { display: flex; align-items: center; gap: 10px; }
+  .ff__no { flex-shrink: 0; width: 18px; font-weight: 900; font-style: italic; color: var(--navy); text-align: right; }
+  .ff__label { flex: 1; min-width: 0; }
+  .ff__kind { flex-shrink: 0; padding: 2px 8px; border-radius: 10px; background: var(--white); border: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--sub); }
+  .ff__req { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--navy); cursor: pointer; }
+  .ff__ops { flex-shrink: 0; display: flex; gap: 10px; font-size: 13px; }
+  .ff__opts { display: block; margin: 10px 0 0 28px; }
+  .ff__opts .textarea { height: 96px; }
+  .ff-empty { margin: 12px 0; padding: 16px; border: 1px dashed #C9CEE8; border-radius: 12px; text-align: center; color: var(--sub); }
+  .ff-tools { display: flex; flex-direction: column; gap: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* 名单里的报名表回答 */
+  .cell-answer { min-width: 72px; max-width: 240px; white-space: normal; word-break: break-word; }
+  .roster-scroll { overflow-x: auto; }
+
+  /* 现场互动 */
+  .pz-head, .pz { display: grid; grid-template-columns: minmax(0, 1fr) 96px 110px 40px; gap: 10px; }
+  .pz-head { margin-bottom: 6px; font-size: 12px; line-height: 18px; font-weight: 700; color: var(--sub); }
+  .pz { align-items: start; margin-bottom: 10px; }
+  .pz .link { height: 42px; }
+  .pz__won { margin-top: 4px; font-size: 12px; line-height: 18px; color: var(--sub); }
+  .code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: 1px; color: var(--navy); }
+  .mask--top { z-index: 30; }
+  .dialog { position: fixed; left: 50%; top: 50%; z-index: 31; transform: translate(-50%, -50%); width: 380px; max-width: calc(100% - 32px); padding: 24px; border-radius: 18px; background: var(--white); text-align: center; box-shadow: 0 12px 40px rgba(1, 4, 57, .25); }
+  .dialog__box { display: flex; align-items: center; justify-content: center; width: 240px; height: 240px; margin: 16px auto 12px; border-radius: 12px; background: var(--grey); }
+  .dialog__img { display: block; width: 240px; height: 240px; object-fit: contain; border-radius: 12px; background: var(--white); }
+  .dialog__status { padding: 0 16px; font-size: 13px; line-height: 20px; color: var(--sub); }
+  .dialog__status--bad { color: var(--danger); }
+  .dialog__ops { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -202,6 +247,7 @@
     </div>
     <nav class="nav" id="nav">
       <button class="nav__item" data-tab="events" type="button">活动</button>
+      <button class="nav__item" data-tab="interact" type="button">现场互动</button>
       <button class="nav__item" data-tab="past" type="button">往期赛事</button>
       <button class="nav__item" data-tab="notice" type="button">公告</button>
       <button class="nav__item" data-tab="members" type="button">会员</button>
@@ -235,6 +281,25 @@
           <tbody id="ev-rows"></tbody>
         </table>
         <div id="ev-empty" class="empty" hidden></div>
+      </div>
+    </section>
+
+    <!-- 现场互动 -->
+    <section id="tab-interact" hidden>
+      <div class="head">
+        <div>
+          <h1 class="head__title">现场互动</h1>
+          <p class="hint" style="margin-top: 4px; max-width: 760px">活动现场的互动。新建后是关着的，小程序里看不到；点「打开」后，活动页顶上和关联活动的详情里出现入口，也可以生成小程序码打印出来让现场的人扫。里面的内容随时可以换，不用发版。</p>
+        </div>
+        <div class="head__tools"><button id="ix-new" class="btn" type="button">新建互动</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>互动</th><th>关联活动</th><th>状态</th><th>参与情况</th><th>操作</th></tr></thead>
+          <tbody id="ix-rows"></tbody>
+        </table>
+        <div id="ix-empty" class="empty" hidden><span id="ix-empty-text"></span>
+          <div><button id="ix-retry" class="btn btn--line btn--small" type="button" style="margin-top: 12px" hidden>重新读取</button></div></div>
       </div>
     </section>
 
@@ -384,10 +449,12 @@
       <button id="roster-export" class="btn btn--line btn--small" type="button">导出表格</button>
       <button id="roster-cancel-event" class="btn btn--line btn--small" type="button">取消整场活动</button>
     </div>
-    <table>
-      <thead><tr><th>会员</th><th>手机号</th><th>报名时间</th><th>积分</th><th>操作</th></tr></thead>
-      <tbody id="roster-rows"></tbody>
-    </table>
+    <div class="roster-scroll">
+      <table>
+        <thead><tr id="roster-head"><th>会员</th><th>手机号</th><th>报名时间</th><th>积分</th><th>操作</th></tr></thead>
+        <tbody id="roster-rows"></tbody>
+      </table>
+    </div>
     <div id="roster-empty" class="empty" hidden>还没有人报名</div>
     <button id="roster-retry" class="btn btn--line btn--small" type="button" hidden>重新读取</button>
   </div>
@@ -449,6 +516,16 @@
       <span class="hint" style="display:block">不选就用默认配图。图片会自动压到合适的大小再上传。</span>
     </div>
     <label class="field"><span class="field__label">介绍</span><textarea id="f-intro" class="textarea" maxlength="1000" placeholder="活动介绍，可以分段"></textarea></label>
+
+    <div class="group">报名表</div>
+    <p class="hint" style="margin-top: 0">有报名表的活动，用户点报名先填表，提交才算报上名，报名后到活动开始前可以改。已经有人报名后再加必填项，已报名的人会在活动详情里看到「去补填」。</p>
+    <p id="ff-sensitive" class="hint hint--bad" hidden>证件号码属于敏感个人信息，只在确实需要时（比如办理保险）加这一项。</p>
+    <div id="ff-empty" class="ff-empty">没有报名表，用户点报名直接报上</div>
+    <div id="ff-list" class="ff-list"></div>
+    <div class="ff-tools">
+      <div><span class="field__label">添加一项</span><div id="ff-presets" class="chips"></div></div>
+      <select id="ff-copy" class="select" aria-label="沿用别的活动的报名表"></select>
+    </div>
     </fieldset>
   </div>
   <div class="drawer__foot">
@@ -456,6 +533,111 @@
     <button id="drawer-save" class="btn" type="submit">保存</button>
   </div>
 </form>
+
+<!-- 新建、编辑现场互动：和活动表单一样，点外面的空白处不关 -->
+<div id="ix-mask" class="mask" hidden></div>
+<form id="ix-drawer" class="drawer" hidden autocomplete="off">
+  <div class="drawer__head">
+    <h2 id="ix-drawer-title" class="drawer__title"></h2>
+    <button id="ix-close" class="drawer__close" type="button" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer__body">
+    <div id="ix-hint" class="hint" role="status" hidden></div>
+    <button id="ix-reread" class="btn btn--line btn--small" type="button" hidden>重新读取</button>
+    <fieldset id="ix-fields" class="editor-fields">
+      <div class="group">基本信息</div>
+      <div class="field"><span class="field__label">类型</span>
+        <div class="seg" id="ix-kind-seg">
+          <button class="seg__btn" data-kind="wheel" type="button">大转盘</button>
+          <button class="seg__btn" data-kind="web" type="button">网页</button>
+          <button class="seg__btn" data-kind="mini" type="button">其他小程序</button>
+        </div>
+      </div>
+      <label class="field"><span class="field__label">名称</span><input id="x-title" class="input" maxlength="20" placeholder="比如 幸运大转盘"></label>
+      <label class="field"><span class="field__label">说明</span><textarea id="x-note" class="textarea textarea--short" maxlength="300" placeholder="显示在互动页面上，比如 领奖地点和时间"></textarea></label>
+      <label class="field"><span class="field__label">关联活动</span><select id="x-event" class="select"></select>
+        <span class="hint" style="display:block">关联后，这场活动的详情里也有入口。</span></label>
+      <div class="field"><span class="field__label">谁能参与</span>
+        <div class="seg" id="ix-aud-seg">
+          <button class="seg__btn" data-aud="all" type="button">所有人</button>
+          <button class="seg__btn" data-aud="member" type="button">会员</button>
+          <button class="seg__btn" data-aud="signed" type="button">报了关联活动的会员</button>
+        </div>
+        <span class="hint" style="display:block">「会员」「报了关联活动的会员」只对大转盘在云端核对；网页和其他小程序只在打开前提示。</span>
+      </div>
+
+      <div id="ix-wheel">
+        <div class="group">奖品</div>
+        <div class="pz-head"><span>奖品名称</span><span>数量</span><span>中奖机会 %</span><span></span></div>
+        <div id="ix-prizes"></div>
+        <button id="ix-add-prize" class="btn btn--line btn--small" type="button">添加奖品</button>
+        <p id="ix-chance-sum" class="hint"></p>
+        <p class="hint" style="margin-bottom: 16px">每个奖品单独设机会，加起来不超过 100%，剩下的是谢谢参与。某个奖品发完后，抽中它的机会变成谢谢参与。</p>
+        <label class="field" style="max-width: 200px"><span class="field__label">每人能抽几次</span><input id="x-tries" class="input" inputmode="numeric" maxlength="2"></label>
+      </div>
+
+      <div id="ix-web" hidden>
+        <div class="group">网页</div>
+        <label class="field"><span class="field__label">网页地址</span><input id="x-url" class="input" maxlength="500" placeholder="https:// 开头">
+          <span class="hint" style="display:block">网页的域名要先加进小程序后台的业务域名，否则打不开。</span></label>
+      </div>
+
+      <div id="ix-mini" hidden>
+        <div class="group">其他小程序</div>
+        <label class="field"><span class="field__label">小程序链接</span><input id="x-shortLink" class="input" maxlength="200" placeholder="#小程序:// 开头，填了就不用填 AppID"></label>
+        <div class="row">
+          <label class="field"><span class="field__label">AppID</span><input id="x-appId" class="input" maxlength="32" placeholder="wx 开头的 18 位"></label>
+          <label class="field"><span class="field__label">页面路径</span><input id="x-path" class="input" maxlength="200" placeholder="比如 pages/index/index，可以不填"></label>
+        </div>
+        <p class="hint" style="margin-top: 0">填小程序链接，或者填 AppID 加页面路径。</p>
+      </div>
+    </fieldset>
+  </div>
+  <div class="drawer__foot" style="justify-content: flex-end">
+    <button id="ix-save" class="btn" type="submit">保存</button>
+  </div>
+</form>
+
+<!-- 大转盘的中奖名单 -->
+<div id="draws-mask" class="mask" hidden></div>
+<div id="draws" class="drawer drawer--wide" hidden>
+  <div class="drawer__head">
+    <h2 class="drawer__title">中奖名单</h2>
+    <button id="draws-close" class="drawer__close" type="button" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer__body">
+    <div id="draws-title" class="panel__title" style="margin-bottom: 4px"></div>
+    <p id="draws-count" class="hint" style="margin: 0 0 14px"></p>
+    <div class="ops" style="margin-bottom: 14px; align-items: center">
+      <input id="draws-search" class="input" style="width: 200px; height: 34px" inputmode="numeric" maxlength="6" placeholder="输入领奖码" aria-label="输入领奖码">
+      <button id="draws-export" class="btn btn--line btn--small" type="button">导出表格</button>
+    </div>
+    <div class="roster-scroll">
+      <table>
+        <thead><tr><th>中奖时间</th><th>奖品</th><th>领奖码</th><th>中奖的人</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="draws-rows"></tbody>
+      </table>
+    </div>
+    <div id="draws-empty" class="empty" hidden></div>
+    <button id="draws-retry" class="btn btn--line btn--small" type="button" hidden>重新读取</button>
+  </div>
+</div>
+
+<!-- 互动的小程序码 -->
+<div id="code-mask" class="mask mask--top" hidden></div>
+<div id="code-modal" class="dialog" role="dialog" aria-modal="true" aria-labelledby="code-heading" hidden>
+  <h2 id="code-heading" class="drawer__title">小程序码</h2>
+  <div id="code-name" class="muted"></div>
+  <div class="dialog__box">
+    <img id="code-img" class="dialog__img" alt="小程序码" hidden>
+    <div id="code-status" class="dialog__status"></div>
+  </div>
+  <p class="hint">扫码直接进这个互动。互动关着的时候扫进来，看到的是「现在没有开放」。</p>
+  <div class="dialog__ops">
+    <a id="code-download" class="btn" target="_blank" rel="noopener" hidden>下载图片</a>
+    <button id="code-close" class="btn btn--line" type="button">关闭</button>
+  </div>
+</div>
 
 <div id="toast" class="toast" role="status" hidden></div>
 
@@ -543,9 +725,64 @@
     bad_code: '登录码不对，或者已经过期',
     web_expired: '登录过期了，请重新登录',
     sdk: '连不上云开发，请检查网络后刷新页面',
-    network: '网络异常，请稍后再试'
+    network: '网络异常，请稍后再试',
+    // 报名表
+    bad_form: '报名表有一项不对，请检查',
+    form_too_long: '报名表最多 20 项',
+    missing_field_label: '报名表的每一项都要写标题',
+    missing_options: '单选和多选至少要有两个选项',
+    too_many_options: '每项最多 20 个选项',
+    option_too_long: '每个选项最多 20 个字', // 云端也会拦，这里先在页面上拦住
+    // 现场互动
+    bad_kind: '请选择类型',
+    missing_event: '只给报名的人参与时，要选关联活动；关联的活动要存在',
+    missing_prizes: '请添加奖品',
+    too_many_prizes: '最多 8 个奖品',
+    missing_prize_name: '每个奖品都要写名称',
+    bad_prize_total: '奖品数量填 0 到 100000 的整数',
+    bad_chance: '中奖机会填 0 到 100，最多两位小数，加起来不超过 100',
+    bad_tries: '每人能抽几次填 1 到 20',
+    bad_url: '网页地址要以 https:// 开头',
+    bad_mini: '请填 wx 开头的 AppID，或者 #小程序:// 开头的链接',
+    prize_below_won: '奖品数量不能比已经抽中的少',
+    code_failed: '小程序码没生成出来。正式版要等带互动页面的版本发布后才能生成',
+    closed: '这个互动已经关掉了'
   };
   var errorText = function (e) { return ERRORS[e && e.code] || ERRORS.network; };
+  /** 把文字里的 [名称] 这类占位换成值 */
+  function tpl(s, map) {
+    return s.replace(/\[([^\]]+)\]/g, function (m, k) { return map[k] != null ? String(map[k]) : m; });
+  }
+  /** 和云端整理文字的做法一样：去掉控制字符和首尾空格（不截断，长度另外检查） */
+  function clean(v) {
+    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, '').trim();
+  }
+  var charCount = function (s) { return Array.from(s).length; };
+  /** 页面上新加的报名表项、奖品的 id：之后不再变。taken(id) 为真时换一个 */
+  function newId(prefix, taken) {
+    var id;
+    do { id = prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); } while (taken(id));
+    return id;
+  }
+  /** 导出成表格（CSV，Excel 能直接打开） */
+  function downloadCsv(name, rows) {
+    // 开头是 = + - @ 的内容前面加一个单引号：不然表格软件会把它当公式算
+    var cell = function (v) {
+      var s = String(v == null ? '' : v);
+      if (/^[=+\-@]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    var lines = rows.map(function (r) { return r.map(cell).join(','); });
+    // 开头的 BOM 让 Excel 按 UTF-8 认中文
+    var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
 
   /* ---------- 调云函数 ---------- */
   var token = '';
@@ -625,6 +862,16 @@
     $('adj-submit').disabled = false;
     $('find-query').value = '';
     showMember(null);
+    closeIx(true);
+    closeDraws();
+    closeCode();
+    ixSeq += 1;
+    ixList = [];
+    ixEvents = [];
+    ixLoaded = false;
+    ixFailed = false;
+    ixLoading = false;
+    $('ix-rows').textContent = '';
   }
 
   function showLogin(message) {
@@ -672,13 +919,14 @@
   });
 
   /* ---------- 切换分区 ---------- */
-  var TABS = ['events', 'past', 'notice', 'members', 'points'];
+  var TABS = ['events', 'interact', 'past', 'notice', 'members', 'points'];
   function switchTab(tab) {
     TABS.forEach(function (t) { $('tab-' + t).hidden = t !== tab; });
     Array.prototype.forEach.call($('nav').children, function (b) {
       b.className = 'nav__item' + (b.getAttribute('data-tab') === tab ? ' nav__item--on' : '');
     });
     if (tab === 'events') loadEvents();
+    if (tab === 'interact') loadInteractions();
     if (tab === 'notice' && !noticeDirty()) loadNotice(true);
     if (tab === 'past') loadPast();
     if (tab === 'members') loadMembers();
@@ -722,6 +970,8 @@
       newsWaiting = d.newsWaiting || 0;
       $('ev-subs').textContent = newsWaiting + ' 人订阅了新活动通知';
       renderEvents();
+      // 活动表单开着的话，「沿用别的活动的报名表」的选项跟着更新
+      if (!$('drawer').hidden) renderFormCopy();
       var need = events.map(function (e) { return e.cover; }).filter(function (c) { return c && c.indexOf('cloud://') === 0 && !coverUrls[c]; });
       if (!need.length) return null;
       // 一次最多换 50 个
@@ -866,7 +1116,8 @@
   /* ---------- 活动表单 ---------- */
   var TIME_FIELDS = ['date', 'signupStart', 'signupEnd', 'memberSignupStart', 'drawAt'];
   var TEXT_FIELDS = ['title', 'city', 'venue', 'quotaText', 'intro'];
-  var form = { id: '', type: '赛事', cover: '' };
+  // fields 是报名表：[{ id, kind, label, required, options }]，options 是选项框里的原文（一行一个），存的时候再拆
+  var form = { id: '', type: '赛事', cover: '', fields: [] };
   // 每打开或关上一次表单就换一个号。头图传完回来时号变了，说明那个表单已经不在了，结果作废
   var editor = 0;
   var uploading = false;
@@ -881,13 +1132,14 @@
     var d = { type: form.type, cover: form.cover, published: $('f-published').checked,
       quota: $('f-quota').value, cost: $('f-cost').value, contact: $('f-contact').value };
     TEXT_FIELDS.concat(TIME_FIELDS).forEach(function (k) { d[k] = $('f-' + k).value; });
+    d.form = form.fields.map(function (f) { return { id: f.id, kind: f.kind, label: f.label, required: f.required, options: f.options }; });
     return JSON.stringify(d);
   }
   function drawerDirty() {
     return !$('drawer').hidden && (uploading || drawerBaseline !== drawerSnapshot());
   }
   function hasUnsaved() {
-    return drawerDirty() || pastDirty() || noticeDirty() ||
+    return drawerDirty() || ixDirty() || pastDirty() || noticeDirty() ||
       (!$('adjust-form').hidden && !!($('adj-amount').value || $('adj-reason').value));
   }
   window.addEventListener('beforeunload', function (e) {
@@ -936,6 +1188,11 @@
     $('f-contact').value = e ? (e.contact || '') : '';
     $('f-published').checked = !!e && e.status === 'published';
     setCover(e ? e.cover : '');
+    form.fields = (e && Array.isArray(e.form) ? e.form : []).map(function (f) {
+      return { id: f.id, kind: f.kind, label: f.label || '', required: f.required === true, options: (f.options || []).join('\n') };
+    });
+    renderFormFields();
+    renderFormCopy();
     drawerBaseline = drawerSnapshot();
   }
   function readDrawer() {
@@ -1003,6 +1260,16 @@
     $('f-contact').value = typeof d.contact === 'string' ? d.contact : '';
     $('f-published').checked = d.published === true;
     setCover(typeof d.cover === 'string' ? d.cover : '');
+    // 草稿是这台电脑上存的，读回来时还是核对一下每一项的样子，不对的不要
+    var seen = {};
+    form.fields = (Array.isArray(d.form) ? d.form : []).filter(function (f) {
+      var good = !!f && typeof f === 'object' && FORM_KIND_KEYS.indexOf(f.kind) >= 0 && typeof f.id === 'string' && FIELD_ID.test(f.id) && !seen[f.id];
+      if (good) seen[f.id] = true;
+      return good;
+    }).slice(0, FORM_MAX).map(function (f) {
+      return { id: f.id, kind: f.kind, label: typeof f.label === 'string' ? f.label : '', required: f.required === true, options: typeof f.options === 'string' ? f.options : '' };
+    });
+    renderFormFields();
   }
   $('drawer').addEventListener('input', saveDraft);
   $('drawer').addEventListener('change', saveDraft);
@@ -1027,7 +1294,13 @@
   }
   $('drawer-close').addEventListener('click', closeDrawer);
   // 点表单外面的空白处不关表单：很容易误点。要关就点右上角的 × 或按 Esc
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('drawer').hidden) closeDrawer(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!$('code-modal').hidden) closeCode();
+    else if (!$('ix-drawer').hidden) closeIx();
+    else if (!$('draws').hidden) closeDraws();
+    else if (!$('drawer').hidden) closeDrawer();
+  });
   $('drawer-retry').addEventListener('click', function () {
     if (drawerDirty() && !window.confirm(UNSAVED)) return;
     readDrawer();
@@ -1036,6 +1309,179 @@
     var type = e.target.getAttribute && e.target.getAttribute('data-type');
     if (type) { setType(type); saveDraft(); }
   });
+
+  /* ---------- 活动表单里的报名表 ---------- */
+  // 和云端的 formData 一样的规矩：最多 20 项，单选和多选 2 到 20 个选项，标题和选项最多 20 个字
+  var FORM_KINDS = { text: '一行字', textarea: '多行字', phone: '电话', idno: '证件号码', date: '日期', single: '单选', multi: '多选' };
+  var FORM_KIND_KEYS = Object.keys(FORM_KINDS);
+  var FORM_MAX = 20;
+  var FIELD_ID = /^[a-zA-Z0-9_-]{1,24}$/;
+  // 「添加一项」里预先写好标题和选项的模块，和小程序后台的一样
+  var FORM_PRESETS = [
+    { key: 'name', text: '姓名', kind: 'text', label: '姓名' },
+    { key: 'phone', text: '手机号', kind: 'phone', label: '手机号' },
+    { key: 'gender', text: '性别', kind: 'single', label: '性别', options: ['男', '女'] },
+    { key: 'birth', text: '出生日期', kind: 'date', label: '出生日期' },
+    { key: 'idno', text: '证件号码', kind: 'idno', label: '证件号码' },
+    { key: 'size', text: '服装尺码', kind: 'single', label: '服装尺码', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+    { key: 'emergencyName', text: '紧急联系人', kind: 'text', label: '紧急联系人' },
+    { key: 'emergencyPhone', text: '紧急联系电话', kind: 'phone', label: '紧急联系电话' },
+    { key: 'single', text: '单选题', kind: 'single', label: '', options: [] },
+    { key: 'multi', text: '多选题', kind: 'multi', label: '', options: [] },
+    { key: 'text', text: '填空', kind: 'text', label: '' },
+    { key: 'textarea', text: '多行文字', kind: 'textarea', label: '' }
+  ];
+  var hasOptions = function (kind) { return kind === 'single' || kind === 'multi'; };
+  function fieldIdTaken(id) { return form.fields.some(function (f) { return f.id === id; }); }
+
+  /** 按 form.fields 重画报名表。输入框改的是 form.fields 里对应的那一项，加、删、挪位置后整张重画 */
+  function renderFormFields() {
+    var list = $('ff-list');
+    list.textContent = '';
+    form.fields.forEach(function (f, i) {
+      var row = el('div', 'ff');
+      row.setAttribute('data-id', f.id);
+      var top = el('div', 'ff__top');
+      top.appendChild(el('span', 'ff__no', String(i + 1)));
+      var label = el('input', 'input ff__label');
+      label.maxLength = 20;
+      label.placeholder = '标题';
+      label.setAttribute('aria-label', '标题');
+      label.value = f.label;
+      label.addEventListener('input', function () { f.label = label.value; });
+      top.appendChild(label);
+      top.appendChild(el('span', 'ff__kind', FORM_KINDS[f.kind]));
+      var req = el('label', 'ff__req');
+      var box = el('input', 'ff__required');
+      box.type = 'checkbox';
+      box.checked = f.required;
+      box.addEventListener('change', function () { f.required = box.checked; });
+      req.appendChild(box);
+      req.appendChild(el('span', '', '必填'));
+      top.appendChild(req);
+      var ops = el('div', 'ff__ops');
+      [['up', '上移', i === 0], ['down', '下移', i === form.fields.length - 1], ['remove', '删除', false]].forEach(function (o) {
+        var b = el('button', 'link' + (o[0] === 'remove' ? ' link--danger' : ''), o[1]);
+        b.type = 'button';
+        b.setAttribute('data-act', o[0]);
+        b.disabled = o[2];
+        ops.appendChild(b);
+      });
+      top.appendChild(ops);
+      row.appendChild(top);
+      if (hasOptions(f.kind)) {
+        var wrap = el('label', 'ff__opts');
+        wrap.appendChild(el('span', 'field__label', '选项，一行一个'));
+        var ta = el('textarea', 'textarea ff__options');
+        ta.placeholder = '比如\n男\n女';
+        ta.value = f.options;
+        ta.addEventListener('input', function () { f.options = ta.value; });
+        wrap.appendChild(ta);
+        row.appendChild(wrap);
+      }
+      list.appendChild(row);
+    });
+    $('ff-empty').hidden = form.fields.length > 0;
+    $('ff-sensitive').hidden = !form.fields.some(function (f) { return f.kind === 'idno'; });
+  }
+  /** 「沿用别的活动的报名表」：列出别的有报名表的活动 */
+  function renderFormCopy() {
+    var sel = $('ff-copy');
+    sel.textContent = '';
+    var others = events.filter(function (e) { return e.id !== form.id && Array.isArray(e.form) && e.form.length > 0; });
+    var first = el('option', '', others.length ? '沿用别的活动的报名表' : '别的活动都没有报名表');
+    first.value = '';
+    sel.appendChild(first);
+    others.forEach(function (e) {
+      var o = el('option', '', e.title + '（' + e.form.length + ' 项）');
+      o.value = e.id;
+      sel.appendChild(o);
+    });
+    // 没有可沿用的也不禁用：点开能看到「别的活动都没有报名表」
+  }
+  FORM_PRESETS.forEach(function (p) {
+    var b = el('button', 'btn btn--line btn--small', p.text);
+    b.type = 'button';
+    b.setAttribute('data-preset', p.key);
+    $('ff-presets').appendChild(b);
+  });
+  $('ff-presets').addEventListener('click', function (e) {
+    var key = e.target.getAttribute && e.target.getAttribute('data-preset');
+    var p = FORM_PRESETS.find(function (x) { return x.key === key; });
+    if (!p) return;
+    if (form.fields.length >= FORM_MAX) { toast(ERRORS.form_too_long, true); return; }
+    // 新加的项默认必填，和小程序后台一样；不需要的再取消勾选
+    form.fields.push({ id: newId('f', fieldIdTaken), kind: p.kind, label: p.label, required: true, options: (p.options || []).join('\n') });
+    renderFormFields();
+    saveDraft();
+    // 单选题、填空这些没有现成标题的，加上以后直接填标题
+    var last = $('ff-list').lastChild;
+    if (!p.label && last) last.querySelector('.ff__label').focus();
+  });
+  $('ff-list').addEventListener('click', function (e) {
+    var act = e.target.getAttribute && e.target.getAttribute('data-act');
+    var row = act && e.target.closest('.ff');
+    if (!row) return;
+    var i = form.fields.findIndex(function (f) { return f.id === row.getAttribute('data-id'); });
+    if (i < 0) return;
+    var to = act === 'up' ? i - 1 : act === 'down' ? i + 1 : -1;
+    if (act === 'remove') form.fields.splice(i, 1);
+    else if (to >= 0 && to < form.fields.length) form.fields.splice(to, 0, form.fields.splice(i, 1)[0]);
+    else return;
+    renderFormFields();
+    saveDraft();
+  });
+  $('ff-copy').addEventListener('change', function () {
+    var id = this.value;
+    this.value = '';
+    var src = events.find(function (e) { return e.id === id; });
+    if (!src || !Array.isArray(src.form) || !src.form.length) return;
+    if (form.fields.length && !window.confirm('用「' + src.title + '」的报名表换掉现在的 ' + form.fields.length + ' 项？')) return;
+    // 每一项换一个新的 id：两场活动的报名表以后各改各的
+    var taken = {};
+    form.fields = src.form.slice(0, FORM_MAX).map(function (f) {
+      var fid = newId('f', function (x) { return taken[x]; });
+      taken[fid] = true;
+      return { id: fid, kind: f.kind, label: f.label || '', required: f.required === true, options: (f.options || []).join('\n') };
+    });
+    renderFormFields();
+    saveDraft();
+    toast('已沿用「' + src.title + '」的报名表');
+  });
+  /**
+   * 报名表整理成交给云端的样子，检查和云端一样。
+   * 返回 { form } 或 { error, focus }：error 是错误的 code，focus 是该去改的那一格
+   */
+  function readFormFields() {
+    if (form.fields.length > FORM_MAX) return { error: 'form_too_long' };
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < form.fields.length; i++) {
+      var f = form.fields[i];
+      var row = $('ff-list').children[i];
+      if (FORM_KIND_KEYS.indexOf(f.kind) < 0 || !FIELD_ID.test(f.id) || seen[f.id]) return { error: 'bad_form' };
+      seen[f.id] = true;
+      var label = clean(f.label);
+      if (!label) return { error: 'missing_field_label', focus: row && row.querySelector('.ff__label') };
+      var field = { id: f.id, kind: f.kind, label: Array.from(label).slice(0, 20).join(''), required: f.required === true };
+      if (hasOptions(f.kind)) {
+        var options = [];
+        var long = false;
+        f.options.split('\n').forEach(function (line) {
+          var v = clean(line);
+          if (charCount(v) > 20) long = true;
+          if (v && options.indexOf(v) < 0) options.push(v);
+        });
+        var box = row && row.querySelector('.ff__options');
+        if (long) return { error: 'option_too_long', focus: box };
+        if (options.length < 2) return { error: 'missing_options', focus: box };
+        if (options.length > 20) return { error: 'too_many_options', focus: box };
+        field.options = options;
+      }
+      out.push(field);
+    }
+    return { form: out };
+  }
 
   /**
    * 把选的图片压成 JPEG：最长边不超过 1600px，文件不超过约 500KB。
@@ -1118,6 +1564,10 @@
     if ((event.memberSignupStart && event.signupStart && event.memberSignupStart > event.signupStart) ||
         (start && start > event.date) || (event.signupEnd && start && event.signupEnd <= start) ||
         (event.signupEnd && event.signupEnd > event.date)) { toast(ERRORS.bad_signup_time, true); return; }
+    // 报名表每次都带上（空的就是 []，表示没有报名表）。不带的话云端不动原来存的报名表
+    var fields = readFormFields();
+    if (fields.error) { toast(ERRORS[fields.error], true); if (fields.focus) fields.focus.focus(); return; }
+    event.form = fields.form;
     var mine = editor; // 这次保存属于现在打开的这个表单
     saving = mine;
     syncSave();
@@ -1147,25 +1597,59 @@
   var rosterSeq = 0;
   var rosterBusy = false;
   var rosterReady = false;
+  var rosterForm = []; // 这场活动现在的报名表
   function closeRoster() {
     rosterSeq += 1; // 还没回来的读取不作数
     rosterEvent = null;
     $('roster-mask').hidden = true;
     $('roster').hidden = true;
   }
+  /** 某个人在某一项上填的内容：多选用「、」连起来，没填是「—」 */
+  function answerText(s, id) {
+    var a = (s.answers || []).find(function (x) { return x.id === id; });
+    var v = a ? a.value : null;
+    if (Array.isArray(v)) v = v.join('、');
+    return v == null || v === '' ? '—' : String(v);
+  }
+  /** 报名表后来删掉的项：现在的报名表里没有，但有人填过。用填的时候的标题 */
+  function removedColumns() {
+    var have = {};
+    var out = [];
+    rosterForm.forEach(function (f) { have[f.id] = true; });
+    rosterList.forEach(function (s) {
+      (s.answers || []).forEach(function (a) {
+        if (have[a.id]) return;
+        have[a.id] = true;
+        out.push({ id: a.id, label: a.label || '' });
+      });
+    });
+    return out;
+  }
   function renderRoster() {
     var body = $('roster-rows');
     body.textContent = '';
     $('roster-count').textContent = rosterTotal > rosterList.length ? rosterTotal + ' 人报名，名单太长，这里和导出的表格只有前 ' + rosterList.length + ' 人' : rosterList.length + ' 人报名';
+    // 有报名表时表头多出每一项，抽屉也放宽
+    var head = $('roster-head');
+    head.textContent = '';
+    ['会员', '手机号', '报名时间', '积分'].concat(rosterForm.map(function (f) { return f.label; }), ['操作']).forEach(function (t) { head.appendChild(el('th', '', t)); });
+    $('roster').className = 'drawer' + (rosterForm.length ? ' drawer--wide' : '');
     rosterList.forEach(function (s) {
       var tr = el('tr');
       var who = el('td');
       who.appendChild(el('div', 'cell-title__name', s.nickname || '没填昵称'));
       who.appendChild(el('div', 'cell-sub', '会员编号 ' + (s.memberNo || '—')));
+      // 报名以后运营又加了必填项、这个人还没补填
+      if (rosterForm.length && s.complete === false) {
+        var miss = el('span', 'chip chip--warn', '报名表还没填齐');
+        miss.style.margin = '4px 0 0';
+        who.appendChild(miss);
+      }
       tr.appendChild(who);
       tr.appendChild(el('td', '', s.phone || '—'));
       tr.appendChild(el('td', '', moment(s.at)));
       tr.appendChild(el('td', '', s.cost > 0 ? String(s.cost) : '—'));
+      rosterForm.forEach(function (f) { tr.appendChild(el('td', 'cell-answer', answerText(s, f.id))); });
       var ops = el('td');
       var cancel = el('button', 'btn btn--line btn--small', '取消报名');
       cancel.type = 'button';
@@ -1196,6 +1680,7 @@
     return call('adminSignups', { id: rosterEvent.id }).then(function (d) {
       if (mine !== rosterSeq) return;
       rosterList = d.signups || [];
+      rosterForm = Array.isArray(d.form) ? d.form : [];
       rosterTotal = d.total || rosterList.length;
       rosterReady = true;
       $('roster-cancel-event').disabled = false;
@@ -1212,7 +1697,9 @@
   function openRoster(e) {
     rosterEvent = { id: e.id, title: e.title };
     rosterList = [];
+    rosterForm = [];
     rosterTotal = 0;
+    $('roster').className = 'drawer';
     $('roster-title').textContent = e.title;
     $('roster-count').textContent = '正在读取';
     $('roster-rows').textContent = '';
@@ -1223,27 +1710,19 @@
   }
   $('roster-close').addEventListener('click', closeRoster);
   $('roster-mask').addEventListener('click', closeRoster);
-  /** 导出成表格（CSV，Excel 能直接打开）：昵称、会员编号、手机号、报名时间、用的积分 */
+  /**
+   * 导出成表格：昵称、会员编号、手机号、报名时间、用的积分，后面是报名表的每一项
+   * （现在的报名表按顺序，再是后来删掉、但有人填过的项）
+   */
   $('roster-export').addEventListener('click', function () {
     if (!rosterEvent || !rosterList.length) { toast('还没有人报名', true); return; }
-    // 开头是 = + - @ 的内容前面加一个单引号：不然表格软件会把它当公式算
-    var cell = function (v) {
-      var s = String(v == null ? '' : v);
-      if (/^[=+\-@]/.test(s)) s = "'" + s;
-      return '"' + s.replace(/"/g, '""') + '"';
-    };
-    var lines = [['昵称', '会员编号', '手机号', '报名时间', '用的积分']].concat(rosterList.map(function (s) {
-      return [s.nickname, s.memberNo, s.phone, moment(s.at), s.cost > 0 ? s.cost : 0];
-    })).map(function (r) { return r.map(cell).join(','); });
-    // 开头的 BOM 让 Excel 按 UTF-8 认中文
-    var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = rosterEvent.title + ' 报名名单.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    var removed = removedColumns();
+    var cols = rosterForm.map(function (f) { return f.id; }).concat(removed.map(function (c) { return c.id; }));
+    var head = ['昵称', '会员编号', '手机号', '报名时间', '用的积分']
+      .concat(rosterForm.map(function (f) { return f.label; }), removed.map(function (c) { return c.label + '（已删掉的项）'; }));
+    downloadCsv(rosterEvent.title + ' 报名名单.csv', [head].concat(rosterList.map(function (s) {
+      return [s.nickname, s.memberNo, s.phone, moment(s.at), s.cost > 0 ? s.cost : 0].concat(cols.map(function (id) { return answerText(s, id); }));
+    })));
   });
   /** 取消整场活动：下架，所有人撤销、退积分、发通知。人多时云端分几批做，这里接着调到做完 */
   $('roster-cancel-event').addEventListener('click', function () {
@@ -1267,6 +1746,530 @@
       .catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
       .then(function () { rosterBusy = false; btn.disabled = false; loadEvents(); if (rosterEvent && rosterEvent.id === id) return loadRoster(); return null; });
   });
+
+  /* ---------- 现场互动 ---------- */
+  var IX_KINDS = { wheel: '大转盘', web: '网页', mini: '其他小程序' };
+  var IX_AUDIENCES = { all: '所有人', member: '会员', signed: '报了关联活动的会员' };
+  var IX_STATS = '抽了 [次数] 次，中奖 [中奖] 人，已领 [已领] 人';
+  var IX_CONFLICT = '互动已被其他管理员修改。你的填写已保留，重新读取后再编辑。';
+  var PRIZE_MAX = 8;
+  var ixList = [];
+  var ixEvents = []; // 关联活动的下拉框和列表上的活动名用
+  var ixSeq = 0;
+  var ixLoaded = false;
+  var ixFailed = false;
+  var ixLoading = false;
+
+  /** 读互动列表，顺带读活动（选关联活动、显示活动名）。只用最后发出的那次读取 */
+  function loadInteractions() {
+    var mine = ++ixSeq;
+    ixLoading = true;
+    if (!ixLoaded) renderIx();
+    return Promise.all([call('adminInteractions'), call('adminEvents')]).then(function (r) {
+      if (mine !== ixSeq) return;
+      ixList = r[0].interactions || [];
+      ixEvents = r[1].events || [];
+      ixLoaded = true;
+      ixFailed = false;
+    }).catch(function (e) {
+      if (mine !== ixSeq) return;
+      ixFailed = true;
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    }).then(function () {
+      if (mine !== ixSeq) return;
+      ixLoading = false;
+      renderIx();
+    });
+  }
+  function ixEventTitle(id) {
+    var e = ixEvents.find(function (x) { return x.id === id; });
+    return e ? e.title : '没有找到';
+  }
+  function renderIx() {
+    var body = $('ix-rows');
+    body.textContent = '';
+    ixList.forEach(function (x) {
+      var tr = el('tr');
+      var name = el('td');
+      var box = el('div', 'cell-title');
+      var text = el('div');
+      text.appendChild(el('div', 'cell-title__name', x.title));
+      text.appendChild(el('div', 'cell-title__type', IX_KINDS[x.kind] + ' · ' + (IX_AUDIENCES[x.audience] || IX_AUDIENCES.all)));
+      box.appendChild(text);
+      name.appendChild(box);
+      tr.appendChild(name);
+      tr.appendChild(el('td', x.eventId ? '' : 'muted', x.eventId ? ixEventTitle(x.eventId) : '不关联'));
+      var on = x.status === 'on';
+      var st = el('td');
+      st.appendChild(el('span', 'chip ' + (on ? 'chip--on' : 'chip--off'), on ? '进行中' : '已关'));
+      tr.appendChild(st);
+      tr.appendChild(el('td', '', x.kind === 'wheel' ? tpl(IX_STATS, { 次数: x.draws || 0, 中奖: x.wins || 0, 已领: x.redeemed || 0 }) : '—'));
+
+      var ops = el('td');
+      var wrap = el('div', 'ops ops--wrap');
+      var button = function (text, cls, fn) {
+        var b = el('button', 'btn btn--small ' + cls, text);
+        b.type = 'button';
+        b.addEventListener('click', function () { fn(b); });
+        wrap.appendChild(b);
+        return b;
+      };
+      button('编辑', 'btn--line', function () { openIx(x); });
+      button(on ? '关掉' : '打开', on ? 'btn--line' : 'btn--navy', function (b) {
+        b.disabled = true;
+        // 带上读到时的版本：别人刚改过的话不盖掉，重新读一遍
+        call('adminSetInteractionStatus', { id: x.id, status: on ? 'off' : 'on', version: x.version }).then(function () {
+          toast(on ? '已关掉，入口不再显示' : '已打开，小程序里有入口了');
+          return loadInteractions();
+        }).catch(function (err) {
+          b.disabled = false;
+          if (err.code === 'web_expired') return;
+          toast(err.code === 'conflict' ? '互动已被其他管理员修改，已重新读取，请再看一下' : errorText(err), true);
+          loadInteractions();
+        });
+      });
+      if (x.kind === 'wheel') button('中奖名单', 'btn--line', function () { openDraws(x); });
+      button('小程序码', 'btn--line', function () { openCode(x); });
+      button('删除', 'btn--line', function (b) {
+        if (!window.confirm(tpl('删掉「[名称]」。入口会消失，扫码也进不来，抽奖和领奖的记录还留着。', { 名称: x.title }))) return;
+        b.disabled = true;
+        call('adminDeleteInteraction', { id: x.id }).then(function () {
+          toast('已删除');
+          return loadInteractions();
+        }).catch(function (err) {
+          b.disabled = false;
+          if (err.code !== 'web_expired') { toast(errorText(err), true); loadInteractions(); }
+        });
+      });
+      ops.appendChild(wrap);
+      tr.appendChild(ops);
+      body.appendChild(tr);
+    });
+    // 列表分清：正在读、读失败、没有
+    var empty = $('ix-empty');
+    empty.hidden = ixList.length > 0;
+    $('ix-empty-text').textContent = !ixLoaded ? (ixFailed && !ixLoading ? '没有读到当前内容，请重试' : '正在读取，请稍等') : '还没有互动';
+    $('ix-retry').hidden = ixLoaded || !ixFailed || ixLoading;
+  }
+  $('ix-retry').addEventListener('click', loadInteractions);
+  $('ix-new').addEventListener('click', function () { openIx(null); });
+
+  /* ---------- 互动表单 ---------- */
+  // prizes：[{ id, name, total, chance, won }]，total 和 chance 是输入框里的原文；won 是已经抽中的个数，新加的奖品是 null
+  var ixForm = { id: '', kind: 'wheel', audience: 'member', prizes: [] };
+  var ixEditor = 0; // 每打开或关上一次换一个号，和活动表单同一个做法
+  var ixReady = false;
+  var ixReadFailed = false;
+  var ixReading = false;
+  var ixConflict = false;
+  var ixSaving = 0;
+  var ixBaseline = '';
+  var IX_TEXT_FIELDS = ['title', 'note', 'tries', 'url', 'appId', 'path', 'shortLink'];
+  function ixSnapshot() {
+    var d = { kind: ixForm.kind, audience: ixForm.audience, eventId: $('x-event').value,
+      prizes: ixForm.prizes.map(function (p) { return [p.id, p.name, p.total, p.chance]; }) };
+    IX_TEXT_FIELDS.forEach(function (k) { d[k] = $('x-' + k).value; });
+    return JSON.stringify(d);
+  }
+  function ixDirty() {
+    return !$('ix-drawer').hidden && ixBaseline !== ixSnapshot();
+  }
+  function syncIx() {
+    $('ix-save').disabled = !ixReady || ixConflict || ixSaving === ixEditor;
+    $('ix-fields').disabled = !ixReady || ixSaving === ixEditor;
+    $('ix-hint').hidden = ixReady && !ixConflict;
+    $('ix-hint').textContent = ixConflict ? IX_CONFLICT : (ixReadFailed ? '没有读到当前内容，请重试' : '正在读取，请稍等');
+    $('ix-reread').hidden = !ixReadFailed && !ixConflict;
+    $('ix-reread').disabled = ixReading;
+  }
+  function setIxKind(kind) {
+    ixForm.kind = kind;
+    Array.prototype.forEach.call($('ix-kind-seg').children, function (b) {
+      b.className = 'seg__btn' + (b.getAttribute('data-kind') === kind ? ' seg__btn--on' : '');
+    });
+    $('ix-wheel').hidden = kind !== 'wheel';
+    $('ix-web').hidden = kind !== 'web';
+    $('ix-mini').hidden = kind !== 'mini';
+  }
+  function setIxAudience(aud) {
+    ixForm.audience = aud;
+    Array.prototype.forEach.call($('ix-aud-seg').children, function (b) {
+      b.className = 'seg__btn' + (b.getAttribute('data-aud') === aud ? ' seg__btn--on' : '');
+    });
+  }
+  $('ix-kind-seg').addEventListener('click', function (e) {
+    var kind = e.target.getAttribute && e.target.getAttribute('data-kind');
+    if (kind) setIxKind(kind);
+  });
+  $('ix-aud-seg').addEventListener('click', function (e) {
+    var aud = e.target.getAttribute && e.target.getAttribute('data-aud');
+    if (aud) setIxAudience(aud);
+  });
+  /** 关联活动的下拉框：不关联，加上全部活动（新的在前） */
+  function renderIxEvents(selected) {
+    var sel = $('x-event');
+    sel.textContent = '';
+    var none = el('option', '', '不关联');
+    none.value = '';
+    sel.appendChild(none);
+    ixEvents.forEach(function (e) {
+      var o = el('option', '', e.title + '（' + moment(e.date) + '）');
+      o.value = e.id;
+      sel.appendChild(o);
+    });
+    // 关联的活动不在列表里（活动没读到）：留着这一项，不悄悄改成不关联
+    if (selected && !ixEvents.some(function (e) { return e.id === selected; })) {
+      var lost = el('option', '', '没有找到');
+      lost.value = selected;
+      sel.appendChild(lost);
+    }
+    sel.value = selected || '';
+  }
+  function prizeIdTaken(id) { return ixForm.prizes.some(function (p) { return p.id === id; }); }
+  function blankPrize() { return { id: newId('p', prizeIdTaken), name: '', total: '', chance: '', won: null }; }
+  function renderPrizes() {
+    var box = $('ix-prizes');
+    box.textContent = '';
+    ixForm.prizes.forEach(function (p) {
+      var row = el('div', 'pz');
+      row.setAttribute('data-id', p.id);
+      var input = function (cls, key, attrs) {
+        var n = el('input', 'input ' + cls);
+        Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+        n.value = p[key];
+        n.addEventListener('input', function () { p[key] = n.value; if (key === 'chance') updateChanceSum(); });
+        return n;
+      };
+      row.appendChild(input('pz__name', 'name', { maxlength: '12', placeholder: '比如 运动毛巾', 'aria-label': '奖品名称' }));
+      var total = el('div');
+      total.appendChild(input('pz__total', 'total', { maxlength: '6', inputmode: 'numeric', placeholder: '个数', 'aria-label': '数量' }));
+      if (p.won != null) total.appendChild(el('div', 'pz__won', '已抽中 ' + p.won));
+      row.appendChild(total);
+      row.appendChild(input('pz__chance', 'chance', { maxlength: '6', inputmode: 'decimal', placeholder: '比如 10', 'aria-label': '中奖机会 %' }));
+      var rm = el('button', 'link link--danger', '删除');
+      rm.type = 'button';
+      rm.setAttribute('data-act', 'remove');
+      row.appendChild(rm);
+      box.appendChild(row);
+    });
+    updateChanceSum();
+  }
+  /** 「加起来 30%，谢谢参与 70%」：按万分之几加，和云端一样不会有小数误差 */
+  function updateChanceSum() {
+    var sum = 0;
+    var bad = false;
+    ixForm.prizes.forEach(function (p) {
+      var v = p.chance.trim();
+      if (!v) return;
+      var n = Number(v);
+      if (!isFinite(n) || n < 0) { bad = true; return; }
+      sum += Math.round(n * 100);
+    });
+    var line = $('ix-chance-sum');
+    line.textContent = tpl('加起来 [合计]%，谢谢参与 [剩下]%', { 合计: sum / 100, 剩下: Math.max(0, 10000 - sum) / 100 });
+    line.className = 'hint' + (bad || sum > 10000 ? ' hint--bad' : '');
+  }
+  $('ix-prizes').addEventListener('click', function (e) {
+    var row = e.target.getAttribute && e.target.getAttribute('data-act') === 'remove' && e.target.closest('.pz');
+    if (!row) return;
+    var prize = ixForm.prizes.find(function (p) { return p.id === row.getAttribute('data-id'); });
+    // 已经有人抽中的奖品不能删（和小程序后台一样）：中奖的人手里有它的领奖码。不想再抽出来，就把数量改成已抽中的个数
+    if (prize && prize.won > 0) { toast(ERRORS.prize_below_won, true); return; }
+    ixForm.prizes = ixForm.prizes.filter(function (p) { return p !== prize; });
+    renderPrizes();
+  });
+  $('ix-add-prize').addEventListener('click', function () {
+    if (ixForm.prizes.length >= PRIZE_MAX) { toast(ERRORS.too_many_prizes, true); return; }
+    ixForm.prizes.push(blankPrize());
+    renderPrizes();
+    $('ix-prizes').lastChild.querySelector('.pz__name').focus();
+  });
+
+  function fillIx(x) {
+    ixForm.id = x ? x.id : '';
+    ixForm.version = x ? x.version : undefined;
+    $('ix-drawer-title').textContent = x ? '编辑互动' : '新建互动';
+    setIxKind(x && IX_KINDS[x.kind] ? x.kind : 'wheel');
+    setIxAudience(x && IX_AUDIENCES[x.audience] ? x.audience : 'member');
+    $('x-title').value = x ? x.title : '';
+    $('x-note').value = x ? (x.note || '') : '';
+    renderIxEvents(x ? x.eventId : '');
+    $('x-tries').value = x && x.kind === 'wheel' ? String(x.tries || 1) : '1';
+    $('x-url').value = x ? (x.url || '') : '';
+    $('x-appId').value = x ? (x.appId || '') : '';
+    $('x-path').value = x ? (x.path || '') : '';
+    $('x-shortLink').value = x ? (x.shortLink || '') : '';
+    ixForm.prizes = [];
+    if (x && x.kind === 'wheel') {
+      ixForm.prizes = (x.prizes || []).map(function (p) { return { id: p.id, name: p.name, total: String(p.total), chance: String(p.chance), won: p.won || 0 }; });
+    }
+    // 新建的（或者从别的类型改成大转盘时）先给一行空的奖品
+    if (!ixForm.prizes.length) ixForm.prizes.push(blankPrize());
+    renderPrizes();
+    ixBaseline = ixSnapshot();
+  }
+  /** 编辑前从云端读这个互动现在的样子（列表上的可能已经旧了） */
+  function readIx() {
+    if (ixReading) return;
+    var mine = ixEditor;
+    var id = ixForm.id;
+    ixReady = false; ixReadFailed = false; ixReading = true;
+    syncIx();
+    return Promise.all([call('adminInteractions'), call('adminEvents')]).then(function (r) {
+      if (mine !== ixEditor) return;
+      ixEvents = r[1].events || [];
+      var current = (r[0].interactions || []).find(function (x) { return x.id === id; });
+      if (!current) throw Object.assign(new Error('not_found'), { code: 'not_found' });
+      fillIx(current);
+      ixReady = true; ixConflict = false;
+    }).catch(function (err) {
+      if (mine !== ixEditor) return;
+      ixReadFailed = true;
+      if (err.code !== 'web_expired') toast(errorText(err), true);
+    }).then(function () { if (mine === ixEditor) { ixReading = false; syncIx(); } });
+  }
+  function openIx(x) {
+    if (ixDirty() && !window.confirm(UNSAVED)) return;
+    ixEditor += 1;
+    ixReading = false; ixReadFailed = false; ixConflict = false;
+    ixReady = !x;
+    fillIx(x);
+    $('ix-mask').hidden = false;
+    $('ix-drawer').hidden = false;
+    $('x-title').focus();
+    if (x) readIx();
+    else syncIx();
+  }
+  /** 关表单：改了没存的，不管新建还是编辑都问一句（互动没有草稿兜着） */
+  function closeIx(force) {
+    if (force !== true && ixDirty() && !window.confirm(UNSAVED)) return;
+    ixEditor += 1;
+    ixReading = false;
+    $('ix-mask').hidden = true;
+    $('ix-drawer').hidden = true;
+  }
+  $('ix-close').addEventListener('click', closeIx);
+  $('ix-reread').addEventListener('click', function () {
+    if (ixDirty() && !window.confirm(UNSAVED)) return;
+    readIx();
+  });
+  /**
+   * 表单整理成交给云端的样子，检查和云端的 interactionData 一样。
+   * 返回 { interaction } 或 { error, focus }
+   */
+  function readIxForm() {
+    var x = { kind: ixForm.kind, title: clean($('x-title').value), note: $('x-note').value, eventId: $('x-event').value,
+      audience: ixForm.audience, tries: 1, prizes: [], url: '', appId: '', path: '', shortLink: '' };
+    if (!x.title) return { error: 'missing_title', focus: $('x-title') };
+    if (x.audience === 'signed' && !x.eventId) return { error: 'missing_event', focus: $('x-event') };
+    if (x.kind === 'wheel') {
+      if (!ixForm.prizes.length) return { error: 'missing_prizes' };
+      if (ixForm.prizes.length > PRIZE_MAX) return { error: 'too_many_prizes' };
+      var sum = 0;
+      for (var i = 0; i < ixForm.prizes.length; i++) {
+        var p = ixForm.prizes[i];
+        var row = $('ix-prizes').children[i];
+        var name = clean(p.name);
+        if (!name) return { error: 'missing_prize_name', focus: row.querySelector('.pz__name') };
+        var total = p.total.trim();
+        if (!/^\d+$/.test(total) || Number(total) > 100000) return { error: 'bad_prize_total', focus: row.querySelector('.pz__total') };
+        if (p.won != null && Number(total) < p.won) return { error: 'prize_below_won', focus: row.querySelector('.pz__total') };
+        var chance = p.chance.trim();
+        if (!/^\d+(\.\d{1,2})?$/.test(chance) || Number(chance) > 100) return { error: 'bad_chance', focus: row.querySelector('.pz__chance') };
+        sum += Math.round(Number(chance) * 100);
+        x.prizes.push({ id: p.id, name: Array.from(name).slice(0, 12).join(''), total: Number(total), chance: Number(chance) });
+      }
+      if (sum > 10000) return { error: 'bad_chance' };
+      var tries = $('x-tries').value.trim();
+      if (!/^\d+$/.test(tries) || Number(tries) < 1 || Number(tries) > 20) return { error: 'bad_tries', focus: $('x-tries') };
+      x.tries = Number(tries);
+    } else if (x.kind === 'web') {
+      x.url = clean($('x-url').value);
+      if (!/^https:\/\/[^\s/]+\.[^\s]+$/.test(x.url)) return { error: 'bad_url', focus: $('x-url') };
+    } else {
+      x.shortLink = clean($('x-shortLink').value);
+      if (x.shortLink) {
+        if (x.shortLink.indexOf('#小程序://') !== 0) return { error: 'bad_mini', focus: $('x-shortLink') };
+      } else {
+        x.appId = clean($('x-appId').value);
+        x.path = clean($('x-path').value);
+        if (!/^wx[0-9a-f]{16}$/.test(x.appId)) return { error: 'bad_mini', focus: $('x-appId') };
+      }
+    }
+    return { interaction: x };
+  }
+  $('ix-drawer').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!ixReady || ixConflict) return;
+    if (ixSaving === ixEditor) return; // 新建的重复提交会建出两个
+    var r = readIxForm();
+    if (r.error) { toast(ERRORS[r.error], true); if (r.focus) r.focus.focus(); return; }
+    var mine = ixEditor;
+    ixSaving = mine;
+    syncIx();
+    call('adminSaveInteraction', { id: ixForm.id, version: ixForm.version, interaction: r.interaction }).then(function () {
+      toast('已保存');
+      if (mine === ixEditor) closeIx(true);
+      return loadInteractions();
+    }).catch(function (err) {
+      if (err.code === 'web_expired') return;
+      // 被别人改过了：填的内容留着，说清楚要重新读取
+      if (err.code === 'conflict') {
+        if (mine === ixEditor) ixConflict = true;
+        toast(IX_CONFLICT, true);
+        return;
+      }
+      toast(errorText(err), true);
+    }).then(function () { if (ixSaving === mine) ixSaving = 0; syncIx(); });
+  });
+
+  /* ---------- 大转盘的中奖名单 ---------- */
+  var drawsOf = null; // 正在看哪个互动的名单：{ id, title }
+  var drawsData = null; // { draws: 一共抽了几次, wins: [...] }
+  var drawsSeq = 0;
+  var redeeming = {}; // 正在核销或撤回的那几条，不重复提交
+  function closeDraws() {
+    drawsSeq += 1;
+    drawsOf = null;
+    drawsData = null;
+    $('draws-mask').hidden = true;
+    $('draws').hidden = true;
+  }
+  function memberName(w) { return w.memberNo ? (w.nickname || '没填昵称') : '不是会员'; }
+  function renderDraws() {
+    var body = $('draws-rows');
+    body.textContent = '';
+    if (!drawsData) return;
+    var wins = drawsData.wins;
+    $('draws-count').textContent = tpl(IX_STATS, { 次数: drawsData.draws, 中奖: wins.length, 已领: wins.filter(function (w) { return w.redeemed; }).length });
+    var q = $('draws-search').value.replace(/\s/g, '');
+    var rows = q ? wins.filter(function (w) { return w.code.indexOf(q) >= 0; }) : wins;
+    rows.forEach(function (w) {
+      var tr = el('tr');
+      tr.setAttribute('data-code', w.code);
+      tr.appendChild(el('td', '', moment(w.at)));
+      tr.appendChild(el('td', '', w.prizeName));
+      var code = el('td');
+      code.appendChild(el('span', 'code', w.code));
+      tr.appendChild(code);
+      var who = el('td');
+      who.appendChild(el('div', w.memberNo ? 'cell-title__name' : 'muted', memberName(w)));
+      if (w.memberNo) who.appendChild(el('div', 'cell-sub', '会员编号 ' + w.memberNo));
+      if (w.memberNo && w.phone) who.appendChild(el('div', 'cell-sub', w.phone));
+      tr.appendChild(who);
+      var st = el('td');
+      st.appendChild(el('span', 'chip ' + (w.redeemed ? 'chip--on' : 'chip--off'), w.redeemed ? '已领取' : '待领取'));
+      if (w.redeemed && w.redeemedAt) st.appendChild(el('div', 'cell-sub', moment(w.redeemedAt)));
+      tr.appendChild(st);
+      var ops = el('td');
+      var btn = el('button', 'btn btn--small ' + (w.redeemed ? 'btn--line' : 'btn--navy'), w.redeemed ? '撤回' : '核销');
+      btn.type = 'button';
+      btn.disabled = !!redeeming[w.id];
+      btn.addEventListener('click', function () { redeem(w, !w.redeemed); });
+      ops.appendChild(btn);
+      tr.appendChild(ops);
+      body.appendChild(tr);
+    });
+    var empty = $('draws-empty');
+    empty.hidden = rows.length > 0;
+    empty.textContent = wins.length ? '没有这个领奖码' : '还没有人中奖';
+  }
+  function loadDraws() {
+    if (!drawsOf) return null;
+    var mine = ++drawsSeq;
+    $('draws-export').disabled = true;
+    $('draws-retry').hidden = true;
+    return call('adminDraws', { id: drawsOf.id }).then(function (d) {
+      if (mine !== drawsSeq) return;
+      drawsData = { draws: d.draws || 0, wins: d.wins || [] };
+      $('draws-export').disabled = false;
+      renderDraws();
+    }).catch(function (e) {
+      if (mine !== drawsSeq) return;
+      $('draws-count').textContent = '没有读到当前内容，请重试';
+      $('draws-retry').hidden = false;
+      if (e.code !== 'web_expired') toast(errorText(e), true);
+    });
+  }
+  function openDraws(x) {
+    drawsOf = { id: x.id, title: x.title };
+    drawsData = null;
+    redeeming = {};
+    $('draws-title').textContent = x.title;
+    $('draws-count').textContent = '正在读取';
+    $('draws-search').value = '';
+    $('draws-rows').textContent = '';
+    $('draws-empty').hidden = true;
+    $('draws-mask').hidden = false;
+    $('draws').hidden = false;
+    loadDraws();
+    $('draws-search').focus();
+  }
+  /** 核销（on 为真）或撤回。结果回来时名单可能已经重读过：按 id 找到现在页面上的那一条改 */
+  function redeem(w, on) {
+    if (redeeming[w.id] || !drawsOf) return;
+    var ask = on ? tpl('[领奖码] · [奖品]，确认已经发给对方', { 领奖码: w.code, 奖品: w.prizeName }) : tpl('把 [领奖码] 改回待领取', { 领奖码: w.code });
+    if (!window.confirm(ask)) return;
+    var forId = drawsOf.id;
+    redeeming[w.id] = true;
+    renderDraws();
+    call('adminRedeem', { id: w.id, redeemed: on }).then(function (r) {
+      if (drawsData && drawsOf && drawsOf.id === forId) {
+        drawsData.wins.forEach(function (x) { if (x.id === r.id) { x.redeemed = r.redeemed; x.redeemedAt = r.redeemedAt; } });
+      }
+      toast(on ? (r.already ? '这个领奖码已经核销过' : '已核销') : '已改回待领取');
+      loadInteractions(); // 列表上的「已领」跟着变
+    }).catch(function (err) { if (err.code !== 'web_expired') toast(errorText(err), true); })
+      .then(function () { delete redeeming[w.id]; renderDraws(); });
+  }
+  $('draws-search').addEventListener('input', renderDraws);
+  $('draws-retry').addEventListener('click', loadDraws);
+  $('draws-close').addEventListener('click', closeDraws);
+  $('draws-mask').addEventListener('click', closeDraws);
+  $('draws-export').addEventListener('click', function () {
+    if (!drawsOf || !drawsData || !drawsData.wins.length) { toast('还没有人中奖', true); return; }
+    downloadCsv(drawsOf.title + ' 中奖名单.csv', [['中奖时间', '奖品', '领奖码', '昵称', '会员编号', '手机号', '领奖状态', '领取时间']].concat(drawsData.wins.map(function (w) {
+      return [moment(w.at), w.prizeName, w.code, memberName(w), w.memberNo, w.phone, w.redeemed ? '已领取' : '待领取', w.redeemed ? moment(w.redeemedAt) : ''];
+    })));
+  });
+
+  /* ---------- 互动的小程序码 ---------- */
+  var codeSeq = 0;
+  function closeCode() {
+    codeSeq += 1;
+    $('code-mask').hidden = true;
+    $('code-modal').hidden = true;
+  }
+  /** 生成正式版的码（扫了打开正式版小程序里的这个互动），显示出来，可以下载了去印 */
+  function openCode(x) {
+    var mine = ++codeSeq;
+    $('code-name').textContent = x.title;
+    $('code-img').hidden = true;
+    $('code-img').removeAttribute('src');
+    $('code-download').hidden = true;
+    $('code-status').hidden = false;
+    $('code-status').className = 'dialog__status';
+    $('code-status').textContent = '正在生成';
+    $('code-mask').hidden = false;
+    $('code-modal').hidden = false;
+    call('adminInteractionCode', { id: x.id, envVersion: 'release' }).then(function (d) {
+      if (mine !== codeSeq) return;
+      if (!d.url) throw Object.assign(new Error('code_failed'), { code: 'code_failed' });
+      $('code-img').src = d.url;
+      $('code-img').hidden = false;
+      $('code-status').hidden = true;
+      var a = $('code-download');
+      a.href = d.url;
+      a.download = x.title + ' 小程序码.png';
+      a.hidden = false;
+    }).catch(function (err) {
+      if (mine !== codeSeq) return;
+      $('code-status').className = 'dialog__status dialog__status--bad';
+      $('code-status').textContent = errorText(err);
+    });
+  }
+  $('code-close').addEventListener('click', closeCode);
+  $('code-mask').addEventListener('click', closeCode);
 
   /* ---------- 往期的赞助赛事 ---------- */
   var past = [];
